@@ -51,20 +51,20 @@ type FormData = z.infer<typeof formSchema>;
 export function UnitConverter() {
   const [selectedCategory, setSelectedCategory] = React.useState<
     UnitCategory | ""
-  >("");
+  >("Mass"); // Default category to Mass
   const [conversionResult, setConversionResult] =
     React.useState<ConversionResult | null>(null);
-   const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1);
+   const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1); // Default value to 1
 
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: 'onChange', // Validate on change for immediate feedback
     defaultValues: {
-      category: "",
-      fromUnit: "",
-      toUnit: "",
-      value: 1, // Default to 1
+      category: "Mass", // Default category
+      fromUnit: "kg",  // Default from unit
+      toUnit: "mg",    // Default to unit
+      value: 1,        // Default value
     },
   });
 
@@ -160,6 +160,7 @@ export function UnitConverter() {
        setConversionResult(null);
     }
     // Dependencies: Trigger re-calculation whenever any of these watched values change
+    // Also runs on initial mount due to default values
   }, [inputValue, fromUnitValue, toUnitValue, currentCategory, convertUnits, getValues]);
 
 
@@ -222,8 +223,9 @@ export function UnitConverter() {
                       onValueChange={(value) => {
                           field.onChange(value);
                           // Explicitly trigger dependent field updates and clear result
-                          setValue("fromUnit", "", { shouldValidate: true });
-                          setValue("toUnit", "", { shouldValidate: true });
+                          const units = getUnitsForCategory(value as UnitCategory);
+                          setValue("fromUnit", units[0]?.symbol ?? "", { shouldValidate: true }); // Set first unit as default
+                          setValue("toUnit", units[1]?.symbol ?? units[0]?.symbol ?? "", { shouldValidate: true }); // Set second unit or first
                           setValue("value", 1, { shouldValidate: true }); // Reset value on category change
                           setLastValidInputValue(1);
                           setConversionResult(null);
