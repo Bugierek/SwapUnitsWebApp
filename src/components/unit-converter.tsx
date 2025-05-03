@@ -143,22 +143,31 @@ export function UnitConverter() {
       setSelectedCategory(newCategory); // Update the state tracking the category
       const units = getUnitsForCategory(newCategory);
 
-      // Get the first and second unit symbols
-      const firstUnitSymbol = units[0]?.symbol ?? "";
-      // Use second unit symbol if available, otherwise fallback to the first one
-      const secondUnitSymbol = units.length > 1 ? (units[1]?.symbol ?? firstUnitSymbol) : firstUnitSymbol;
+      // Determine default units
+      let firstUnitSymbol = units[0]?.symbol ?? "";
+      let secondUnitSymbol = units.length > 1 ? (units[1]?.symbol ?? firstUnitSymbol) : firstUnitSymbol;
 
-      // Set the 'fromUnit' to the first unit and 'toUnit' to the second (or first)
-      // Ensure we only set valid symbols
+      // Specific default for Temperature category
+      if (newCategory === 'Temperature') {
+          const celsiusUnit = units.find(u => u.symbol === '°C');
+          const fahrenheitUnit = units.find(u => u.symbol === '°F');
+          // Only override if both C and F units are found
+          if (celsiusUnit && fahrenheitUnit) {
+              firstUnitSymbol = celsiusUnit.symbol;
+              secondUnitSymbol = fahrenheitUnit.symbol;
+          }
+      }
+
+      // Set the 'fromUnit' and 'toUnit' based on the determined symbols
       if (firstUnitSymbol) {
-        setValue("fromUnit", firstUnitSymbol, { shouldValidate: true });
+        setValue("fromUnit", firstUnitSymbol, { shouldValidate: true, shouldDirty: true });
       }
       if (secondUnitSymbol) {
-        setValue("toUnit", secondUnitSymbol, { shouldValidate: true });
+        setValue("toUnit", secondUnitSymbol, { shouldValidate: true, shouldDirty: true });
       }
 
       // Reset value to 1 on category change
-      setValue("value", 1, { shouldValidate: true });
+      setValue("value", 1, { shouldValidate: true, shouldDirty: true });
       setLastValidInputValue(1); // Also reset the display value tracker
 
       setConversionResult(null); // Clear previous result initially
@@ -179,14 +188,14 @@ export function UnitConverter() {
             const units = getUnitsForCategory(currentCategory as UnitCategory);
             const firstUnitSymbol = units[0]?.symbol ?? "";
             const secondUnitSymbol = units.length > 1 ? (units[1]?.symbol ?? firstUnitSymbol) : firstUnitSymbol;
-            if (firstUnitSymbol) setValue("fromUnit", firstUnitSymbol, { shouldValidate: true });
-            if (secondUnitSymbol) setValue("toUnit", secondUnitSymbol, { shouldValidate: true });
+            if (firstUnitSymbol) setValue("fromUnit", firstUnitSymbol, { shouldValidate: true, shouldDirty: true });
+            if (secondUnitSymbol) setValue("toUnit", secondUnitSymbol, { shouldValidate: true, shouldDirty: true });
          }
 
          if (initialFormData.value !== undefined) {
             setLastValidInputValue(Number(initialFormData.value));
          } else {
-             setValue("value", 1, { shouldValidate: true });
+             setValue("value", 1, { shouldValidate: true, shouldDirty: true });
              setLastValidInputValue(1);
          }
          // Trigger calculation if not done already
