@@ -36,17 +36,18 @@ export function ConversionDisplay({ fromValue, fromUnit, result }: ConversionDis
 
     // Valid result state: Render highlighted card
     return (
-        <Card className="bg-secondary/10 border-secondary shadow-sm transition-opacity duration-300">
+        <Card className="bg-primary/10 border-primary/50 shadow-sm transition-opacity duration-300">
             <CardContent className="p-4">
                 <div className="text-center sm:text-left">
                     <p className="text-sm text-muted-foreground">
                         {/* We know fromValue is defined here because showPlaceholder is false */}
                         {formatNumber(fromValue!)} {fromUnit} equals
                     </p>
-                    <p className="text-2xl font-bold text-secondary-foreground">
+                    {/* Apply purple color and ensure font-bold */}
+                    <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                         {/* We know result and result.value are defined here */}
                         {formatNumber(result.value)}{' '}
-                        <span className="text-lg font-medium">{result.unit}</span>
+                        <span className="text-lg font-medium text-purple-600 dark:text-purple-400">{result.unit}</span>
                     </p>
                 </div>
             </CardContent>
