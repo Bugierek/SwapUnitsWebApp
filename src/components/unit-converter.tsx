@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { unitData, presets } from "@/lib/unit-data";
+import { unitData } from "@/lib/unit-data";
 import { type UnitCategory, type Unit, type ConversionResult, type Preset, type NumberFormat } from "@/types";
 import {
   ArrowRightLeft,
@@ -80,7 +80,7 @@ export function UnitConverter() {
   const inputValue = watch("value"); // This can be string, number, or NaN during input
 
   const getUnitsForCategory = React.useCallback((category: UnitCategory | ""): Unit[] => {
-    return category ? unitData[category]?.units ?? [] : [];
+    return category ? unitData[category as UnitCategory]?.units ?? [] : [];
   }, []); // Stable function based on imported data
 
   const convertUnits = React.useCallback((data: Partial<FormData>): ConversionResult | null => {
@@ -135,18 +135,26 @@ export function UnitConverter() {
   }, [getUnitsForCategory]); // Dependency on getUnitsForCategory
 
 
-  // Effect to handle category changes
+  // Effect to handle category changes: Set default units when category changes
   React.useEffect(() => {
-    if (currentCategory !== selectedCategory) {
+    // Only run if the category actually changed
+    if (currentCategory && currentCategory !== selectedCategory) {
       setSelectedCategory(currentCategory as UnitCategory);
       const units = getUnitsForCategory(currentCategory as UnitCategory);
-      setValue("fromUnit", units[0]?.symbol ?? "", { shouldValidate: true }); // Set first unit as default
-      setValue("toUnit", units[1]?.symbol ?? units[0]?.symbol ?? "", { shouldValidate: true }); // Set second unit or first if only one
+
+      const firstUnitSymbol = units[0]?.symbol ?? "";
+      // Use second unit symbol if available, otherwise fallback to the first one
+      const secondUnitSymbol = units[1]?.symbol ?? firstUnitSymbol;
+
+      // Set the 'fromUnit' to the first unit and 'toUnit' to the second (or first)
+      setValue("fromUnit", firstUnitSymbol, { shouldValidate: true });
+      setValue("toUnit", secondUnitSymbol, { shouldValidate: true });
       setValue("value", 1, { shouldValidate: true }); // Reset value on category change
       setLastValidInputValue(1);
       setConversionResult(null); // Clear previous result
     }
   }, [currentCategory, selectedCategory, setValue, getUnitsForCategory]);
+
 
 
   // Effect for automatic conversion on relevant input changes
@@ -251,7 +259,7 @@ export function UnitConverter() {
                     <Select
                       onValueChange={(value) => {
                           field.onChange(value);
-                          // No need to manually trigger conversion here, useEffect handles it
+                          // Triggering the effect by changing the category is enough
                       }}
                       value={field.value}
                     >
