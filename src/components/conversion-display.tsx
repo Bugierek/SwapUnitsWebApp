@@ -119,6 +119,7 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
                             {/* Copy Button */}
                             {!showPlaceholder && (
                                 <Button
+                                    type="button" // Explicitly set type to button
                                     variant="ghost"
                                     size="icon"
                                     className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" // Adjust size and styling
