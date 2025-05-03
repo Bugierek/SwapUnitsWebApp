@@ -67,7 +67,7 @@ export function UnitConverter() {
     defaultValues: {
       category: "Mass", // Default category on load
       fromUnit: "kg",  // Default from unit (Kilogram for Mass)
-      toUnit: "lb",    // Default to unit (Pound for Mass)
+      toUnit: "mg",    // Default to unit (Milligram for Mass) - Updated as per user request
       value: 1,        // Default value
     },
   });
@@ -145,45 +145,46 @@ export function UnitConverter() {
         setSelectedCategory(newCategory); // Update the tracked state *after* checking for change
 
         const units = getUnitsForCategory(newCategory);
-        let defaultFromUnit = units[0]?.symbol ?? ""; // Fallback to first unit
-        let defaultToUnit = units.length > 1 ? (units[1]?.symbol ?? defaultFromUnit) : defaultFromUnit; // Fallback to second or first
+        let defaultFromUnit = units[0]?.symbol ?? ""; // Default to first unit
+        let defaultToUnit = units.length > 1 ? (units[1]?.symbol ?? defaultFromUnit) : defaultFromUnit; // Default to second or first if available
 
         // Set specific, sensible defaults for each category
         switch (newCategory) {
             case 'Length':
-                defaultFromUnit = units.find(u => u.symbol === 'm')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'ft')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 'm')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'ft')?.symbol ?? units[1]?.symbol ?? defaultFromUnit;
                 break;
             case 'Mass':
-                defaultFromUnit = units.find(u => u.symbol === 'kg')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'lb')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 'kg')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'g')?.symbol ?? units[1]?.symbol ?? defaultFromUnit; // Changed to grams
                 break;
             case 'Temperature':
-                defaultFromUnit = units.find(u => u.symbol === '°C')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === '°F')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === '°C')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === '°F')?.symbol ?? units[1]?.symbol ?? defaultFromUnit;
                 break;
             case 'Time':
-                defaultFromUnit = units.find(u => u.symbol === 's')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'ms')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 's')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'ms')?.symbol ?? units[1]?.symbol ?? defaultFromUnit;
                 break;
             case 'Pressure':
-                defaultFromUnit = units.find(u => u.symbol === 'Pa')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'kPa')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 'Pa')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'kPa')?.symbol ?? units[1]?.symbol ?? defaultFromUnit;
                 break;
             case 'Area':
-                defaultFromUnit = units.find(u => u.symbol === 'm²')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'ft²')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 'm²')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'ft²')?.symbol ?? units[1]?.symbol ?? defaultFromUnit;
                 break;
             case 'Volume':
-                defaultFromUnit = units.find(u => u.symbol === 'L')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'gal')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 'L')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'mL')?.symbol ?? units[1]?.symbol ?? defaultFromUnit; // Changed to mL for common use case
                 break;
             case 'Energy':
-                defaultFromUnit = units.find(u => u.symbol === 'J')?.symbol ?? defaultFromUnit;
-                defaultToUnit = units.find(u => u.symbol === 'kJ')?.symbol ?? defaultToUnit;
+                defaultFromUnit = units.find(u => u.symbol === 'J')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'kJ')?.symbol ?? units[1]?.symbol ?? defaultFromUnit;
                 break;
             // No default case needed as fallbacks are handled above
         }
+
 
         // Update the form values for fromUnit, toUnit, and reset the input value
         setValue("fromUnit", defaultFromUnit, { shouldValidate: true, shouldDirty: true });
@@ -198,8 +199,6 @@ export function UnitConverter() {
             setConversionResult(result);
         }, 0);
     }
-    // Make sure initial load calculation is handled separately if needed
-    // This effect focuses *only* on user-driven category changes
  }, [currentCategory, selectedCategory, setValue, getUnitsForCategory, getValues, convertUnits]);
 
 
@@ -224,8 +223,6 @@ export function UnitConverter() {
        setConversionResult(null);
        // Keep the last valid input value displayed for context
     }
-    // Dependencies: Trigger re-calculation whenever any of these watched values change
-    // IMPORTANT: Do NOT include 'currentCategory' here, as that's handled by the category change effect
   }, [inputValue, fromUnitValue, toUnitValue, convertUnits, getValues]);
 
 
@@ -253,7 +250,7 @@ export function UnitConverter() {
    }, []); // Empty dependency array ensures it runs only on mount
 
 
-  const handlePresetSelect = (preset: Preset) => {
+  const handlePresetSelect = React.useCallback((preset: Preset) => {
     // Find the actual category object based on the preset's category name/key
     const presetCategory = Object.keys(unitData).find(catKey => catKey === preset.category) as UnitCategory | undefined;
 
@@ -281,16 +278,16 @@ export function UnitConverter() {
         }, 0)
 
     }, 0); // Small delay allows category effect to complete
-  };
+  }, [setValue, reset, getValues, convertUnits]);
 
 
-  const swapUnits = () => {
+  const swapUnits = React.useCallback(() => {
     const currentFrom = fromUnitValue;
     const currentTo = toUnitValue;
     setValue("fromUnit", currentTo, { shouldValidate: true });
     setValue("toUnit", currentFrom, { shouldValidate: true });
     // The useEffect for input/unit changes will trigger the calculation automatically
-  };
+  }, [fromUnitValue, toUnitValue, setValue]);
 
   return (
     // Use semantic main or section tag if appropriate, but div is okay here

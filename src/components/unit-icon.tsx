@@ -16,7 +16,8 @@ interface UnitIconProps extends React.SVGProps<SVGSVGElement> {
     category: UnitCategory | string; // Allow string type for flexibility
 }
 
-export function UnitIcon({ category, ...props }: UnitIconProps) {
+// Memoize the component to prevent unnecessary re-renders when props haven't changed
+export const UnitIcon = React.memo(function UnitIconComponent({ category, ...props }: UnitIconProps) {
   switch (category as UnitCategory) {
     case 'Length':
       return <Ruler {...props} />;
@@ -37,4 +38,6 @@ export function UnitIcon({ category, ...props }: UnitIconProps) {
     default:
       return <HelpCircle {...props} />;
   }
-}
+});
+
+UnitIcon.displayName = 'UnitIcon';

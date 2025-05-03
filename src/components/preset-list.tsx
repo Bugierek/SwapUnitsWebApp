@@ -10,7 +10,8 @@ interface PresetListProps {
     onPresetSelect: (preset: Preset) => void;
 }
 
-export function PresetList({ onPresetSelect }: PresetListProps) {
+// Memoize the component to prevent unnecessary re-renders
+export const PresetList = React.memo(function PresetListComponent({ onPresetSelect }: PresetListProps) {
     return (
         // Add aria-label for better context
         <Card className="shadow-lg" aria-label="Common Unit Conversion Presets">
@@ -41,5 +42,6 @@ export function PresetList({ onPresetSelect }: PresetListProps) {
             </CardContent>
         </Card>
     );
-}
+});
 
+PresetList.displayName = 'PresetList';

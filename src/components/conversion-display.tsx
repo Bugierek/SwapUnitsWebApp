@@ -47,8 +47,8 @@ const formatFromValue = (num: number | undefined): string => {
     return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
 };
 
-
-export function ConversionDisplay({ fromValue, fromUnit, result, format = 'normal' }: ConversionDisplayProps) {
+// Memoize the component to prevent re-renders if props haven't changed
+export const ConversionDisplay = React.memo(function ConversionDisplayComponent({ fromValue, fromUnit, result, format = 'normal' }: ConversionDisplayProps) {
     const { toast } = useToast(); // Initialize toast hook
 
     // Determine if we should show the placeholder state
@@ -57,8 +57,8 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
     // Text to be copied (only the result value and unit)
     const textToCopy = showPlaceholder ? '' : `${formatNumber(result.value, format)} ${result.unit}`;
 
-    // Copy handler
-    const handleCopy = async () => {
+    // Copy handler using useCallback to prevent recreation on every render
+    const handleCopy = React.useCallback(async () => {
         if (!textToCopy || !navigator.clipboard) return; // Guard clause
 
         try {
@@ -76,7 +76,7 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
                 variant: "destructive",
             });
         }
-    };
+    }, [textToCopy, toast]);
 
 
     // Prepare the text content for screen readers
@@ -135,4 +135,6 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
             </Card>
         </>
     );
-}
+});
+
+ConversionDisplay.displayName = 'ConversionDisplay';
