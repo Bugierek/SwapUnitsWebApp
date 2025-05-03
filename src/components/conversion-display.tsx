@@ -1,18 +1,38 @@
 
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { ConversionResult } from '@/types';
+import type { ConversionResult, NumberFormat } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface ConversionDisplayProps {
     fromValue: number | undefined; // Can be undefined if input is invalid/empty
     fromUnit: string;
     result: ConversionResult | null;
+    format?: NumberFormat; // Add format prop, default to 'normal'
 }
 
-export function ConversionDisplay({ fromValue, fromUnit, result }: ConversionDisplayProps) {
+export function ConversionDisplay({ fromValue, fromUnit, result, format = 'normal' }: ConversionDisplayProps) {
     // Determine if we should show the placeholder state
     const showPlaceholder = fromValue === undefined || fromUnit === '' || !result;
+
+    // Format numbers based on the selected format
+    const formatNumber = (num: number): string => {
+        if (!isFinite(num)) {
+            return '-'; // Indicator for invalid numbers
+        }
+        if (format === 'scientific') {
+            // Use scientific notation always if selected
+            return num.toExponential(4);
+        }
+        // Default 'normal' formatting
+        // Use exponential notation for very large or very small non-zero numbers
+        if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-6) && num !== 0) {
+            return num.toExponential(4);
+        }
+        // Otherwise, format with commas and appropriate decimal places (up to 6)
+        return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+    };
+
 
     if (showPlaceholder) {
         // Placeholder state: Render dimmed card
@@ -54,18 +74,3 @@ export function ConversionDisplay({ fromValue, fromUnit, result }: ConversionDis
         </Card>
     );
 }
-
-
-// Format numbers for better readability
-const formatNumber = (num: number): string => {
-    // Handle potential NaN/Infinity explicitly
-    if (!isFinite(num)) {
-        return '-'; // Indicator for invalid numbers
-    }
-    // Use exponential notation for very large or very small non-zero numbers
-    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-6) && num !== 0) {
-        return num.toExponential(4);
-    }
-    // Otherwise, format with commas and appropriate decimal places (up to 6)
-    return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
-};

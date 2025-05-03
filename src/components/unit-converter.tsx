@@ -24,13 +24,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { unitData, presets } from "@/lib/unit-data";
-import { type UnitCategory, type Unit, type ConversionResult, type Preset } from "@/types";
+import { type UnitCategory, type Unit, type ConversionResult, type Preset, type NumberFormat } from "@/types";
 import {
   ArrowRightLeft,
 } from "lucide-react";
 import { PresetList } from "./preset-list";
 import { UnitIcon } from "./unit-icon";
 import { ConversionDisplay } from "./conversion-display";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+
 
 // Schema allows empty string or a valid number (positive or not, allowing intermediates)
 // Coercion happens, but NaN is possible during typing invalid input.
@@ -55,6 +58,7 @@ export function UnitConverter() {
   const [conversionResult, setConversionResult] =
     React.useState<ConversionResult | null>(null);
    const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1); // Default value to 1
+   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal'); // Default format
 
 
   const form = useForm<FormData>({
@@ -382,7 +386,28 @@ export function UnitConverter() {
                 fromValue={lastValidInputValue} // Display the last *valid* number entered
                 fromUnit={fromUnitValue ?? ''}
                 result={conversionResult}
+                format={numberFormat} // Pass the selected format
                />
+
+               {/* Number Formatting Options */}
+                <div className="pt-4">
+                  <Label className="mb-2 block font-medium">Result Formatting</Label>
+                   <RadioGroup
+                     defaultValue="normal"
+                     value={numberFormat}
+                     onValueChange={(value: string) => setNumberFormat(value as NumberFormat)}
+                     className="flex flex-col sm:flex-row gap-4"
+                   >
+                     <div className="flex items-center space-x-2">
+                       <RadioGroupItem value="normal" id="format-normal" />
+                       <Label htmlFor="format-normal" className="cursor-pointer">Normal (e.g., 1,234.56)</Label>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <RadioGroupItem value="scientific" id="format-scientific" />
+                       <Label htmlFor="format-scientific" className="cursor-pointer">Scientific (e.g., 1.23e+3)</Label>
+                     </div>
+                   </RadioGroup>
+                </div>
 
             </form>
           </Form>

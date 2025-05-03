@@ -1,4 +1,5 @@
 
+
 export type Unit = {
   name: string;
   symbol: string;
@@ -33,5 +34,6 @@ export type Preset = {
     toUnit: string;
     name: string;
 };
-    
-    
+
+// Type for number formatting options
+export type NumberFormat = 'normal' | 'scientific';
