@@ -5,25 +5,27 @@ import type { ConversionResult } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface ConversionDisplayProps {
-    fromValue: number | undefined; // Can be undefined during typing or if invalid
+    fromValue: number | undefined; // Can be undefined if input is invalid/empty
     fromUnit: string;
     result: ConversionResult | null;
 }
 
 export function ConversionDisplay({ fromValue, fromUnit, result }: ConversionDisplayProps) {
-    // Display only if we have a valid result AND a valid input value was used to calculate it
-    if (!result || fromValue === undefined || fromUnit === '') {
-         // Optionally, render a placeholder or nothing when calculation isn't possible/ready
+    // Determine if we should show the placeholder state
+    const showPlaceholder = fromValue === undefined || fromUnit === '' || !result;
+
+    if (showPlaceholder) {
+        // Placeholder state: Render dimmed card
         return (
-            <Card className="bg-muted/50 border-muted shadow-sm opacity-60">
+            <Card className="bg-muted/50 border-muted shadow-sm opacity-60 transition-opacity duration-300">
                 <CardContent className="p-4">
                     <div className="text-center sm:text-left">
                         <p className="text-sm text-muted-foreground h-5">
-                            {/* Placeholder text or empty */}
+                             {/* Show "Enter value..." if no valid number yet, otherwise show the base part */}
                              {fromValue !== undefined && fromUnit ? `${formatNumber(fromValue)} ${fromUnit} equals...` : 'Enter a value to convert'}
                         </p>
                         <p className="text-2xl font-bold text-muted-foreground h-[32px]">
-                           {/* Placeholder */}
+                           {/* Placeholder symbol */}
                            -
                         </p>
                     </div>
@@ -32,14 +34,17 @@ export function ConversionDisplay({ fromValue, fromUnit, result }: ConversionDis
         );
     }
 
+    // Valid result state: Render highlighted card
     return (
-        <Card className="bg-secondary/10 border-secondary shadow-sm transition-opacity duration-200">
+        <Card className="bg-secondary/10 border-secondary shadow-sm transition-opacity duration-300">
             <CardContent className="p-4">
                 <div className="text-center sm:text-left">
                     <p className="text-sm text-muted-foreground">
-                        {formatNumber(fromValue)} {fromUnit} equals
+                        {/* We know fromValue is defined here because showPlaceholder is false */}
+                        {formatNumber(fromValue!)} {fromUnit} equals
                     </p>
                     <p className="text-2xl font-bold text-secondary-foreground">
+                        {/* We know result and result.value are defined here */}
                         {formatNumber(result.value)}{' '}
                         <span className="text-lg font-medium">{result.unit}</span>
                     </p>
@@ -50,18 +55,16 @@ export function ConversionDisplay({ fromValue, fromUnit, result }: ConversionDis
 }
 
 
-// Format numbers for better readability (moved outside component for reuse if needed)
+// Format numbers for better readability
 const formatNumber = (num: number): string => {
-    // Use exponential notation for very large or very small numbers
-    if (Math.abs(num) > 1e9 || (Math.abs(num) < 1e-6 && num !== 0)) {
+    // Handle potential NaN/Infinity explicitly
+    if (!isFinite(num)) {
+        return '-'; // Indicator for invalid numbers
+    }
+    // Use exponential notation for very large or very small non-zero numbers
+    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-6) && num !== 0) {
         return num.toExponential(4);
     }
-    // Otherwise, format with commas and appropriate decimal places
-    // Handle potential NaN/Infinity before formatting
-    if (!isFinite(num)) {
-        return '-'; // Or some other indicator for invalid numbers
-    }
+    // Otherwise, format with commas and appropriate decimal places (up to 6)
     return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
 };
-    
-    
