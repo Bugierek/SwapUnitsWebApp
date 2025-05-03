@@ -53,17 +53,27 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 lg:p-16 xl:p-24">
-         {/* Optional: Add a brief introductory text before the converter */}
-         <p className="text-center text-muted-foreground mb-8 max-w-2xl">
-          Welcome to Unitopia, your reliable partner for seamless unit conversions. Whether you need to convert measurements for science, engineering, cooking, or everyday tasks, our intuitive tool provides fast and accurate results across various categories.
-        </p>
-        <UnitConverter />
-         {/* Potential future ad slot area - styled minimally for now */}
-         {/* <div className="mt-12 w-full max-w-4xl h-24 bg-muted/30 flex items-center justify-center text-muted-foreground rounded-md">
-            (Future Ad Area)
-         </div> */}
-      </main>
+      {/* Use grid layout for ad placeholder and main content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[200px_1fr] gap-8 w-full max-w-7xl mx-auto p-4 sm:p-8 md:p-12 lg:p-16 xl:p-20 min-h-screen items-start">
+        {/* Left Sidebar Ad Placeholder */}
+        <aside className="w-full lg:w-[200px] h-auto lg:min-h-[600px] bg-muted/30 border rounded-md p-4 text-center text-muted-foreground flex items-center justify-center order-1 lg:sticky lg:top-8">
+          {/* Content for the ad placeholder */}
+          <div>Ad Placeholder (e.g., 160x600)</div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main className="flex flex-col items-center w-full order-2">
+          {/* Optional: Add a brief introductory text before the converter */}
+          <p className="text-center text-muted-foreground mb-8 max-w-3xl">
+            Welcome to Unitopia, your reliable partner for seamless unit conversions. Whether you need to convert measurements for science, engineering, cooking, or everyday tasks, our intuitive tool provides fast and accurate results across various categories.
+          </p>
+          <UnitConverter />
+           {/* Potential future ad slot area - styled minimally for now */}
+           {/* <div className="mt-12 w-full max-w-4xl h-24 bg-muted/30 flex items-center justify-center text-muted-foreground rounded-md">
+              (Future Ad Area)
+           </div> */}
+        </main>
+      </div>
     </>
   );
 }
