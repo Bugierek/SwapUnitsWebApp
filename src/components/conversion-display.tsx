@@ -3,6 +3,9 @@ import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ConversionResult, NumberFormat } from '@/types';
 import { cn } from '@/lib/utils';
+import { Button } from './ui/button'; // Import Button
+import { Copy } from 'lucide-react'; // Import Copy icon
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface ConversionDisplayProps {
     fromValue: number | undefined; // Can be undefined if input is invalid/empty
@@ -32,15 +35,54 @@ const formatNumber = (num: number, format: NumberFormat = 'normal'): string => {
     return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
 };
 
+// Helper function to format the 'from' value display (always normal format)
+const formatFromValue = (num: number | undefined): string => {
+    if (num === undefined || !isFinite(num)) {
+        return '-';
+    }
+    // Always use 'normal' formatting for the input value display
+    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-6) && num !== 0) {
+         return num.toExponential().replace('e', 'E');
+    }
+    return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+};
+
 
 export function ConversionDisplay({ fromValue, fromUnit, result, format = 'normal' }: ConversionDisplayProps) {
+    const { toast } = useToast(); // Initialize toast hook
+
     // Determine if we should show the placeholder state
     const showPlaceholder = fromValue === undefined || fromUnit === '' || !result;
 
+    // Text to be copied (only the result value and unit)
+    const textToCopy = showPlaceholder ? '' : `${formatNumber(result.value, format)} ${result.unit}`;
+
+    // Copy handler
+    const handleCopy = async () => {
+        if (!textToCopy || !navigator.clipboard) return; // Guard clause
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            toast({
+                title: "Copied!",
+                description: `Result "${textToCopy}" copied to clipboard.`,
+                variant: "default", // Use default (blueish) for confirmation
+            });
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            toast({
+                title: "Copy Failed",
+                description: "Could not copy result to clipboard.",
+                variant: "destructive",
+            });
+        }
+    };
+
+
     // Prepare the text content for screen readers
     const screenReaderText = showPlaceholder
-        ? (fromValue !== undefined && fromUnit ? `Waiting for conversion of ${formatNumber(fromValue, 'normal')} ${fromUnit}` : 'Enter a value and select units to convert')
-        : `${formatNumber(fromValue!, 'normal')} ${fromUnit} equals ${formatNumber(result.value, format)} ${result.unit}`;
+        ? (fromValue !== undefined && fromUnit ? `Waiting for conversion of ${formatFromValue(fromValue)} ${fromUnit}` : 'Enter a value and select units to convert')
+        : `${formatFromValue(fromValue!)} ${fromUnit} equals ${formatNumber(result.value, format)} ${result.unit}`;
 
     return (
         <> {/* Wrap multiple sibling elements in a Fragment */}
@@ -57,21 +99,36 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
                     <div className="text-center sm:text-left">
                         <p className="text-sm text-muted-foreground h-5">
                             {showPlaceholder
-                             ? (fromValue !== undefined && fromUnit ? `${formatNumber(fromValue, 'normal')} ${fromUnit} equals...` : 'Enter a value to convert')
-                             : `${formatNumber(fromValue!, 'normal')} ${fromUnit} equals`
+                             ? (fromValue !== undefined && fromUnit ? `${formatFromValue(fromValue)} ${fromUnit} equals...` : 'Enter a value to convert')
+                             : `${formatFromValue(fromValue!)} ${fromUnit} equals`
                             }
                         </p>
-                        <p className={cn(
-                            "text-2xl font-bold h-[32px]", // Ensure consistent height
-                            showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400" // Purple color applied here
-                        )}>
-                           {showPlaceholder ? '-' : (
-                                <>
-                                    {formatNumber(result.value, format)}{' '}
-                                    <span className="text-lg font-medium text-purple-600 dark:text-purple-400">{result.unit}</span>
-                                </>
-                           )}
-                        </p>
+                         {/* Flex container for result and copy button */}
+                        <div className="flex items-center justify-center sm:justify-start gap-2">
+                             <p className={cn(
+                                "text-2xl font-bold h-[32px] flex items-center", // Ensure consistent height and vertical alignment
+                                showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400" // Purple color applied here
+                             )}>
+                               {showPlaceholder ? '-' : (
+                                    <>
+                                        {formatNumber(result.value, format)}{' '}
+                                        <span className="text-lg font-medium text-purple-600 dark:text-purple-400 ml-1">{result.unit}</span>
+                                    </>
+                               )}
+                            </p>
+                            {/* Copy Button */}
+                            {!showPlaceholder && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" // Adjust size and styling
+                                    onClick={handleCopy}
+                                    aria-label="Copy result to clipboard"
+                                >
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </CardContent>
             </Card>
