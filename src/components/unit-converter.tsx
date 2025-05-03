@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { unitData } from "@/lib/unit-data";
-import { type UnitCategory, type Unit, type ConversionResult, type Preset, type NumberFormat } from "@/types";
+import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat } from "@/types";
 import {
   ArrowRightLeft,
 } from "lucide-react";
@@ -135,14 +135,15 @@ export function UnitConverter() {
   }, [getUnitsForCategory]); // Dependency on getUnitsForCategory
 
 
-  // Effect to handle category changes: Set default units when category changes
-  React.useEffect(() => {
+ // Effect to handle category changes: Set default units when category changes
+ React.useEffect(() => {
     // Check if the watched category is valid and actually changed
     if (currentCategory && currentCategory !== selectedCategory && Object.keys(unitData).includes(currentCategory)) {
       const newCategory = currentCategory as UnitCategory;
       setSelectedCategory(newCategory); // Update the state tracking the category
       const units = getUnitsForCategory(newCategory);
 
+      // Get the first and second unit symbols
       const firstUnitSymbol = units[0]?.symbol ?? "";
       // Use second unit symbol if available, otherwise fallback to the first one
       const secondUnitSymbol = units.length > 1 ? (units[1]?.symbol ?? firstUnitSymbol) : firstUnitSymbol;
@@ -156,12 +157,45 @@ export function UnitConverter() {
         setValue("toUnit", secondUnitSymbol, { shouldValidate: true });
       }
 
-      setValue("value", 1, { shouldValidate: true }); // Reset value on category change
-      setLastValidInputValue(1);
+      // Reset value to 1 on category change
+      setValue("value", 1, { shouldValidate: true });
+      setLastValidInputValue(1); // Also reset the display value tracker
+
       setConversionResult(null); // Clear previous result initially
       // The subsequent useEffect will recalculate based on new defaults
     }
-  }, [currentCategory, selectedCategory, setValue, getUnitsForCategory]);
+    // Check if selectedCategory is initially empty and currentCategory has a value (on first load with defaults)
+    else if (selectedCategory === "" && currentCategory && Object.keys(unitData).includes(currentCategory)) {
+         setSelectedCategory(currentCategory as UnitCategory);
+         // Keep existing default values if they are already set
+         const initialFormData = getValues();
+         if (initialFormData.fromUnit && initialFormData.toUnit) {
+             // If default units are already set (like kg and g for Mass), keep them
+             // and trigger initial calculation
+             const initialResult = convertUnits(initialFormData);
+             setConversionResult(initialResult);
+         } else {
+            // Fallback if initial defaults weren't set correctly (shouldn't normally happen)
+            const units = getUnitsForCategory(currentCategory as UnitCategory);
+            const firstUnitSymbol = units[0]?.symbol ?? "";
+            const secondUnitSymbol = units.length > 1 ? (units[1]?.symbol ?? firstUnitSymbol) : firstUnitSymbol;
+            if (firstUnitSymbol) setValue("fromUnit", firstUnitSymbol, { shouldValidate: true });
+            if (secondUnitSymbol) setValue("toUnit", secondUnitSymbol, { shouldValidate: true });
+         }
+
+         if (initialFormData.value !== undefined) {
+            setLastValidInputValue(Number(initialFormData.value));
+         } else {
+             setValue("value", 1, { shouldValidate: true });
+             setLastValidInputValue(1);
+         }
+         // Trigger calculation if not done already
+         if (!conversionResult) {
+             const result = convertUnits(getValues());
+             setConversionResult(result);
+         }
+    }
+ }, [currentCategory, selectedCategory, setValue, getUnitsForCategory, convertUnits, getValues, conversionResult]);
 
 
 
@@ -190,6 +224,7 @@ export function UnitConverter() {
      if(initialFormData.category && initialFormData.fromUnit && initialFormData.toUnit && initialFormData.value !== undefined) {
        const initialResult = convertUnits(initialFormData);
        setConversionResult(initialResult);
+       setLastValidInputValue(Number(initialFormData.value)); // Set initial last valid value
      }
      // Only run this on mount
      // eslint-disable-next-line react-hooks/exhaustive-deps
