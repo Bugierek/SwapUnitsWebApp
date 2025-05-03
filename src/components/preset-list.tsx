@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ export function PresetList({ onPresetSelect }: PresetListProps) {
                         <li key={index}> {/* Wrap button in li */}
                           <Button
                               variant="ghost"
-                              className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-accent/10"
+                              className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground" // Changed hover background to primary and text to primary-foreground
                               onClick={() => onPresetSelect(preset)}
                               aria-label={`Select preset: ${preset.name}`} // More descriptive label
                           >
@@ -41,3 +42,4 @@ export function PresetList({ onPresetSelect }: PresetListProps) {
         </Card>
     );
 }
+
