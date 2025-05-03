@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { presets } from "@/lib/unit-data";
 import { type Preset } from '@/types';
-import { ScrollArea } from './ui/scroll-area';
 import { List } from 'lucide-react';
 
 interface PresetListProps {
@@ -20,20 +19,19 @@ export function PresetList({ onPresetSelect }: PresetListProps) {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <ScrollArea className="h-[400px] pr-4">
-                    <div className="space-y-2">
-                        {presets.map((preset, index) => (
-                            <Button
-                                key={index}
-                                variant="ghost"
-                                className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-accent/10"
-                                onClick={() => onPresetSelect(preset)}
-                            >
-                                {preset.name}
-                            </Button>
-                        ))}
-                    </div>
-                </ScrollArea>
+                {/* Removed ScrollArea and fixed height */}
+                <div className="space-y-2">
+                    {presets.map((preset, index) => (
+                        <Button
+                            key={index}
+                            variant="ghost"
+                            className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-accent/10"
+                            onClick={() => onPresetSelect(preset)}
+                        >
+                            {preset.name}
+                        </Button>
+                    ))}
+                </div>
             </CardContent>
         </Card>
     );
