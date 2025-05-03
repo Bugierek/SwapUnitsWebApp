@@ -21,7 +21,7 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
             return '-'; // Indicator for invalid numbers
         }
         if (format === 'scientific') {
-            // Use scientific notation always if selected
+            // Use scientific notation always if selected, with 4 decimal places for precision
             return num.toExponential(4);
         }
         // Default 'normal' formatting
@@ -74,3 +74,4 @@ export function ConversionDisplay({ fromValue, fromUnit, result, format = 'norma
         </Card>
     );
 }
+
