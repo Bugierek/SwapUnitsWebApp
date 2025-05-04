@@ -6,8 +6,10 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 import { Bookmark } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function BookmarkButton() {
+// Memoize the component
+export const BookmarkButton = React.memo(function BookmarkButtonComponent() {
   const { toast } = useToast();
   const isMobile = useIsMobile(); // Use the hook
   const [isMac, setIsMac] = React.useState(false);
@@ -35,7 +37,7 @@ export function BookmarkButton() {
   }, []); // Empty dependency array ensures this runs once on mount
 
 
-  const handleBookmarkClick = () => {
+  const handleBookmarkClick = React.useCallback(() => {
     const keyCombination = isMac ? 'Cmd+D' : 'Ctrl+D';
     // Conditionally set the description based on isMobile
     const toastDescription = isMobile
@@ -81,26 +83,41 @@ export function BookmarkButton() {
       console.error("Error attempting to trigger bookmark dialog:", error);
       // The toast message providing instructions is already displayed.
     }
-  };
+  }, [isMac, isMobile, toast]);
 
   return (
     <Button
         variant="outline"
-        size="icon" // Default to icon size for mobile
+        size="icon" // Default to icon size, text revealed on wider screens via className logic
         onClick={handleBookmarkClick}
         aria-label="Add this page to your bookmarks"
         // Combined styles for button structure and hover effects
-        className="group inline-flex items-stretch h-9 w-9 md:w-auto overflow-hidden rounded-md border border-input bg-background hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        // Ensure height matches header height for consistency (h-9)
+        // Remove group class if individual hover effects aren't needed
+        className={cn(
+            "inline-flex items-stretch h-9 w-9 md:w-auto overflow-hidden rounded-md border border-input bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            "hover:bg-background" // Prevent background change on hover for the whole button
+            )}
     >
         {/* Icon Span - Adjusted padding and hover effect */}
-        <span className="flex items-center justify-center px-2 md:px-1.5 transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-foreground">
+        {/* Apply hover styles directly here */}
+        <span className={cn(
+            "flex items-center justify-center px-2 transition-colors duration-150",
+            "hover:bg-accent hover:text-accent-foreground" // Hover effect only on icon span
+            )}>
             <Bookmark className="h-4 w-4" />
         </span>
 
         {/* Text Span - Hidden on mobile, shown on md+, no divider, specific padding */}
-        <span className="hidden md:flex items-center px-1.5 text-sm text-foreground transition-colors"> {/* hidden by default, flex on md, adjust padding */}
+        {/* Reduced padding-x */}
+        <span className={cn(
+            "hidden md:flex items-center px-1.5 text-sm text-foreground transition-colors", // hidden by default, flex on md, adjust padding
+            "hover:text-foreground" // Ensure text color doesn't change on hover
+            )}>
             Add to Bookmarks
         </span>
     </Button>
   );
-}
+});
+
+BookmarkButton.displayName = 'BookmarkButton';
