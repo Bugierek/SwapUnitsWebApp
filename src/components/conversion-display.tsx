@@ -103,11 +103,8 @@ export const ConversionDisplay = React.memo(function ConversionDisplayComponent(
         try {
             await navigator.clipboard.writeText(textToCopy);
             toast({
-                title: (
-                    <div className="flex items-center gap-2">
-                         <Check className="h-4 w-4" /> Copied!
-                    </div>
-                ),
+                // Remove Check icon here, Toaster component handles it for confirmation variant
+                title: "Copied!",
                 description: `Result "${textToCopy}" copied to clipboard.`,
                 variant: "confirmation", // Use confirmation (green) variant
             });
@@ -181,4 +178,3 @@ export const ConversionDisplay = React.memo(function ConversionDisplayComponent(
 });
 
 ConversionDisplay.displayName = 'ConversionDisplay';
-
