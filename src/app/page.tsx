@@ -67,8 +67,8 @@ export default function Home() {
         {/* Main Content Area */}
         <main className="flex flex-col items-center w-full order-2">
            {/* Header Section with Title and Bookmark Button */}
-          <div className="flex flex-col sm:flex-row justify-between items-center w-full mb-8 gap-4">
-            <h1 className="text-3xl font-bold text-center sm:text-left text-primary">Unitopia</h1>
+          <div className="flex flex-col sm:flex-row justify-end items-center w-full mb-8 gap-4">
+             {/* H1 Removed Here */}
             <BookmarkButton /> {/* Add the bookmark button here */}
           </div>
 
