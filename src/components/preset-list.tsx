@@ -30,7 +30,8 @@ export const PresetList = React.memo(function PresetListComponent({ onPresetSele
                         <li key={index}> {/* Wrap button in li */}
                           <Button
                               variant="ghost"
-                              className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground" // Changed hover background to primary and text to primary-foreground
+                              // Added overflow-hidden and whitespace-normal
+                              className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal"
                               onClick={() => onPresetSelect(preset)}
                               aria-label={`Select preset: ${preset.name}`} // More descriptive label
                           >
