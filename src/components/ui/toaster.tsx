@@ -10,6 +10,7 @@ import {
   ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast"
+import { Check } from "lucide-react" // Import Check icon
 
 export function Toaster() {
   const { toasts } = useToast()
@@ -17,8 +18,9 @@ export function Toaster() {
   return (
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, variant, ...props }) {
-        // Check if the variant is success (bookmark toast) to apply custom structure
+        // Check specific variants for custom layouts
         const isSuccessVariant = variant === 'success';
+        const isConfirmationVariant = variant === 'confirmation';
 
         return (
           <Toast key={id} variant={variant} {...props}>
@@ -30,18 +32,39 @@ export function Toaster() {
                   {/* Apply text-base for larger font size */}
                   {title && <ToastTitle className="text-base">{title}</ToastTitle>}
                    {/* Place Close button inside header for success variant */}
-                   <ToastClose className="absolute right-1 top-1 group-[.success]:text-accent-foreground/70 group-[.success]:hover:text-accent-foreground" />
+                   <ToastClose className="absolute right-1 top-1" />
                 </div>
                 {/* White Body */}
-                <div className="p-4 pt-3 grid gap-1 text-center">
+                <div className="bg-background text-foreground p-4 pt-3 grid gap-1 text-center rounded-b-md">
                   {description && <ToastDescription>{description}</ToastDescription>}
                    {/* Action button remains in the body */}
                    {action}
                 </div>
               </div>
+            ) : isConfirmationVariant ? (
+                 // Custom structure for confirmation (copied) variant
+                 <div className="flex flex-col w-full">
+                    {/* Green Header */}
+                    <div className="bg-secondary text-secondary-foreground p-3 rounded-t-md relative flex items-center justify-center gap-2">
+                      {/* Check icon added here */}
+                      {title && (
+                        <ToastTitle className="flex items-center gap-1.5">
+                           <Check className="h-4 w-4" aria-hidden="true" />
+                           {title}
+                        </ToastTitle>
+                      )}
+                      {/* Place Close button inside header for confirmation variant */}
+                      <ToastClose className="absolute right-1 top-1" />
+                    </div>
+                    {/* White Body */}
+                    <div className="bg-background text-foreground p-4 pt-3 grid gap-1 text-center rounded-b-md">
+                       {description && <ToastDescription>{description}</ToastDescription>}
+                       {/* Action button remains in the body (if any) */}
+                       {action}
+                    </div>
+                 </div>
             ) : (
-              // Default structure for other variants (default, destructive, confirmation)
-              // Confirmation variant uses this structure but with green styling from toast.tsx
+              // Default structure for other variants (default, destructive)
               <div className="grid gap-1 p-6 pr-8"> {/* Apply default padding here */}
                 {title && <ToastTitle>{title}</ToastTitle>}
                 {description && <ToastDescription>{description}</ToastDescription>}

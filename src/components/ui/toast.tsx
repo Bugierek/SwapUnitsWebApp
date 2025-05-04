@@ -27,18 +27,19 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  // Base styles: remove padding here as it will be handled conditionally in toaster.tsx
+  // Base styles: Remove padding here as it's handled conditionally in toaster.tsx for structured toasts.
+  // Keep border and other base styles.
   "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground", // Default padding applied in toaster
+        default: "border bg-background text-foreground", // Padding applied in toaster for this variant
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground", // Default padding applied in toaster
-        success: // Kept for bookmark toast: Orange border/header, white body
-          "success group border-accent bg-background text-foreground",
-        confirmation: // New variant for copy confirmation: Green background
-          "confirmation group border-secondary/50 bg-secondary text-secondary-foreground",
+          "destructive group border-destructive bg-destructive text-destructive-foreground", // Padding applied in toaster for this variant
+        success: // Orange border, background handled in toaster
+          "success group border-accent", // Background/padding handled in toaster
+        confirmation: // Green border, background handled in toaster
+          "confirmation group border-secondary", // Background/padding handled in toaster
       },
     },
     defaultVariants: {
@@ -55,7 +56,7 @@ const Toast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
-      // Remove explicit padding here, apply variant classes
+      // Apply variant classes, padding removed from base
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
@@ -74,10 +75,9 @@ const ToastAction = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 group-[.destructive]:border-muted/40 group-[.destructive]:hover:border-destructive/30 group-[.destructive]:hover:bg-destructive group-[.destructive]:hover:text-destructive-foreground group-[.destructive]:focus:ring-destructive",
-      // Success variant action button - style for white body
-      "group-[.success]:border-input group-[.success]:hover:bg-accent group-[.success]:hover:text-accent-foreground group-[.success]:focus:ring-ring",
-      // Confirmation variant action button - style for green body
-      "group-[.confirmation]:border-muted/40 group-[.confirmation]:hover:border-secondary/30 group-[.confirmation]:hover:bg-background group-[.confirmation]:hover:text-secondary group-[.confirmation]:focus:ring-secondary",
+      // Style for action button when inside the white body of success/confirmation toasts
+      "group-[.success]:border-input group-[.success]:text-foreground group-[.success]:hover:bg-accent group-[.success]:hover:text-accent-foreground group-[.success]:focus:ring-ring", // Action in white body
+      "group-[.confirmation]:border-input group-[.confirmation]:text-foreground group-[.confirmation]:hover:bg-secondary group-[.confirmation]:hover:text-secondary-foreground group-[.confirmation]:focus:ring-secondary", // Action in white body
       className
     )}
     {...props}
@@ -92,13 +92,14 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
+      // Base close button styles, positioned absolutely in toaster.tsx for structured toasts
       "absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
-      // Adjusted close button colors for variants
+      // Adjusted close button colors for variants (these apply when used within the respective colored areas)
       "group-[.destructive]:text-red-300 group-[.destructive]:hover:text-red-50 group-[.destructive]:focus:ring-red-400 group-[.destructive]:focus:ring-offset-red-600",
-      // Success variant close button - needs different color for orange header vs white body
-      "group-[.success]:text-accent-foreground/70 group-[.success]:hover:text-accent-foreground group-[.success]:focus:ring-accent", // Assuming it's placed in the orange header
-      // Confirmation variant close button
-      "group-[.confirmation]:text-secondary-foreground/70 group-[.confirmation]:hover:text-secondary-foreground group-[.confirmation]:focus:ring-secondary",
+      // Success variant close button (for orange header)
+      "group-[.success]:text-accent-foreground/70 group-[.success]:hover:text-accent-foreground group-[.success]:focus:ring-accent group-[.success]:focus:ring-offset-accent",
+      // Confirmation variant close button (for green header)
+      "group-[.confirmation]:text-secondary-foreground/70 group-[.confirmation]:hover:text-secondary-foreground group-[.confirmation]:focus:ring-secondary group-[.confirmation]:focus:ring-offset-secondary",
       className
     )}
     toast-close=""
@@ -115,7 +116,7 @@ const ToastTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Title
     ref={ref}
-    // Style potentially adjusted based on context (header vs body)
+    // Base styling, color inherited from parent in toaster.tsx
     className={cn("text-sm font-semibold", className)}
     {...props}
   />
@@ -128,7 +129,7 @@ const ToastDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ToastPrimitives.Description
     ref={ref}
-    // Style potentially adjusted based on context (header vs body)
+    // Base styling, color inherited from parent in toaster.tsx
     className={cn("text-sm opacity-90", className)}
     {...props}
   />
