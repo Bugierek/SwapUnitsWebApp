@@ -73,9 +73,9 @@ export default function Home() {
           <div>Ad Placeholder (160x600)</div>
         </aside>
 
-        {/* Main Content Area - Added position: relative */}
-        <main className="flex flex-col items-center w-full order-2 relative">
-           {/* Render Toaster here - it will be positioned absolutely within this main container */}
+        {/* Main Content Area - Removed position: relative */}
+        <main className="flex flex-col items-center w-full order-2">
+           {/* Toaster moved outside main content to be globally positioned */}
            <Toaster />
            {/* Header Section with Title and Bookmark Button - REMOVED Button from here */}
           {/* <div className="flex flex-col sm:flex-row justify-end items-center w-full mb-8 gap-4"> */}
@@ -97,4 +97,3 @@ export default function Home() {
     </>
   );
 }
-
