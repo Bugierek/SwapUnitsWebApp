@@ -88,8 +88,7 @@ export function BookmarkButton() {
         <span className="flex items-center justify-center px-1.5 transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-foreground">
             <Bookmark className="h-4 w-4" />
         </span>
-        {/* Divider */}
-        <span className="w-px bg-border self-center my-1.5"></span> {/* Vertical divider, adjust margin for height */}
+        {/* Removed vertical divider span */}
         {/* Text Span - Reduced padding, no hover effect, added flex items-center */}
         <span className="flex items-center px-1.5 text-sm text-foreground transition-colors"> {/* Reduced padding from px-2 to px-1.5 */}
             Add to Bookmarks
