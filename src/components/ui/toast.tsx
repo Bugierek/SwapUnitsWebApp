@@ -17,8 +17,8 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      // Changed positioning classes to center the viewport
-      "fixed top-4 left-1/2 z-[100] flex max-h-screen w-full -translate-x-1/2 flex-col p-4 md:max-w-[420px]",
+      // Changed positioning: Removed left-1/2, -translate-x-1/2. Added top-4, right-4.
+      "fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col p-4 md:max-w-[420px]",
       className
     )}
     {...props}
