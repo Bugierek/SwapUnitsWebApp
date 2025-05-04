@@ -3,6 +3,7 @@ import { UnitConverter } from "@/components/unit-converter";
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { BookmarkButton } from '@/components/bookmark-button'; // Import the new component
+import { Toaster } from '@/components/ui/toaster'; // Import Toaster here
 
 // Page-specific metadata
 export const metadata: Metadata = {
@@ -64,8 +65,10 @@ export default function Home() {
           <div>Ad Placeholder (160x600)</div>
         </aside>
 
-        {/* Main Content Area */}
-        <main className="flex flex-col items-center w-full order-2">
+        {/* Main Content Area - Added position: relative */}
+        <main className="flex flex-col items-center w-full order-2 relative">
+           {/* Render Toaster here - it will be positioned absolutely within this main container */}
+           <Toaster />
            {/* Header Section with Title and Bookmark Button */}
           <div className="flex flex-col sm:flex-row justify-end items-center w-full mb-8 gap-4">
              {/* H1 Removed Here */}

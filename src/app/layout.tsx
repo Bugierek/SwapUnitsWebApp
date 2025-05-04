@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google"; // Using Inter font
 import "./globals.css";
-import { Toaster } from "@/components/ui/toaster";
+// Removed: import { Toaster } from "@/components/ui/toaster";
 
 // Use Inter font - known for readability
 const inter = Inter({
@@ -27,7 +27,7 @@ export default function RootLayout({
         className={`${inter.variable} antialiased font-sans`} // Apply Inter font
       >
         {children}
-        <Toaster />
+        {/* Removed: <Toaster /> */}
       </body>
     </html>
   );
