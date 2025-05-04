@@ -4,10 +4,12 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 import { Bookmark } from 'lucide-react';
 
 export function BookmarkButton() {
   const { toast } = useToast();
+  const isMobile = useIsMobile(); // Use the hook
   const [isMac, setIsMac] = React.useState(false);
 
   React.useEffect(() => {
@@ -35,6 +37,11 @@ export function BookmarkButton() {
 
   const handleBookmarkClick = () => {
     const keyCombination = isMac ? 'Cmd+D' : 'Ctrl+D';
+    // Conditionally set the description based on isMobile
+    const toastDescription = isMobile
+      ? "Click your browser's menu (often three dots/lines) and look for a star icon or 'Add to Bookmarks/Favorites'."
+      : `Press ${keyCombination} to bookmark this page.`;
+
 
     // Show toast notification first
     toast({
@@ -46,8 +53,8 @@ export function BookmarkButton() {
             Add to Bookmarks
         </div>
       ),
-      description: `Press ${keyCombination} to bookmark this page.`,
-      duration: 5000, // Show toast for 5 seconds
+      description: toastDescription, // Use the conditional description
+      duration: 7000, // Show toast for 7 seconds (longer for mobile instructions)
     });
 
     // NOTE: Programmatically triggering the browser's bookmark dialog (like simulating Ctrl+D)
@@ -68,7 +75,7 @@ export function BookmarkButton() {
       // Generic alert fallback (if specific methods fail or aren't applicable)
       else {
          // No reliable cross-browser way exists. The toast is the user guidance.
-         console.warn("Automatic bookmark triggering is not reliably supported. Please use the keyboard shortcut shown.");
+         console.warn("Automatic bookmark triggering is not reliably supported. Please use the keyboard shortcut or browser menu shown.");
       }
     } catch (error) {
       console.error("Error attempting to trigger bookmark dialog:", error);
@@ -82,14 +89,16 @@ export function BookmarkButton() {
         size="icon" // Default to icon size for mobile
         onClick={handleBookmarkClick}
         aria-label="Add this page to your bookmarks"
-        className="group inline-flex items-stretch h-9 w-9 md:w-auto md:px-0 overflow-hidden rounded-md border border-input bg-background hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" // Icon size default, auto width md+, adjust padding
+        // Combined styles for button structure and hover effects
+        className="group inline-flex items-stretch h-9 w-9 md:w-auto overflow-hidden rounded-md border border-input bg-background hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
     >
-        {/* Icon Span - Adjusted padding */}
-        <span className="flex items-center justify-center px-2 md:px-1.5 transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-foreground"> {/* Slightly more padding on mobile */}
+        {/* Icon Span - Adjusted padding and hover effect */}
+        <span className="flex items-center justify-center px-2 md:px-1.5 transition-colors duration-150 group-hover:bg-accent group-hover:text-accent-foreground">
             <Bookmark className="h-4 w-4" />
         </span>
-        {/* Text Span - Hidden on mobile, shown on md+ */}
-        <span className="hidden md:flex items-center px-1.5 text-sm text-foreground transition-colors"> {/* hidden by default, flex on md */}
+
+        {/* Text Span - Hidden on mobile, shown on md+, no divider, specific padding */}
+        <span className="hidden md:flex items-center px-1.5 text-sm text-foreground transition-colors"> {/* hidden by default, flex on md, adjust padding */}
             Add to Bookmarks
         </span>
     </Button>
