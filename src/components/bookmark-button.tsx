@@ -12,37 +12,67 @@ export function BookmarkButton() {
 
   React.useEffect(() => {
     // This check runs only on the client after hydration
-    setIsMac(navigator.platform.toUpperCase().indexOf('MAC') >= 0);
-  }, []);
+    // Use navigator.userAgent or navigator.platform for OS detection
+    const userAgent = window.navigator.userAgent;
+    const platform = window.navigator.platform;
+    const macosPlatforms = ['Macintosh', 'MacIntel', 'MacPPC', 'Mac68K'];
+    const windowsPlatforms = ['Win32', 'Win64', 'Windows', 'WinCE'];
+    let detectedMac = false;
+
+    if (macosPlatforms.indexOf(platform) !== -1) {
+      detectedMac = true;
+    } else if (windowsPlatforms.indexOf(platform) !== -1) {
+      detectedMac = false;
+    } else if (/Mac/.test(userAgent)) {
+        // Fallback for newer Mac versions or different browser reports
+      detectedMac = true;
+    }
+    // Default to false (Ctrl+D) if unsure
+
+    setIsMac(detectedMac);
+  }, []); // Empty dependency array ensures this runs once on mount
+
 
   const handleBookmarkClick = () => {
     const keyCombination = isMac ? 'Cmd+D' : 'Ctrl+D';
 
     // Show toast notification first
     toast({
-      variant: "success", // Use the new success variant
-      title: 'Bookmark Page',
+      variant: "success", // Use the success variant
+      // Update title to include icon and new text
+      title: (
+        <>
+          <Bookmark className="inline-block mr-2 h-4 w-4" aria-hidden="true" />
+          Add to Bookmarks
+        </>
+      ),
       description: `Press ${keyCombination} to bookmark this page.`,
       duration: 5000, // Show toast for 5 seconds
     });
 
-    // Attempt to trigger the browser's bookmark dialog programmatically (experimental and limited)
-    // This has very limited browser support and might not work reliably or at all.
-    // It's generally better practice to instruct the user as the toast does.
+    // NOTE: Programmatically triggering the browser's bookmark dialog (like simulating Ctrl+D)
+    // is generally blocked by browsers for security reasons. Relying on the user instruction
+    // in the toast is the standard and reliable approach.
+    // The code below is mostly for demonstration and unlikely to work across browsers.
     try {
-      // Try the older window.sidebar method (Firefox)
+      // Older Firefox method (mostly deprecated)
       if ((window as any).sidebar && (window as any).sidebar.addPanel) {
         (window as any).sidebar.addPanel(document.title, window.location.href, '');
+         console.log("Attempted Firefox addPanel bookmark method.");
       }
-      // Try a generic alert fallback if specific methods fail (more likely)
+      // Attempt for IE (highly deprecated)
+      else if ((window as any).external && ('AddFavorite' in (window as any).external)) {
+        (window as any).external.AddFavorite(window.location.href, document.title);
+         console.log("Attempted IE AddFavorite bookmark method.");
+      }
+      // Generic alert fallback (if specific methods fail or aren't applicable)
       else {
-         // No reliable cross-browser way to trigger the bookmark dialog directly via JS
-         // due to security restrictions. The toast instruction remains the primary method.
-         console.warn("Automatic bookmark triggering is not reliably supported across browsers. Please use the keyboard shortcut.");
+         // No reliable cross-browser way exists. The toast is the user guidance.
+         console.warn("Automatic bookmark triggering is not reliably supported. Please use the keyboard shortcut shown.");
       }
     } catch (error) {
-      console.error("Error attempting to trigger bookmark:", error);
-      // Fallback to the toast message which is already displayed
+      console.error("Error attempting to trigger bookmark dialog:", error);
+      // The toast message providing instructions is already displayed.
     }
   };
 
