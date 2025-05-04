@@ -19,7 +19,7 @@ export const PresetList = React.memo(function PresetListComponent({ onPresetSele
                 {/* Use H2 for secondary headings on the page */}
                 <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
                     <List className="h-5 w-5" aria-hidden="true" />
-                    Common Presets
+                    Common Conversions {/* Changed text */}
                 </CardTitle>
             </CardHeader>
             <CardContent>
@@ -46,3 +46,4 @@ export const PresetList = React.memo(function PresetListComponent({ onPresetSele
 });
 
 PresetList.displayName = 'PresetList';
+
