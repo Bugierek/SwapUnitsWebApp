@@ -20,20 +20,20 @@ const formatNumber = (num: number, format: NumberFormat = 'normal'): string => {
         return '-'; // Indicator for invalid numbers
     }
     if (format === 'scientific') {
-        // Use scientific notation always if selected, limit to 5 fractional digits
+        // Use scientific notation always if selected, limit to 7 fractional digits
         // Replace 'e' with 'E'
-        return num.toExponential(5).replace('e', 'E');
+        return num.toExponential(7).replace('e', 'E');
     }
     // Default 'normal' formatting
     // Use exponential notation for very large or very small non-zero numbers
     // Let JS determine precision for exponential notation here too
-    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-6) && num !== 0) {
+    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) { // Use 1e-7 threshold
          // Replace 'e' with 'E'
          // Use default precision for this automatic switch to exponential
-        return num.toExponential().replace('e', 'E');
+        return num.toExponential(7).replace('e', 'E'); // Use 7 digits for consistency
     }
-    // Otherwise, format with commas and appropriate decimal places (up to 5)
-    return num.toLocaleString(undefined, { maximumFractionDigits: 5 });
+    // Otherwise, format with commas and appropriate decimal places (up to 7)
+    return num.toLocaleString(undefined, { maximumFractionDigits: 7 });
 };
 
 // Helper function to format the 'from' value display (always normal format)
@@ -42,11 +42,11 @@ const formatFromValue = (num: number | undefined): string => {
         return '-';
     }
     // Always use 'normal' formatting for the input value display
-    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-6) && num !== 0) {
-         return num.toExponential().replace('e', 'E');
+    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) { // Use 1e-7 threshold
+         return num.toExponential(7).replace('e', 'E'); // Use 7 digits for consistency
     }
-    // Use up to 5 decimal places for the input value display as well
-    return num.toLocaleString(undefined, { maximumFractionDigits: 5 });
+    // Use up to 7 decimal places for the input value display as well
+    return num.toLocaleString(undefined, { maximumFractionDigits: 7 });
 };
 
 // Memoize the component to prevent re-renders if props haven't changed
