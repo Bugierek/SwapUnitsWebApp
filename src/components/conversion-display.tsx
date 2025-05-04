@@ -21,16 +21,41 @@ const formatNumber = (num: number, format: NumberFormat = 'normal'): string => {
     }
     if (format === 'scientific') {
         // Use scientific notation always if selected, limit to 7 fractional digits
-        // Replace 'e' with 'E'
-        return num.toExponential(7).replace('e', 'E');
+        let exponential = num.toExponential(7).replace('e', 'E');
+        // Refine: Remove trailing zeros after decimal, and the decimal itself if no digits follow
+        const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
+        if (match) {
+            let coefficient = match[1]; // The number part (e.g., -1.23)
+            const exponent = match[3]; // The E part (e.g., E+5)
+
+            // If the coefficient includes a decimal point and ends with zeros
+            if (coefficient.includes('.')) {
+                // Remove trailing zeros
+                coefficient = coefficient.replace(/0+$/, '');
+                // If it now ends with just the decimal point, remove it
+                coefficient = coefficient.replace(/\.$/, '');
+            }
+            return coefficient + exponent;
+        }
+        // Fallback if regex fails (shouldn't normally happen with toExponential)
+        return exponential;
     }
     // Default 'normal' formatting
     // Use exponential notation for very large or very small non-zero numbers
-    // Let JS determine precision for exponential notation here too
-    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) { // Use 1e-7 threshold
-         // Replace 'e' with 'E'
-         // Use default precision for this automatic switch to exponential
-        return num.toExponential(7).replace('e', 'E'); // Use 7 digits for consistency
+    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) {
+         // Use 7 fractional digits for consistency, remove trailing zeros
+         let exponential = num.toExponential(7).replace('e', 'E');
+         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
+         if (match) {
+             let coefficient = match[1];
+             const exponent = match[3];
+             if (coefficient.includes('.')) {
+                 coefficient = coefficient.replace(/0+$/, '');
+                 coefficient = coefficient.replace(/\.$/, '');
+             }
+             return coefficient + exponent;
+         }
+         return exponential; // Fallback
     }
     // Otherwise, format with commas and appropriate decimal places (up to 7)
     return num.toLocaleString(undefined, { maximumFractionDigits: 7 });
@@ -42,8 +67,20 @@ const formatFromValue = (num: number | undefined): string => {
         return '-';
     }
     // Always use 'normal' formatting for the input value display
-    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) { // Use 1e-7 threshold
-         return num.toExponential(7).replace('e', 'E'); // Use 7 digits for consistency
+    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) {
+        // Use 7 fractional digits for consistency, remove trailing zeros
+        let exponential = num.toExponential(7).replace('e', 'E');
+        const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
+        if (match) {
+            let coefficient = match[1];
+            const exponent = match[3];
+            if (coefficient.includes('.')) {
+                coefficient = coefficient.replace(/0+$/, '');
+                coefficient = coefficient.replace(/\.$/, '');
+            }
+            return coefficient + exponent;
+        }
+        return exponential; // Fallback
     }
     // Use up to 7 decimal places for the input value display as well
     return num.toLocaleString(undefined, { maximumFractionDigits: 7 });
