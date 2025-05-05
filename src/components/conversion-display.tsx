@@ -12,31 +12,44 @@ interface ConversionDisplayProps {
     fromUnit: string;
     result: ConversionResult | null;
     format: NumberFormat; // Add format prop
-    onActualFormatChange: (actualFormat: NumberFormat) => void; // Callback to sync UI
+    // Update callback to include the reason for the format used
+    onActualFormatChange: (
+        actualFormat: NumberFormat,
+        reason: 'magnitude' | 'user_choice' | null
+    ) => void;
 }
 
-// Helper function for number formatting - now returns object with actual format
-const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): { formattedString: string; actualFormatUsed: NumberFormat } => {
+// Helper function for number formatting - now returns object with actual format and reason
+const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
+    formattedString: string;
+    actualFormatUsed: NumberFormat;
+    scientificReason: 'magnitude' | 'user_choice' | null; // Add reason
+} => {
     if (!isFinite(num)) {
-        return { formattedString: '-', actualFormatUsed: requestedFormat }; // Indicator for invalid numbers
+        return { formattedString: '-', actualFormatUsed: requestedFormat, scientificReason: null }; // Indicator for invalid numbers
     }
 
     let actualFormatUsed: NumberFormat = requestedFormat;
     let formattedString: string;
+    let scientificReason: 'magnitude' | 'user_choice' | null = null; // Initialize reason
 
+    // Determine if magnitude forces scientific notation
     const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0;
 
     if (requestedFormat === 'scientific' || useScientificDueToMagnitude) {
         actualFormatUsed = 'scientific';
+        scientificReason = useScientificDueToMagnitude ? 'magnitude' : 'user_choice'; // Set the reason
+
         // Use scientific notation always if selected or needed due to magnitude, limit to 7 fractional digits
-        let exponential = num.toExponential(7).replace('e', 'E');
+        let exponential = num.toExponential(7).replace('e', 'E'); // Use capital E
+
         // Refine: Remove trailing zeros after decimal, and the decimal itself if no digits follow
         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
         if (match) {
             let coefficient = match[1]; // The number part (e.g., -1.23)
             const exponent = match[3]; // The E part (e.g., E+5)
 
-            // If the coefficient includes a decimal point and ends with zeros
+            // If the coefficient includes a decimal point
             if (coefficient.includes('.')) {
                 // Remove trailing zeros
                 coefficient = coefficient.replace(/0+$/, '');
@@ -55,19 +68,21 @@ const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): { 
         formattedString = num.toLocaleString(undefined, { maximumFractionDigits: 7 });
     }
 
-    return { formattedString, actualFormatUsed };
+    return { formattedString, actualFormatUsed, scientificReason }; // Return reason
 };
 
 
-// Helper function to format the 'from' value display (always normal format, doesn't affect radio buttons)
+// Helper function to format the 'from' value display (always tries normal first, doesn't affect radio buttons)
 const formatFromValue = (num: number | undefined): string => {
     if (num === undefined || !isFinite(num)) {
         return '-';
     }
-    // Always use 'normal' formatting logic for the input value display
-    if ((Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0) {
+    // Apply formatting logic similar to formatNumber but *always* aiming for normal first
+    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0;
+
+    if (useScientificDueToMagnitude) {
         // Use 7 fractional digits for consistency, remove trailing zeros
-        let exponential = num.toExponential(7).replace('e', 'E');
+        let exponential = num.toExponential(7).replace('e', 'E'); // Use capital E
         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
         if (match) {
             let coefficient = match[1];
@@ -84,6 +99,7 @@ const formatFromValue = (num: number | undefined): string => {
     return num.toLocaleString(undefined, { maximumFractionDigits: 7 });
 };
 
+
 // Memoize the component to prevent re-renders if props haven't changed
 export const ConversionDisplay = React.memo(function ConversionDisplayComponent({ fromValue, fromUnit, result, format, onActualFormatChange }: ConversionDisplayProps) {
     const { toast } = useToast(); // Initialize toast hook
@@ -91,19 +107,17 @@ export const ConversionDisplay = React.memo(function ConversionDisplayComponent(
     // Determine if we should show the placeholder state
     const showPlaceholder = fromValue === undefined || fromUnit === '' || !result;
 
-    // Format the result and get the actual format used
-    const { formattedString: formattedResultString, actualFormatUsed } = React.useMemo(() => {
-        return showPlaceholder ? { formattedString: '-', actualFormatUsed: format } : formatNumber(result.value, format);
+    // Format the result and get the actual format used and the reason
+    const { formattedString: formattedResultString, actualFormatUsed, scientificReason } = React.useMemo(() => {
+        return showPlaceholder ? { formattedString: '-', actualFormatUsed: format, scientificReason: null } : formatNumber(result.value, format);
     }, [showPlaceholder, result, format]);
 
-    // Effect to sync the radio button if the actual format differs from the requested 'normal' format
+    // Effect to inform the parent component about the actual format used and the reason
     React.useEffect(() => {
-        // Only trigger if 'normal' was requested but 'scientific' was used due to magnitude
-        if (format === 'normal' && actualFormatUsed === 'scientific') {
-            onActualFormatChange('scientific');
-        }
-        // No need to trigger if format is already 'scientific' or if 'normal' was requested and used
-    }, [format, actualFormatUsed, onActualFormatChange]);
+        // Pass the actual format used and the reason back to the parent
+        onActualFormatChange(actualFormatUsed, scientificReason);
+        // The parent (UnitConverter) will decide whether to update the radio button state
+    }, [actualFormatUsed, scientificReason, onActualFormatChange]);
 
 
     // Text to be copied (only the result value and unit)
@@ -191,5 +205,3 @@ export const ConversionDisplay = React.memo(function ConversionDisplayComponent(
 });
 
 ConversionDisplay.displayName = 'ConversionDisplay';
-
-    

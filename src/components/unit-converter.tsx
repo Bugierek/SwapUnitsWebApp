@@ -62,8 +62,9 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
   const [selectedCategory, setSelectedCategory] = React.useState<UnitCategory | "">("");
   const [conversionResult, setConversionResult] = React.useState<ConversionResult | null>(null);
   const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1); // Default value to 1
-  const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal'); // Default format
-  const [actualFormatUsed, setActualFormatUsed] = React.useState<NumberFormat>('normal'); // Track the actual format applied
+  const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal'); // User's selected format preference
+  // State to track if the 'normal' format option should be disabled (because magnitude forces scientific)
+  const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
   const isMobile = useIsMobile(); // Use the hook
 
 
@@ -241,7 +242,7 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
         setValue("value", 1, { shouldValidate: true, shouldDirty: true }); // Reset value to 1
         setLastValidInputValue(1); // Reset the display value tracker
         setNumberFormat('normal'); // Reset format choice on category change
-        setActualFormatUsed('normal'); // Reset actual format used
+        setIsNormalFormatDisabled(false); // Re-enable normal format initially
 
         // Trigger recalculation after state updates settle
         // Use setTimeout to ensure state updates from setValue are processed before conversion
@@ -264,17 +265,21 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
        setLastValidInputValue(numericValue); // Store the last valid numeric input
        const result = convertUnits(formData);
        setConversionResult(result);
+       // Logic to enable/disable 'normal' format will be handled by handleActualFormatChange callback
     } else if (category && fromUnit && toUnit && value === '') {
         // Handle empty input: clear result but keep last valid input displayed
         setConversionResult(null);
-        // Don't reset lastValidInputValue here, keep it for display
+        setLastValidInputValue(undefined); // Reset last valid input if input is empty
+        setIsNormalFormatDisabled(false); // Ensure normal is enabled when input is empty
     }
      else {
        // If input is invalid (NaN, non-finite, but not empty), clear the result
        setConversionResult(null);
-       // Keep the last valid input value displayed for context
+       // Keep the last valid input value displayed for context if available, else undefined
+       // setLastValidInputValue(lastValidInputValue); // No change needed here
+       setIsNormalFormatDisabled(false); // Ensure normal is enabled when input is invalid
     }
-  }, [inputValue, fromUnitValue, toUnitValue, convertUnits, getValues]);
+  }, [inputValue, fromUnitValue, toUnitValue, currentCategory, convertUnits, getValues]); // Add currentCategory
 
 
    // Effect to perform initial calculation on mount *only*
@@ -306,7 +311,7 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
             const initialResult = convertUnits({...initialFormData, value: initialValue, toUnit: initialToUnit }); // Use corrected initial value and ensure correct toUnit
             setConversionResult(initialResult);
             setNumberFormat('normal'); // Ensure default format is set
-            setActualFormatUsed('normal'); // Ensure default actual format is set
+            setIsNormalFormatDisabled(false); // Ensure normal is enabled initially
         }
      }
      // This effect should run only once on mount
@@ -335,7 +340,7 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
         });
         setLastValidInputValue(1);
         setNumberFormat('normal'); // Reset format on preset selection
-        setActualFormatUsed('normal');
+        setIsNormalFormatDisabled(false); // Re-enable normal format on preset selection
 
         // Trigger final calculation after reset ensures correct values are used
         setTimeout(() => {
@@ -355,18 +360,25 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
     // The useEffect for input/unit changes will trigger the calculation automatically
   }, [fromUnitValue, toUnitValue, setValue]);
 
-  // Callback function to update the numberFormat state from ConversionDisplay
-  // and track the actual format used
-  const handleActualFormatChange = React.useCallback((actualFormat: NumberFormat) => {
-      setActualFormatUsed(actualFormat); // Track the format used by the display
-      // If the actual format forced by magnitude is 'scientific', update the radio button state
-      if (actualFormat === 'scientific' && numberFormat === 'normal') {
-          setNumberFormat('scientific');
-      }
-  }, [numberFormat]); // Depend on the user's selected format
+    // Callback function to update the numberFormat state and disable state based on ConversionDisplay feedback
+    const handleActualFormatChange = React.useCallback((
+        actualFormat: NumberFormat,
+        reason: 'magnitude' | 'user_choice' | null
+    ) => {
+        const magnitudeForcedScientific = actualFormat === 'scientific' && reason === 'magnitude';
 
-  // Determine if the 'Normal' format option should be disabled/greyed out
-  const isNormalFormatDisabled = actualFormatUsed === 'scientific' && numberFormat === 'scientific';
+        // Disable the 'normal' option only if magnitude forces scientific notation
+        setIsNormalFormatDisabled(magnitudeForcedScientific);
+
+        // If magnitude forces scientific, update the user's selected format state to reflect this
+        if (magnitudeForcedScientific && numberFormat === 'normal') {
+            setNumberFormat('scientific');
+        }
+        // If magnitude no longer forces scientific, AND the user's *preference* isn't already scientific,
+        // we don't automatically switch back to normal. The user preference stays unless they change it.
+        // The 'normal' option just becomes enabled again.
+
+    }, [numberFormat]); // Depend on the user's selected format preference
 
 
   return (
@@ -569,23 +581,19 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
                 fromValue={lastValidInputValue} // Display the last *valid* number entered
                 fromUnit={fromUnitValue ?? ''}
                 result={conversionResult}
-                format={numberFormat} // Pass the selected format
-                onActualFormatChange={handleActualFormatChange} // Pass callback
+                format={numberFormat} // Pass the user's selected format preference
+                onActualFormatChange={handleActualFormatChange} // Pass callback to get feedback
                />
 
                {/* Number Formatting Options */}
                 <fieldset className="pt-4"> {/* Use fieldset for grouping related radio buttons */}
                   <legend className="mb-2 block font-medium">Result Formatting Options</legend>
                    <RadioGroup
-                     value={numberFormat} // Controlled by state
+                     value={numberFormat} // Controlled by state (user's preference)
                      onValueChange={(value: string) => {
-                       // Only allow changing *to* 'normal' if it's not currently forced to 'scientific'
-                       if (value === 'normal' && actualFormatUsed === 'scientific') {
-                         // If currently forced to scientific, don't allow user to select normal
-                         // The radio button state is already 'scientific' due to handleActualFormatChange
-                         return;
-                       }
-                       setNumberFormat(value as NumberFormat);
+                         // User can always change their preference.
+                         // The display might override it visually, but the preference is stored here.
+                         setNumberFormat(value as NumberFormat);
                      }}
                      className="flex flex-col sm:flex-row gap-4"
                      aria-label="Choose number format for the result"
@@ -594,7 +602,7 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
                        <RadioGroupItem
                          value="normal"
                          id="format-normal"
-                         disabled={isNormalFormatDisabled} // Disable the item if normal format is not possible
+                         disabled={isNormalFormatDisabled} // Disable the item if magnitude forces scientific
                         />
                        <Label
                          htmlFor="format-normal"
