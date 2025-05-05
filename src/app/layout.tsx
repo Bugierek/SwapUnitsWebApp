@@ -87,7 +87,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth"> {/* Add scroll-smooth */}
+    <html lang="en" className="scroll-smooth">{/* Add scroll-smooth - Removed whitespace after tag */}
       <body
         className={cn(
           `${inter.variable} antialiased font-sans`, // Apply Inter font
