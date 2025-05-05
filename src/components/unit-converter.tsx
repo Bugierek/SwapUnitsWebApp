@@ -383,9 +383,11 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
 
   return (
     // Use semantic main or section tag if appropriate, but div is okay here
+    // Changed grid layout: col-span-full on mobile, md:col-span-2 on medium+
     <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-8">
       {/* Main converter card */}
-      <Card className="md:col-span-2 shadow-lg" aria-labelledby="unit-converter-title">
+      {/* Adjust col-span: col-span-full on mobile, md:col-span-2 on medium screens and up */}
+      <Card className="col-span-full md:col-span-2 shadow-lg" aria-labelledby="unit-converter-title">
         <CardHeader>
           {/* Use H1 for the main title of the component/page section */}
           <CardTitle id="unit-converter-title" className="text-2xl font-bold text-primary flex items-center gap-2">
@@ -627,7 +629,8 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
       </Card>
 
       {/* Preset List - use aside or section if appropriate */}
-      <aside className="md:col-span-1"> {/* Use aside for complementary content */}
+      {/* Adjust col-span: hidden on mobile, md:col-span-1 on medium+ */}
+      <aside className="hidden md:block md:col-span-1"> {/* Use aside for complementary content */}
         <PresetList onPresetSelect={handlePresetSelect} />
       </aside>
 

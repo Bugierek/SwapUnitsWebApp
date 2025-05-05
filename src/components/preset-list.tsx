@@ -6,6 +6,7 @@ import { presets as allPresets } from "@/lib/unit-data"; // Renamed import
 import { type Preset, type UnitCategory } from '@/types'; // Import UnitCategory type
 import { List } from 'lucide-react';
 import { UnitIcon } from './unit-icon'; // Import the UnitIcon component
+import { cn } from "@/lib/utils"; // Import cn
 
 interface PresetListProps {
     onPresetSelect: (preset: Preset) => void;
@@ -35,7 +36,8 @@ export const PresetList = React.memo(function PresetListComponent({ onPresetSele
 
     return (
         // Add aria-label for better context
-        <Card className="shadow-lg" aria-label="Common Unit Conversion Presets">
+        // Add hidden md:block to hide on mobile and show on medium screens and up
+        <Card className={cn("shadow-lg hidden md:block")} aria-label="Common Unit Conversion Presets">
             <CardHeader>
                 {/* Use H2 for secondary headings on the page */}
                 <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
