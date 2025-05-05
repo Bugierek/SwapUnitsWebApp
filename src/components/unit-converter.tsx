@@ -37,6 +37,7 @@ import { ConversionDisplay } from "./conversion-display";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile"; // Import useIsMobile
+import { cn } from "@/lib/utils"; // Import cn utility
 
 
 // Schema allows empty string or a valid number (positive or not, allowing intermediates)
@@ -62,6 +63,7 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
   const [conversionResult, setConversionResult] = React.useState<ConversionResult | null>(null);
   const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1); // Default value to 1
   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal'); // Default format
+  const [actualFormatUsed, setActualFormatUsed] = React.useState<NumberFormat>('normal'); // Track the actual format applied
   const isMobile = useIsMobile(); // Use the hook
 
 
@@ -238,6 +240,8 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
         setValue("toUnit", defaultToUnit, { shouldValidate: true, shouldDirty: true });
         setValue("value", 1, { shouldValidate: true, shouldDirty: true }); // Reset value to 1
         setLastValidInputValue(1); // Reset the display value tracker
+        setNumberFormat('normal'); // Reset format choice on category change
+        setActualFormatUsed('normal'); // Reset actual format used
 
         // Trigger recalculation after state updates settle
         // Use setTimeout to ensure state updates from setValue are processed before conversion
@@ -301,6 +305,8 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
 
             const initialResult = convertUnits({...initialFormData, value: initialValue, toUnit: initialToUnit }); // Use corrected initial value and ensure correct toUnit
             setConversionResult(initialResult);
+            setNumberFormat('normal'); // Ensure default format is set
+            setActualFormatUsed('normal'); // Ensure default actual format is set
         }
      }
      // This effect should run only once on mount
@@ -328,6 +334,8 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
             value: 1, // Reset value to 1 for presets
         });
         setLastValidInputValue(1);
+        setNumberFormat('normal'); // Reset format on preset selection
+        setActualFormatUsed('normal');
 
         // Trigger final calculation after reset ensures correct values are used
         setTimeout(() => {
@@ -348,9 +356,18 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
   }, [fromUnitValue, toUnitValue, setValue]);
 
   // Callback function to update the numberFormat state from ConversionDisplay
+  // and track the actual format used
   const handleActualFormatChange = React.useCallback((actualFormat: NumberFormat) => {
-      setNumberFormat(actualFormat);
-  }, []);
+      setActualFormatUsed(actualFormat); // Track the format used by the display
+      // If the actual format forced by magnitude is 'scientific', update the radio button state
+      if (actualFormat === 'scientific' && numberFormat === 'normal') {
+          setNumberFormat('scientific');
+      }
+  }, [numberFormat]); // Depend on the user's selected format
+
+  // Determine if the 'Normal' format option should be disabled/greyed out
+  const isNormalFormatDisabled = actualFormatUsed === 'scientific' && numberFormat === 'scientific';
+
 
   return (
     // Use semantic main or section tag if appropriate, but div is okay here
@@ -561,13 +578,33 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
                   <legend className="mb-2 block font-medium">Result Formatting Options</legend>
                    <RadioGroup
                      value={numberFormat} // Controlled by state
-                     onValueChange={(value: string) => setNumberFormat(value as NumberFormat)}
+                     onValueChange={(value: string) => {
+                       // Only allow changing *to* 'normal' if it's not currently forced to 'scientific'
+                       if (value === 'normal' && actualFormatUsed === 'scientific') {
+                         // If currently forced to scientific, don't allow user to select normal
+                         // The radio button state is already 'scientific' due to handleActualFormatChange
+                         return;
+                       }
+                       setNumberFormat(value as NumberFormat);
+                     }}
                      className="flex flex-col sm:flex-row gap-4"
                      aria-label="Choose number format for the result"
                    >
                      <div className="flex items-center space-x-2">
-                       <RadioGroupItem value="normal" id="format-normal" />
-                       <Label htmlFor="format-normal" className="cursor-pointer">Normal (e.g., 1,234.56)</Label>
+                       <RadioGroupItem
+                         value="normal"
+                         id="format-normal"
+                         disabled={isNormalFormatDisabled} // Disable the item if normal format is not possible
+                        />
+                       <Label
+                         htmlFor="format-normal"
+                         className={cn(
+                           "cursor-pointer",
+                            isNormalFormatDisabled && "text-muted-foreground opacity-70 cursor-not-allowed" // Grey out label when disabled
+                         )}
+                       >
+                         Normal (e.g., 1,234.56)
+                       </Label>
                      </div>
                      <div className="flex items-center space-x-2">
                        <RadioGroupItem value="scientific" id="format-scientific" />
@@ -595,5 +632,3 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
 });
 
 UnitConverter.displayName = 'UnitConverter';
-
-    
