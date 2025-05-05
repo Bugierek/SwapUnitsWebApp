@@ -231,6 +231,10 @@ export const UnitConverter = React.memo(function UnitConverterComponent() {
                 defaultFromUnit = units.find(u => u.symbol === 'Mbps')?.symbol ?? units[0]?.symbol ?? "";
                 defaultToUnit = units.find(u => u.symbol === 'MB/s')?.symbol ?? units[1]?.symbol ?? defaultFromUnit; // Mbps to MB/s
                 break;
+            case 'Bitcoin': // Added Bitcoin case
+                defaultFromUnit = units.find(u => u.symbol === 'BTC')?.symbol ?? units[0]?.symbol ?? "";
+                defaultToUnit = units.find(u => u.symbol === 'sat')?.symbol ?? units[1]?.symbol ?? defaultFromUnit; // BTC to sat
+                break;
             // No default case needed as fallbacks are handled above
         }
 

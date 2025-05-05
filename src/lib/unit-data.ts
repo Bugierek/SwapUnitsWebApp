@@ -13,6 +13,7 @@ import type { UnitCategory, UnitData, Preset } from '@/types';
 // Fuel Economy: Kilometer per Liter (km/L) - Note: Higher is better
 // Data Storage: Byte (B)
 // Data Transfer Rate: Bits per second (bps)
+// Bitcoin: Bitcoin (BTC)
 
 export const unitData: Record<UnitCategory, UnitData> = {
   Length: {
@@ -171,32 +172,35 @@ export const unitData: Record<UnitCategory, UnitData> = {
             // Kibibits, Mebibits etc. could be added if needed (Kibps, Mibps)
         ],
     },
+    Bitcoin: {
+        name: 'Bitcoin',
+        // Base unit: Bitcoin (BTC)
+        units: [
+            { name: 'Bitcoin', symbol: 'BTC', factor: 1 },
+            { name: 'Satoshi', symbol: 'sat', factor: 1e-8 }, // 1 BTC = 100,000,000 sat
+        ],
+    },
 };
 
 export const presets: Preset[] = [
   // Existing presets...
   { category: 'Length', fromUnit: 'm', toUnit: 'ft', name: 'Meter to Feet' },
   { category: 'Length', fromUnit: 'km', toUnit: 'mi', name: 'Kilometer to Miles' },
-  { category: 'Length', fromUnit: 'in', toUnit: 'cm', name: 'Inches to Centimeters' },
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'lb', toUnit: 'kg', name: 'Pounds to Kilograms' },
-  { category: 'Mass', fromUnit: 'g', toUnit: 'oz', name: 'Grams to Ounces' },
   { category: 'Temperature', fromUnit: '°C', toUnit: '°F', name: 'Celsius to Fahrenheit' },
   { category: 'Temperature', fromUnit: '°F', toUnit: '°C', name: 'Fahrenheit to Celsius' },
   { category: 'Time', fromUnit: 'hr', toUnit: 'min', name: 'Hours to Minutes' },
+  { category: 'Time', fromUnit: 's', toUnit: 'ms', name: 'Seconds to Milliseconds' }, // Added Time preset
   { category: 'Pressure', fromUnit: 'psi', toUnit: 'kPa', name: 'PSI to Kilopascals' },
   { category: 'Pressure', fromUnit: 'bar', toUnit: 'psi', name: 'Bar to PSI' },
   { category: 'Area', fromUnit: 'm²', toUnit: 'ft²', name: 'Square Meters to Square Feet' },
+  { category: 'Area', fromUnit: 'acre', toUnit: 'm²', name: 'Acres to Square Meters' }, // Added Area preset
   { category: 'Volume', fromUnit: 'L', toUnit: 'gal', name: 'Liters to Gallons (US)' },
+  { category: 'Volume', fromUnit: 'mL', toUnit: 'L', name: 'Milliliters to Liters' }, // Added Volume preset
   { category: 'Energy', fromUnit: 'kWh', toUnit: 'BTU', name: 'Kilowatt Hours to BTU' },
+  // Removed some presets to keep the list short and added Bitcoin
+  { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
+  { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
 
-  // New presets
-  { category: 'Speed', fromUnit: 'km/h', toUnit: 'mph', name: 'km/h to mph' },
-  { category: 'Speed', fromUnit: 'm/s', toUnit: 'km/h', name: 'm/s to km/h' },
-  { category: 'Fuel Economy', fromUnit: 'MPG (US)', toUnit: 'km/L', name: 'MPG (US) to km/L' },
-  { category: 'Fuel Economy', fromUnit: 'L/100km', toUnit: 'MPG (US)', name: 'L/100km to MPG (US)' },
-  { category: 'Data Storage', fromUnit: 'MB', toUnit: 'KB', name: 'Megabytes to Kilobytes' },
-  { category: 'Data Storage', fromUnit: 'GB', toUnit: 'MB', name: 'Gigabytes to Megabytes' },
-  { category: 'Data Transfer Rate', fromUnit: 'Mbps', toUnit: 'MB/s', name: 'Mbps to MB/s' },
-  { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
 ];

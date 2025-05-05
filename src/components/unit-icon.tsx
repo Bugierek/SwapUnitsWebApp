@@ -14,6 +14,8 @@ import {
   Fuel, // For Fuel Economy
   HardDrive, // For Data Storage
   Network, // For Data Transfer Rate (or Wifi)
+  // Bitcoin icon
+  Bitcoin,
 } from 'lucide-react';
 import type { UnitCategory } from '@/types';
 
@@ -48,6 +50,8 @@ export const UnitIcon = React.memo(function UnitIconComponent({ category, ...pro
         return <HardDrive {...props} />;
     case 'Data Transfer Rate':
         return <Network {...props} />;
+    case 'Bitcoin':
+        return <Bitcoin {...props} />; // Added Bitcoin icon
     default:
       return <HelpCircle {...props} />;
   }

@@ -18,7 +18,8 @@ export type UnitCategory =
   | 'Speed'
   | 'Fuel Economy'
   | 'Data Storage'
-  | 'Data Transfer Rate';
+  | 'Data Transfer Rate'
+  | 'Bitcoin'; // Added Bitcoin category
 
 
 export type UnitData = {
@@ -41,3 +42,4 @@ export type Preset = {
 
 // Type for number formatting options
 export type NumberFormat = 'normal' | 'scientific';
+
