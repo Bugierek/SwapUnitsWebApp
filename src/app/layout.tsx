@@ -16,17 +16,17 @@ export const metadata: Metadata = {
   // Define metadataBase for resolving relative paths, especially for images
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Unitopia | Free Online Unit Converter Tool",
-    template: "%s | Unitopia", // Allows pages to set their own title part
+    default: "SwapUnits | Free Online Unit Converter Tool",
+    template: "%s | SwapUnits", // Allows pages to set their own title part
   },
-  description: "Instantly convert length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, and data transfer units with Unitopia. Fast, free, and easy-to-use online converter.",
+  description: "Instantly convert length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, and data transfer units with SwapUnits. Fast, free, and easy-to-use online converter.",
   keywords: "unit converter, measurement converter, convert units, online converter, free converter, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, calculator",
   // Open Graph metadata for social sharing previews
   openGraph: {
-    title: "Unitopia | Free Online Unit Converter Tool",
-    description: "Instantly convert length, mass, temperature, time, and more units with Unitopia.",
+    title: "SwapUnits | Free Online Unit Converter Tool",
+    description: "Instantly convert length, mass, temperature, time, and more units with SwapUnits.",
     url: siteUrl,
-    siteName: 'Unitopia',
+    siteName: 'SwapUnits',
     // Replace with a URL to your actual logo or relevant image (e.g., 1200x630)
     images: [
       {
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
         url: '/og-image.png', // Example: Assumes an image file in your public folder
         width: 1200,
         height: 630,
-        alt: 'Unitopia Unit Converter Tool',
+        alt: 'SwapUnits Unit Converter Tool',
       },
     ],
     locale: 'en_US',
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   // Twitter card metadata
   twitter: {
     card: 'summary_large_image',
-    title: "Unitopia | Free Online Unit Converter Tool",
-    description: "Instantly convert length, mass, temperature, time, and more units with Unitopia.",
+    title: "SwapUnits | Free Online Unit Converter Tool",
+    description: "Instantly convert length, mass, temperature, time, and more units with SwapUnits.",
      // Replace with a URL to your actual logo or relevant image (e.g., 1200x630)
      // Must be an absolute URL
     images: [`${siteUrl}/og-image.png`], // Example using the same placeholder

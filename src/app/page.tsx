@@ -10,7 +10,7 @@ import { Footer } from "@/components/footer"; // Import the Footer component
 
 // Page-specific metadata (can override layout defaults or add specifics)
 export const metadata: Metadata = {
-  title: "Unitopia - Fast & Accurate Online Unit Converter", // Optimized title
+  title: "SwapUnits - Fast & Accurate Online Unit Converter", // Optimized title
   description: "Free online tool to instantly convert common and specialized units: length (m, ft), mass (kg, lb), temp (°C, °F), time, pressure, area, volume, energy, speed, fuel economy, data storage & transfer. Simple & precise.", // Optimized description
   alternates: {
     canonical: '/', // Set the canonical URL for the homepage
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
-  name: 'Unitopia - Free Online Unit Converter',
+  name: 'SwapUnits - Free Online Unit Converter',
   description: 'A free online tool to convert between various units of measurement including length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, and data transfer rate.',
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Any', // Web-based
@@ -34,7 +34,7 @@ const jsonLd = {
     'Mass Conversion (kg, lb, g, oz, t)',
     'Temperature Conversion (°C, °F, K)',
     'Time Conversion (s, min, hr, day, ms)',
-    'Pressure Conversion (Pa, kPa, bar, atm, psi)',
+    'Pressure Conversion (Pa, kPa, bar, atm, psi, dB SPL)',
     'Area Conversion (m², ft², km², mi², ha, acre)',
     'Volume Conversion (L, mL, m³, ft³, gal, qt, pt)',
     'Energy Conversion (J, kJ, cal, kcal, kWh, BTU)',
@@ -42,6 +42,7 @@ const jsonLd = {
     'Fuel Economy Conversion (km/L, L/100km, MPG US, MPG UK)',
     'Data Storage Conversion (B, KB, MB, GB, TB)',
     'Data Transfer Rate Conversion (bps, Kbps, Mbps, Gbps, B/s, MB/s)',
+    'Bitcoin Conversion (BTC, sat)',
     'Metric Units',
     'Imperial Units',
     'Scientific Notation Option',
@@ -60,7 +61,7 @@ const jsonLd = {
   //   name: 'Your Company Name',
   //   url: 'https://yourcompany.com'
   // },
-  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, scientific notation, presets", // Synced with meta keywords
+  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, metric, imperial, scientific notation, presets", // Synced with meta keywords
 };
 
 
@@ -87,7 +88,7 @@ export default function Home() {
               aria-hidden="true"
             />
             {/* Use H1 for the site name/logo in the header for global context */}
-            <h1 className="font-bold text-lg text-foreground">UNITOPIA</h1>
+            <h1 className="font-bold text-lg text-foreground">SWAPUNITS</h1>
           </Link>
           {/* Bookmark Button on the right */}
           <BookmarkButton />

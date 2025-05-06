@@ -14,7 +14,7 @@ export function Footer() {
     if (typeof window !== 'undefined') {
       let count = 0;
       try {
-        const storedCount = localStorage.getItem('unitopiaVisitCount');
+        const storedCount = localStorage.getItem('swapUnitsVisitCount'); // Changed localStorage key
         count = storedCount ? parseInt(storedCount, 10) : 0;
         if (isNaN(count)) {
             count = 0; // Reset if parsing fails
@@ -30,7 +30,7 @@ export function Footer() {
       // Update state and store the new count
       setVisitCount(newCount);
       try {
-        localStorage.setItem('unitopiaVisitCount', String(newCount));
+        localStorage.setItem('swapUnitsVisitCount', String(newCount)); // Changed localStorage key
       } catch (error) {
         console.error("Error writing to localStorage:", error);
         // Continue without storing if localStorage fails
@@ -43,7 +43,7 @@ export function Footer() {
       {/* Updated layout: Centered copyright, counter on the right for sm+ */}
       <div className="container mx-auto py-6 px-4 md:px-6 text-sm text-muted-foreground flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 relative">
         {/* Centered Copyright Text */}
-        <p className="text-center sm:text-left">&copy; {currentYear} Unitopia. All rights reserved.</p>
+        <p className="text-center sm:text-left">&copy; {currentYear} SwapUnits.com. All rights reserved.</p>
 
         {/* Visit Counter - Positioned on the right for sm+ screens */}
         <div className="sm:absolute sm:right-4 md:right-6">
