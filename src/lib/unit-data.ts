@@ -1,3 +1,4 @@
+
 import type { UnitCategory, UnitData, Preset } from '@/types';
 
 // Base units:
@@ -182,25 +183,48 @@ export const unitData: Record<UnitCategory, UnitData> = {
     },
 };
 
+// Expanded preset list to ensure coverage for all categories
 export const presets: Preset[] = [
-  // Existing presets...
+  // Length
   { category: 'Length', fromUnit: 'm', toUnit: 'ft', name: 'Meter to Feet' },
   { category: 'Length', fromUnit: 'km', toUnit: 'mi', name: 'Kilometer to Miles' },
+  // Mass
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'lb', toUnit: 'kg', name: 'Pounds to Kilograms' },
+  // Temperature
   { category: 'Temperature', fromUnit: '°C', toUnit: '°F', name: 'Celsius to Fahrenheit' },
   { category: 'Temperature', fromUnit: '°F', toUnit: '°C', name: 'Fahrenheit to Celsius' },
+  // Time
   { category: 'Time', fromUnit: 'hr', toUnit: 'min', name: 'Hours to Minutes' },
-  { category: 'Time', fromUnit: 's', toUnit: 'ms', name: 'Seconds to Milliseconds' }, // Added Time preset
+  { category: 'Time', fromUnit: 's', toUnit: 'ms', name: 'Seconds to Milliseconds' },
+  // Pressure
   { category: 'Pressure', fromUnit: 'psi', toUnit: 'kPa', name: 'PSI to Kilopascals' },
   { category: 'Pressure', fromUnit: 'bar', toUnit: 'psi', name: 'Bar to PSI' },
+  // Area
   { category: 'Area', fromUnit: 'm²', toUnit: 'ft²', name: 'Square Meters to Square Feet' },
-  { category: 'Area', fromUnit: 'acre', toUnit: 'm²', name: 'Acres to Square Meters' }, // Added Area preset
+  { category: 'Area', fromUnit: 'acre', toUnit: 'm²', name: 'Acres to Square Meters' },
+  // Volume
   { category: 'Volume', fromUnit: 'L', toUnit: 'gal', name: 'Liters to Gallons (US)' },
-  { category: 'Volume', fromUnit: 'mL', toUnit: 'L', name: 'Milliliters to Liters' }, // Added Volume preset
+  { category: 'Volume', fromUnit: 'mL', toUnit: 'L', name: 'Milliliters to Liters' },
+  // Energy
   { category: 'Energy', fromUnit: 'kWh', toUnit: 'BTU', name: 'Kilowatt Hours to BTU' },
-  // Removed some presets to keep the list short and added Bitcoin
+  { category: 'Energy', fromUnit: 'J', toUnit: 'cal', name: 'Joules to Calories' },
+  // Speed
+  { category: 'Speed', fromUnit: 'km/h', toUnit: 'mph', name: 'km/h to mph' },
+  { category: 'Speed', fromUnit: 'm/s', toUnit: 'km/h', name: 'm/s to km/h' },
+  // Fuel Economy
+  { category: 'Fuel Economy', fromUnit: 'MPG (US)', toUnit: 'km/L', name: 'MPG (US) to km/L' },
+  { category: 'Fuel Economy', fromUnit: 'L/100km', toUnit: 'MPG (US)', name: 'L/100km to MPG (US)' },
+  // Data Storage
+  { category: 'Data Storage', fromUnit: 'GB', toUnit: 'MB', name: 'Gigabytes to Megabytes' },
+  { category: 'Data Storage', fromUnit: 'TB', toUnit: 'GB', name: 'Terabytes to Gigabytes' },
+  // Data Transfer Rate
+  { category: 'Data Transfer Rate', fromUnit: 'Mbps', toUnit: 'MB/s', name: 'Mbps to MB/s' },
+  { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
+  // Bitcoin
   { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
   { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
-
 ];
+
+// Ensure this `presets` list contains at least one item for each category defined in `unitData`.
+// The filtering logic in `preset-list.tsx` will handle the display limits.
