@@ -191,7 +191,7 @@ export const allPresets: Preset[] = [
   // Mass
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'lb', toUnit: 'kg', name: 'Pounds to Kilograms' },
-  // Bitcoin (will be moved up by sorting logic)
+  // Bitcoin
   { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
   { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
   // Temperature
@@ -218,6 +218,7 @@ export const allPresets: Preset[] = [
   // Fuel Economy
   { category: 'Fuel Economy', fromUnit: 'MPG (US)', toUnit: 'km/L', name: 'MPG (US) to km/L' },
   { category: 'Fuel Economy', fromUnit: 'L/100km', toUnit: 'MPG (US)', name: 'L/100km to MPG (US)' },
+  { category: 'Fuel Economy', fromUnit: 'km/L', toUnit: 'MPG (UK)', name: 'km/L to MPG (UK)' }, // Added requested preset
   // Data Storage
   { category: 'Data Storage', fromUnit: 'GB', toUnit: 'MB', name: 'Gigabytes to Megabytes' },
   { category: 'Data Storage', fromUnit: 'TB', toUnit: 'GB', name: 'Terabytes to Gigabytes' },
@@ -226,13 +227,13 @@ export const allPresets: Preset[] = [
   { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
 ];
 
-// Define the desired order of categories, putting Bitcoin third
+// Define the desired order of categories, putting Bitcoin fifth
 const categoryOrder: UnitCategory[] = [
   'Length',
   'Mass',
-  'Bitcoin', // Bitcoin moved to 3rd position
   'Temperature',
   'Time',
+  'Bitcoin', // Bitcoin moved to 5th position
   'Pressure',
   'Area',
   'Volume',
@@ -245,7 +246,7 @@ const categoryOrder: UnitCategory[] = [
 
 
 // Function to filter and sort presets: Ensure at least one per category, max 2 per category, max 15 total.
-// Sorts according to categoryOrder with Bitcoin first.
+// Sorts according to categoryOrder.
 export const getFilteredAndSortedPresets = (): Preset[] => {
     // Sort the initial presets based on the desired category order
     const sortedPresets = [...allPresets].sort((a, b) => {
@@ -298,8 +299,26 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
     });
 
     // Final slice to ensure the 15 limit is strictly enforced
+    // Also, check if the last preset requested ('km/L to MPG (UK)') is included, if not, replace the last item if the limit is reached
+    const lastRequestedPresetName = 'km/L to MPG (UK)';
+    const hasLastRequested = finalPresets.some(p => p.name === lastRequestedPresetName);
+
+    if (finalPresets.length === 15 && !hasLastRequested) {
+        const lastRequestedPreset = allPresets.find(p => p.name === lastRequestedPresetName);
+        if (lastRequestedPreset) {
+            finalPresets[14] = lastRequestedPreset; // Replace the last item
+        }
+    } else if (finalPresets.length < 15 && !hasLastRequested) {
+         const lastRequestedPreset = allPresets.find(p => p.name === lastRequestedPresetName);
+         if (lastRequestedPreset) {
+            finalPresets.push(lastRequestedPreset); // Add if space allows
+         }
+    }
+
+
     return finalPresets.slice(0, 15);
 };
 
 // Ensure this `allPresets` list contains at least one item for each category defined in `unitData`.
 // The filtering logic in `preset-list.tsx` will handle the display limits.
+
