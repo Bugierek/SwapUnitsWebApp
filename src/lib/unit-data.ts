@@ -185,15 +185,15 @@ export const unitData: Record<UnitCategory, UnitData> = {
 
 // Expanded preset list to ensure coverage for all categories
 export const allPresets: Preset[] = [
-  // Bitcoin (will be moved up by sorting logic)
-  { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
-  { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
   // Length
   { category: 'Length', fromUnit: 'm', toUnit: 'ft', name: 'Meter to Feet' },
   { category: 'Length', fromUnit: 'km', toUnit: 'mi', name: 'Kilometer to Miles' },
   // Mass
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'lb', toUnit: 'kg', name: 'Pounds to Kilograms' },
+  // Bitcoin (will be moved up by sorting logic)
+  { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
+  { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
   // Temperature
   { category: 'Temperature', fromUnit: '°C', toUnit: '°F', name: 'Celsius to Fahrenheit' },
   { category: 'Temperature', fromUnit: '°F', toUnit: '°C', name: 'Fahrenheit to Celsius' },
@@ -226,11 +226,11 @@ export const allPresets: Preset[] = [
   { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
 ];
 
-// Define the desired order of categories, putting Bitcoin first
+// Define the desired order of categories, putting Bitcoin third
 const categoryOrder: UnitCategory[] = [
-  'Bitcoin',
   'Length',
   'Mass',
+  'Bitcoin', // Bitcoin moved to 3rd position
   'Temperature',
   'Time',
   'Pressure',
