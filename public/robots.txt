@@ -3,4 +3,4 @@ User-agent: *
 Allow: /
 
 # Specify the location of the sitemap
-Sitemap: https://YOUR_APP_URL_HERE/sitemap.xml
+Sitemap: /sitemap.xml

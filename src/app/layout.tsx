@@ -20,24 +20,25 @@ export const metadata: Metadata = {
     template: "%s | SwapUnits", // Allows pages to set their own title part
   },
   description: "Instantly convert length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, and data transfer units with SwapUnits. Fast, free, and easy-to-use online converter.",
-  keywords: "unit converter, measurement converter, convert units, online converter, free converter, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, calculator, bitcoin, satoshi, SPL, Pa",
+  keywords: "unit converter, measurement converter, convert units, online converter, free converter, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, calculator, bitcoin, satoshi, SPL, Pa, dB SPL",
   alternates: {
     canonical: '/',
   },
   // Open Graph metadata for social sharing previews
   openGraph: {
     title: "SwapUnits | Free Online Unit Converter Tool",
-    description: "Instantly convert length, mass, temperature, time, and more units with SwapUnits.",
+    description: "Instantly convert length, mass, temperature, time, pressure, SPL and more units with SwapUnits.",
     url: siteUrl,
     siteName: 'SwapUnits',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'SwapUnits Unit Converter Tool',
-      },
-    ],
+    // Images removed as og-image.png does not exist
+    // images: [
+    //   {
+    //     url: '/og-image.png', // This file should exist in your public folder
+    //     width: 1200,
+    //     height: 630,
+    //     alt: 'SwapUnits Unit Converter Tool',
+    //   },
+    // ],
     locale: 'en_US',
     type: 'website',
   },
@@ -45,8 +46,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "SwapUnits | Free Online Unit Converter Tool",
-    description: "Instantly convert length, mass, temperature, time, and more units with SwapUnits.",
-    images: [`${siteUrl}/og-image.png`],
+    description: "Instantly convert length, mass, temperature, time, pressure, SPL and more units with SwapUnits.",
+    // images: [`${siteUrl}/og-image.png`], // This file should exist in your public folder
   },
   // Add Google AdSense account meta tag
   other: {'google-adsense-account': 'ca-pub-3730679326380863'},
