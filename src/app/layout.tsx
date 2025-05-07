@@ -20,20 +20,19 @@ export const metadata: Metadata = {
     template: "%s | SwapUnits", // Allows pages to set their own title part
   },
   description: "Instantly convert length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, and data transfer units with SwapUnits. Fast, free, and easy-to-use online converter.",
-  keywords: "unit converter, measurement converter, convert units, online converter, free converter, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, calculator",
+  keywords: "unit converter, measurement converter, convert units, online converter, free converter, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, calculator, bitcoin, satoshi, SPL, Pa",
+  alternates: {
+    canonical: '/',
+  },
   // Open Graph metadata for social sharing previews
   openGraph: {
     title: "SwapUnits | Free Online Unit Converter Tool",
     description: "Instantly convert length, mass, temperature, time, and more units with SwapUnits.",
     url: siteUrl,
     siteName: 'SwapUnits',
-    // Replace with a URL to your actual logo or relevant image (e.g., 1200x630)
     images: [
       {
-        // !! IMPORTANT: Replace with a real image URL for your site !!
-        // You can generate one or upload to a hosting service.
-        // Example using a placeholder service (replace before deployment):
-        url: '/og-image.png', // Example: Assumes an image file in your public folder
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'SwapUnits Unit Converter Tool',
@@ -47,11 +46,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: "SwapUnits | Free Online Unit Converter Tool",
     description: "Instantly convert length, mass, temperature, time, and more units with SwapUnits.",
-     // Replace with a URL to your actual logo or relevant image (e.g., 1200x630)
-     // Must be an absolute URL
-    images: [`${siteUrl}/og-image.png`], // Example using the same placeholder
-    // Optional: Add your Twitter handle like '@YourTwitterHandle'
-    // creator: '@YourTwitterHandle',
+    images: [`${siteUrl}/og-image.png`],
   },
   // Add Google AdSense account meta tag
   other: {'google-adsense-account': 'ca-pub-3730679326380863'},
@@ -67,20 +62,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  // Viewport settings (usually handled by Next.js, but good to be explicit)
   viewport: {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1, // Prevent zooming, optional
+    maximumScale: 1,
   },
-  // Icons (favicon etc.) - Place your icon files in the /public directory
-  // Next.js automatically handles standard names like favicon.ico, apple-touch-icon.png etc.
-  // Example if you have specific icons:
-  // icons: {
-  //   icon: '/favicon.ico',
-  //   shortcut: '/favicon-16x16.png',
-  //   apple: '/apple-touch-icon.png',
-  // },
 };
 
 export default function RootLayout({
@@ -96,9 +82,7 @@ export default function RootLayout({
           "min-h-screen bg-background flex flex-col" // Ensure body takes full height and uses flex column
           )}
       >
-        {/* Children will typically include Header, Main Content, Footer */}
         {children}
-        {/* Removed: <Toaster /> - It's rendered within page.tsx */}
       </body>
     </html>
   );

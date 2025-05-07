@@ -1,24 +1,34 @@
+'use client'; // This page is now a Client Component
 
-import { UnitConverter } from "@/components/unit-converter";
-import type { Metadata } from 'next';
+import * as React from 'react';
 import Script from 'next/script';
-import { BookmarkButton } from '@/components/bookmark-button'; // Import the new component
-import { Toaster } from '@/components/ui/toaster'; // Import Toaster here
-import { RefreshCw } from 'lucide-react'; // Import swap/refresh icon
-import Link from 'next/link'; // Import Link
-import { Footer } from "@/components/footer"; // Import the Footer component
+import Link from 'next/link';
 
-// Page-specific metadata (can override layout defaults or add specifics)
-export const metadata: Metadata = {
-  title: "SwapUnits - Fast & Accurate Online Unit Converter", // Optimized title
-  description: "Free online tool to instantly convert common and specialized units: length (m, ft), mass (kg, lb), temp (°C, °F), time, pressure, area, volume, energy, speed, fuel economy, data storage & transfer. Simple & precise.", // Optimized description
-  alternates: {
-    canonical: '/', // Set the canonical URL for the homepage
-  },
-  keywords: "unit converter, online unit converter, free unit converter, measurement converter, metric conversion, imperial conversion, length converter, mass converter, temperature converter, time converter, pressure converter, area converter, volume converter, energy converter, speed converter, fuel economy converter, data storage converter, data transfer converter, m to ft, kg to lbs, C to F, bitcoin, satoshi, SPL to Pa", // Expanded keywords
-};
+import { UnitConverter, type UnitConverterHandle } from "@/components/unit-converter";
+import { BookmarkButton } from '@/components/bookmark-button';
+import { Toaster } from '@/components/ui/toaster';
+import { Footer } from "@/components/footer";
+import { PresetList } from "@/components/preset-list"; // For desktop
+import { UnitIcon } from '@/components/unit-icon'; // For mobile sheet
+import { getFilteredAndSortedPresets } from '@/lib/unit-data'; // For mobile sheet
+import type { Preset } from '@/types';
 
-// JSON-LD Structured Data for WebApplication
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetClose,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Menu, RefreshCw, List } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+
+// JSON-LD Structured Data for WebApplication (remains the same)
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
@@ -26,8 +36,7 @@ const jsonLd = {
   description: 'A free online tool to convert between various units of measurement including length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer rate, and Bitcoin. Convert pressure to Sound Pressure Level (SPL) and vice versa.',
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Any', // Web-based
-  // !! IMPORTANT: Replace this placeholder with your actual deployed application URL !!
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com', // Use environment variable or placeholder
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://example.com',
   featureList: [
     'Unit Conversion',
     'Length Conversion (m, ft, km, mi, in, cm)',
@@ -56,73 +65,115 @@ const jsonLd = {
     price: '0',
     priceCurrency: 'USD',
   },
-  // Optional: Add provider/author information if relevant
-  // provider: {
-  //   '@type': 'Organization',
-  //   name: 'Your Company Name',
-  //   url: 'https://yourcompany.com'
-  // },
-  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, satoshi, SPL, Sound Pressure Level, metric, imperial, scientific notation, presets", // Synced with meta keywords
+  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, satoshi, SPL, Sound Pressure Level, metric, imperial, scientific notation, presets",
 };
 
 
 export default function Home() {
+  const isMobile = useIsMobile();
+  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const unitConverterRef = React.useRef<UnitConverterHandle>(null);
+
+  const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(), []);
+
+  const onMobilePresetSelect = (preset: Preset) => {
+    if (unitConverterRef.current) {
+      unitConverterRef.current.handlePresetSelect(preset);
+    }
+    setIsSheetOpen(false); // Close the sheet after selection
+  };
+
+  const handlePresetSelectFromDesktop = (preset: Preset) => {
+    if (unitConverterRef.current) {
+      unitConverterRef.current.handlePresetSelect(preset);
+    }
+  };
+
+
   return (
     <>
-      {/* Add JSON-LD structured data to the head */}
       <Script
         id="unit-converter-jsonld"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Non-Sticky Header */}
-      <header className="bg-background p-3 border-b flex items-center justify-between shadow-sm relative"> {/* Removed sticky and related classes */}
-          {/* Spacer to help center the logo */}
-          <div className="w-auto"></div>
-          {/* Centered Logo and Text - Wrapped in Link */}
-          {/* Removed 'cursor-default', added hover effect */}
-          <Link href="/" className="group flex items-center gap-2 absolute left-1/2 -translate-x-1/2 hover:opacity-80 transition-opacity">
-            {/* Added transition and group-hover:rotate-180 for animation */}
+      <header className="bg-background p-3 border-b flex items-center justify-between shadow-sm relative">
+        <div className="flex items-center w-1/3"> {/* Left container for menu icon */}
+          {isMobile && (
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open common conversions menu">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] sm:w-[350px] p-0">
+                <ScrollArea className="h-full">
+                  <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="text-lg font-semibold text-primary flex items-center gap-2">
+                      <List className="h-5 w-5" aria-hidden="true" />
+                      Common Conversions
+                    </SheetTitle>
+                  </SheetHeader>
+                  <div className="p-4">
+                    <ul className="space-y-2">
+                      {displayPresets.map((preset, index) => (
+                        <li key={`${preset.category}-${preset.name}-${index}`}>
+                           <SheetClose asChild>
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal flex items-center gap-2 text-sm"
+                                onClick={() => onMobilePresetSelect(preset)}
+                                aria-label={`Select preset: ${preset.name}`}
+                            >
+                                <UnitIcon category={preset.category} className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                <span className="flex-1">{preset.name}</span>
+                            </Button>
+                           </SheetClose>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
+
+        {/* Centered Logo and Text - Absolute positioned */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <Link href="/" className="group flex items-center gap-2 hover:opacity-80 transition-opacity">
             <RefreshCw
               className="h-5 w-5 text-primary transition-transform duration-300 ease-in-out group-hover:rotate-180"
               aria-hidden="true"
             />
-            {/* Use H1 for the site name/logo in the header for global context */}
             <h1 className="font-bold text-lg text-foreground">SWAPUNITS</h1>
           </Link>
-          {/* Bookmark Button on the right */}
-          <BookmarkButton />
+        </div>
+
+        {/* Right container for bookmark button */}
+        <div className="flex items-center justify-end w-1/3">
+            <BookmarkButton />
+        </div>
       </header>
 
-
-      {/* Use grid layout for main content, ad placeholder removed */}
-      {/* Halved the top padding: p-4 -> pt-2, sm:p-8 -> sm:pt-4, etc. */}
-      {/* Use flex-grow to make this section fill available space */}
-      {/* Removed lg:grid-cols-[200px_1fr] and gap-8 as ad placeholder is gone */}
-      <div className="flex-grow grid grid-cols-1 w-full max-w-7xl mx-auto pt-2 pb-4 px-4 sm:pt-4 sm:pb-8 sm:px-8 md:pt-6 md:pb-12 md:px-12 lg:pt-8 lg:pb-16 lg:px-16 xl:pt-10 xl:pb-20 xl:px-20 items-start"> {/* Removed min-h-screen */}
-        
-        {/* Main Content Area */}
-        {/* Use <main> tag for the primary content of the page */}
-        {/* Removed order-2 as it's the only child in the grid now */}
-        <main className="flex flex-col items-center w-full" role="main">
-           {/* Toaster moved outside main content to be globally positioned */}
-           <Toaster />
-
-           {/* UnitConverter component contains the H2 heading now */}
-           <UnitConverter />
-            {/* Potential future ad slot area - styled minimally for now */}
-            {/*
-            <div className="mt-12 w-full max-w-4xl h-24 bg-muted/30 flex items-center justify-center text-muted-foreground rounded-md" aria-label="Advertisement">
-              (Future Ad Area)
-            </div>
-            */}
+      <div className={cn(
+        "flex-grow grid grid-cols-1 w-full max-w-7xl mx-auto items-start",
+        "pt-2 pb-4 px-4 sm:pt-4 sm:pb-8 sm:px-8 md:pt-6 md:pb-12 md:px-12 lg:pt-8 lg:pb-16 lg:px-16 xl:pt-10 xl:pb-20 xl:px-20",
+        "md:grid-cols-3 md:gap-8"
+      )}>
+        <main className="flex flex-col items-center w-full md:col-span-2" role="main">
+          <Toaster />
+          <UnitConverter ref={unitConverterRef} />
         </main>
+
+        <aside className="hidden md:block md:col-span-1" role="complementary">
+          <PresetList onPresetSelect={handlePresetSelectFromDesktop} />
+        </aside>
+
       </div>
 
-      {/* Footer sticks to the bottom because of flex-grow on the container div and min-h-screen on body */}
       <Footer />
     </>
   );
 }
-
