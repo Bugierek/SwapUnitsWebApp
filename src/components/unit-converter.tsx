@@ -371,9 +371,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
              <li><span className="font-semibold text-primary">View Result:</span> The converted value appears automatically below.</li>
            </ol>
         </CardHeader>
-        <CardContent className="pt-0 flex-grow"> {/* Adjusted padding if needed, flex-grow for height matching */}
+        <CardContent className="pt-0 flex-grow">
           <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="space-y-6 h-full flex flex-col" aria-live="polite"> {/* space-y-6 gives consistent spacing, h-full and flex-col for height */}
+            <form onSubmit={handleFormSubmit} className="space-y-6" aria-live="polite">
               <FormField
                 control={form.control}
                 name="category"
@@ -383,10 +383,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     <Select
                       onValueChange={(value) => {
                           field.onChange(value);
-                          //setSelectedCategory(value as UnitCategory); // Update local state if needed earlier
                       }}
                       value={field.value}
-                      // open={false} // Example: control open state if necessary
                     >
                       <FormControl>
                         <SelectTrigger id="category-select" aria-label="Select measurement category">
@@ -417,8 +415,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 )}
               />
 
-              {/* From/To Unit Selectors and Swap Button */}
-              {currentCategory && ( // Only show if a category is selected
+              {currentCategory && ( 
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 items-end">
                   <FormField
                     control={form.control}
@@ -454,7 +451,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     variant="outline"
                     onClick={swapUnits}
                     disabled={!fromUnitValue || !toUnitValue}
-                    className="h-10 w-full sm:w-10 justify-self-center sm:justify-self-auto" // Ensures button takes full width on mobile, icon size on larger
+                    className="h-10 w-full sm:w-10 justify-self-center sm:justify-self-auto" 
                     aria-label="Swap from and to units"
                   >
                     <ArrowRightLeft className="h-4 w-4" aria-hidden="true" />
@@ -491,7 +488,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 </div>
               )}
 
-              {/* Value Input Field */}
               <FormField
                 control={form.control}
                 name="value"
@@ -501,62 +497,56 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     <FormControl>
                       <Input
                         id="value-input"
-                        type="text" // Keep as text to allow for '-', '.', 'e', 'E' during typing
-                        inputMode="decimal" // Hint for mobile keyboards
+                        type="text" 
+                        inputMode="decimal" 
                         placeholder="Enter value"
                         {...field}
                         onChange={(e) => {
                             const rawValue = e.target.value;
-                            // Allow empty, '-', scientific notation parts, and valid numbers
                              if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue)) {
                                 field.onChange(rawValue);
                             }
                         }}
-                         // Display stored value, ensuring it's a string for the input
                          value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
-                        disabled={!fromUnitValue || !toUnitValue} // Disable if units not selected
+                        disabled={!fromUnitValue || !toUnitValue} 
                         aria-required="true"
-                        className="border-primary" // Highlight input
+                        className="border-primary" 
                       />
                     </FormControl>
                     <FormDescription>Enter the numerical value you wish to convert.</FormDescription>
-                    <FormMessage /> {/* For validation errors */}
+                    <FormMessage /> 
                   </FormItem>
                 )}
               />
-              <div className="flex-grow" /> {/* Spacer to push content below to bottom of card */}
-               {/* Conversion Result Display */}
                <ConversionDisplay
-                fromValue={lastValidInputValue} // Use the debounced or last valid input
-                fromUnit={fromUnitValue ?? ''} // Ensure fromUnit is not undefined
+                fromValue={lastValidInputValue} 
+                fromUnit={fromUnitValue ?? ''} 
                 result={conversionResult}
                 format={numberFormat}
                 onActualFormatChange={handleActualFormatChange}
                />
 
-                {/* Number Format Radio Group */}
-                <fieldset className="pt-4"> {/* pt-4 for spacing from result */}
+                <fieldset className="pt-4"> 
                   <legend className="mb-2 block font-medium text-sm">Result Formatting Options</legend>
                    <RadioGroup
                      value={numberFormat}
                      onValueChange={(value: string) => {
                          setNumberFormat(value as NumberFormat);
-                         // Conversion will re-render with new format via ConversionDisplay's memo
                      }}
-                     className="flex flex-col sm:flex-row gap-4" // Responsive layout for radio buttons
+                     className="flex flex-col sm:flex-row gap-4" 
                      aria-label="Choose number format for the result"
                    >
                      <div className="flex items-center space-x-2">
                        <RadioGroupItem
                          value="normal"
                          id="format-normal"
-                         disabled={isNormalFormatDisabled} // Disable if magnitude forces scientific
+                         disabled={isNormalFormatDisabled} 
                         />
                        <Label
                          htmlFor="format-normal"
                          className={cn(
-                           "cursor-pointer text-sm", // Base styles
-                            isNormalFormatDisabled && "text-muted-foreground opacity-70 cursor-not-allowed" // Disabled styles
+                           "cursor-pointer text-sm", 
+                            isNormalFormatDisabled && "text-muted-foreground opacity-70 cursor-not-allowed" 
                          )}
                        >
                          Normal (e.g., 1,234.56)
@@ -569,7 +559,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                    </RadioGroup>
                 </fieldset>
 
-              {/* No explicit submit button is needed as conversions are automatic */}
             </form>
           </Form>
         </CardContent>
@@ -578,4 +567,3 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
-
