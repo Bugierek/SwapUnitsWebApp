@@ -27,8 +27,6 @@ import {
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Menu, RefreshCw, List } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 
@@ -80,20 +78,44 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const unitConverterRef = React.useRef<UnitConverterHandle>(null);
-  const [converterMode, setConverterMode] = React.useState<ConverterMode>('basic');
+  const [converterMode, setConverterMode] = React.useState<ConverterMode>('basic'); // State for converter mode
 
-  const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(converterMode), [converterMode]);
+  // Get presets based on current converter mode
+  const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(), []);
+
 
   const onMobilePresetSelect = (preset: Preset) => {
     if (unitConverterRef.current) {
-      unitConverterRef.current.handlePresetSelect(preset);
+      // Check if preset requires advanced mode and switch if necessary
+      const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
+      const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
+      if ((fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') && converterMode === 'basic') {
+        setConverterMode('advanced');
+      }
+      // Delay preset selection slightly to allow mode switch to propagate if it happened
+      setTimeout(() => {
+        if (unitConverterRef.current) {
+         unitConverterRef.current.handlePresetSelect(preset);
+        }
+      },0);
     }
     setIsSheetOpen(false); 
   };
 
   const handlePresetSelectFromDesktop = (preset: Preset) => {
     if (unitConverterRef.current) {
-      unitConverterRef.current.handlePresetSelect(preset);
+      // Check if preset requires advanced mode and switch if necessary
+      const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
+      const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
+      if ((fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') && converterMode === 'basic') {
+        setConverterMode('advanced');
+      }
+       // Delay preset selection slightly to allow mode switch to propagate
+      setTimeout(() => {
+         if (unitConverterRef.current) {
+            unitConverterRef.current.handlePresetSelect(preset);
+         }
+      }, 0);
     }
   };
 
@@ -107,8 +129,9 @@ export default function Home() {
         toUnit: 'g',
         name: 'InitialReset', 
       };
-      // Reset to basic mode and apply initial preset
+      // Always reset to basic mode and apply initial preset when logo is clicked
       setConverterMode('basic'); 
+      // Use a microtask to ensure mode state update is processed before preset selection
       Promise.resolve().then(() => {
         if (unitConverterRef.current) {
           unitConverterRef.current.handlePresetSelect(initialPreset);
@@ -186,7 +209,6 @@ export default function Home() {
         </div>
 
         <div className="flex items-center justify-end w-1/3 gap-2">
-          {/* Mobile Advanced Toggle was here, now moved to UnitConverter component */}
           <BookmarkButton />
         </div>
       </header>
@@ -201,8 +223,8 @@ export default function Home() {
           <UnitConverter 
             ref={unitConverterRef} 
             className="h-full"
-            converterMode={converterMode}
-            setConverterMode={setConverterMode} 
+            converterMode={converterMode} // Pass mode state
+            setConverterMode={setConverterMode} // Pass function to set mode
           />
         </main>
 
