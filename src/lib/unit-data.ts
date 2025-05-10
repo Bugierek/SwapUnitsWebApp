@@ -1,5 +1,6 @@
 
-import type { UnitCategory, UnitData, Preset, Unit } from '@/types';
+
+import type { UnitCategory, UnitData, Preset, Unit, ConverterMode } from '@/types';
 
 // Base units:
 // Length: Meter (m)
@@ -53,11 +54,15 @@ export const unitData: Record<UnitCategory, UnitData> = {
   Time: {
     name: 'Time',
     units: [
-      { name: 'Second', symbol: 's', factor: 1 },
-      { name: 'Millisecond', symbol: 'ms', factor: 0.001 },
-      { name: 'Minute', symbol: 'min', factor: 60 },
-      { name: 'Hour', symbol: 'hr', factor: 3600 },
-      { name: 'Day', symbol: 'day', factor: 86400 },
+      { name: 'Second', symbol: 's', factor: 1, mode: 'all' },
+      { name: 'Millisecond', symbol: 'ms', factor: 0.001, mode: 'all' },
+      { name: 'Microsecond', symbol: 'µs', factor: 1e-6, mode: 'advanced' },
+      { name: 'Nanosecond', symbol: 'ns', factor: 1e-9, mode: 'advanced' },
+      { name: 'Picosecond', symbol: 'ps', factor: 1e-12, mode: 'advanced' },
+      { name: 'Femtosecond', symbol: 'fs', factor: 1e-15, mode: 'advanced' },
+      { name: 'Minute', symbol: 'min', factor: 60, mode: 'all' },
+      { name: 'Hour', symbol: 'hr', factor: 3600, mode: 'all' },
+      { name: 'Day', symbol: 'day', factor: 86400, mode: 'all' },
     ],
   },
    Pressure: {
@@ -131,20 +136,15 @@ export const unitData: Record<UnitCategory, UnitData> = {
     },
     'Fuel Economy': {
         name: 'Fuel Economy',
-        // Base unit: Kilometer per Liter (km/L) - Higher is better
-        // Note: L/100km is inverse, so conversion requires 1/x calculation
-        // Factor here converts *from* the unit *to* km/L
         units: [
             { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1 },
-            { name: 'Liter per 100 kilometers', symbol: 'L/100km', factor: 100 }, // Special handling needed: result = factor / value
-            { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425144 }, // 1 MPG ≈ 0.425144 km/L
-            { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.354006 }, // 1 MPG Imp ≈ 0.354006 km/L
+            { name: 'Liter per 100 kilometers', symbol: 'L/100km', factor: 100 },
+            { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425144 },
+            { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.354006 },
         ],
     },
     'Data Storage': {
         name: 'Data Storage',
-        // Base unit: Byte (B)
-        // Using IEC standard (powers of 1024)
         units: [
             { name: 'Bit', symbol: 'bit', factor: 1 / 8 },
             { name: 'Byte', symbol: 'B', factor: 1 },
@@ -153,12 +153,10 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Gigabyte', symbol: 'GB', factor: 1024 ** 3 },
             { name: 'Terabyte', symbol: 'TB', factor: 1024 ** 4 },
             { name: 'Petabyte', symbol: 'PB', factor: 1024 ** 5 },
-            // Kibibyte, Mebibyte etc. could be added if needed (KiB, MiB)
         ],
     },
     'Data Transfer Rate': {
         name: 'Data Transfer Rate',
-        // Base unit: Bits per second (bps)
         units: [
             { name: 'Bits per second', symbol: 'bps', factor: 1 },
             { name: 'Kilobits per second', symbol: 'Kbps', factor: 1000 },
@@ -166,159 +164,117 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Gigabits per second', symbol: 'Gbps', factor: 1e9 },
             { name: 'Terabits per second', symbol: 'Tbps', factor: 1e12 },
             { name: 'Bytes per second', symbol: 'B/s', factor: 8 },
-            { name: 'Kilobytes per second', symbol: 'KB/s', factor: 8 * 1000 }, // Often uses 1000 for rates
+            { name: 'Kilobytes per second', symbol: 'KB/s', factor: 8 * 1000 },
             { name: 'Megabytes per second', symbol: 'MB/s', factor: 8 * 1e6 },
             { name: 'Gigabytes per second', symbol: 'GB/s', factor: 8 * 1e9 },
             { name: 'Terabytes per second', symbol: 'TB/s', factor: 8 * 1e12 },
-            // Kibibits, Mebibits etc. could be added if needed (Kibps, Mibps)
         ],
     },
     Bitcoin: {
         name: 'Bitcoin',
-        // Base unit: Bitcoin (BTC)
         units: [
             { name: 'Bitcoin', symbol: 'BTC', factor: 1 },
-            { name: 'Satoshi', symbol: 'sat', factor: 1e-8 }, // 1 BTC = 100,000,000 sat
+            { name: 'Satoshi', symbol: 'sat', factor: 1e-8 },
         ],
     },
 };
 
-// Expanded preset list to ensure coverage for all categories
 export const allPresets: Preset[] = [
-  // Length
   { category: 'Length', fromUnit: 'm', toUnit: 'ft', name: 'Meter to Feet' },
   { category: 'Length', fromUnit: 'km', toUnit: 'mi', name: 'Kilometer to Miles' },
-  // Mass
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'lb', toUnit: 'kg', name: 'Pounds to Kilograms' },
-  // Bitcoin
   { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
   { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
-  // Temperature
   { category: 'Temperature', fromUnit: '°C', toUnit: '°F', name: 'Celsius to Fahrenheit' },
   { category: 'Temperature', fromUnit: '°F', toUnit: '°C', name: 'Fahrenheit to Celsius' },
-  // Time
   { category: 'Time', fromUnit: 'hr', toUnit: 'min', name: 'Hours to Minutes' },
   { category: 'Time', fromUnit: 's', toUnit: 'ms', name: 'Seconds to Milliseconds' },
-  // Pressure
   { category: 'Pressure', fromUnit: 'psi', toUnit: 'kPa', name: 'PSI to Kilopascals' },
   { category: 'Pressure', fromUnit: 'bar', toUnit: 'psi', name: 'Bar to PSI' },
-  // Area
   { category: 'Area', fromUnit: 'm²', toUnit: 'ft²', name: 'Square Meters to Square Feet' },
   { category: 'Area', fromUnit: 'acre', toUnit: 'm²', name: 'Acres to Square Meters' },
-  // Volume
   { category: 'Volume', fromUnit: 'L', toUnit: 'gal', name: 'Liters to Gallons (US)' },
   { category: 'Volume', fromUnit: 'mL', toUnit: 'L', name: 'Milliliters to Liters' },
-  // Energy
   { category: 'Energy', fromUnit: 'kWh', toUnit: 'BTU', name: 'Kilowatt Hours to BTU' },
   { category: 'Energy', fromUnit: 'J', toUnit: 'cal', name: 'Joules to Calories' },
-  // Speed
   { category: 'Speed', fromUnit: 'km/h', toUnit: 'mph', name: 'km/h to mph' },
   { category: 'Speed', fromUnit: 'm/s', toUnit: 'km/h', name: 'm/s to km/h' },
-  // Fuel Economy
   { category: 'Fuel Economy', fromUnit: 'MPG (US)', toUnit: 'km/L', name: 'MPG (US) to km/L' },
   { category: 'Fuel Economy', fromUnit: 'L/100km', toUnit: 'MPG (US)', name: 'L/100km to MPG (US)' },
-  { category: 'Fuel Economy', fromUnit: 'km/L', toUnit: 'MPG (UK)', name: 'km/L to MPG (UK)' }, // Added requested preset
-  // Data Storage
+  { category: 'Fuel Economy', fromUnit: 'km/L', toUnit: 'MPG (UK)', name: 'km/L to MPG (UK)' },
   { category: 'Data Storage', fromUnit: 'GB', toUnit: 'MB', name: 'Gigabytes to Megabytes' },
   { category: 'Data Storage', fromUnit: 'TB', toUnit: 'GB', name: 'Terabytes to Gigabytes' },
-  // Data Transfer Rate
   { category: 'Data Transfer Rate', fromUnit: 'Mbps', toUnit: 'MB/s', name: 'Mbps to MB/s' },
   { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
 ];
 
-// Define the desired order of categories, putting Bitcoin fifth
 const categoryOrder: UnitCategory[] = [
-  'Length',
-  'Mass',
-  'Temperature',
-  'Time',
-  'Bitcoin', // Bitcoin moved to 5th position
-  'Pressure',
-  'Area',
-  'Volume',
-  'Energy',
-  'Speed',
-  'Fuel Economy',
-  'Data Storage',
-  'Data Transfer Rate',
+  'Length', 'Mass', 'Temperature', 'Time', 'Bitcoin',
+  'Pressure', 'Area', 'Volume', 'Energy', 'Speed',
+  'Fuel Economy', 'Data Storage', 'Data Transfer Rate',
 ];
 
+export const getUnitsForCategoryAndMode = (category: UnitCategory | "", mode: ConverterMode): Unit[] => {
+  const allCategoryUnits = category ? unitData[category as UnitCategory]?.units ?? [] : [];
 
-// Function to filter and sort presets: Ensure at least one per category, max 2 per category, max 15 total.
-// Sorts according to categoryOrder.
+  if (mode === 'basic') {
+    return allCategoryUnits.filter(unit => unit.mode !== 'advanced');
+  }
+  return allCategoryUnits; // Advanced mode gets all units (basic, advanced, all)
+};
+
 export const getFilteredAndSortedPresets = (): Preset[] => {
-    // Sort the initial presets based on the desired category order
     const sortedPresets = [...allPresets].sort((a, b) => {
         const indexA = categoryOrder.indexOf(a.category);
         const indexB = categoryOrder.indexOf(b.category);
-        // Handle cases where a category might not be in categoryOrder (shouldn't happen ideally)
-        if (indexA === -1 && indexB === -1) return 0; // Keep original relative order if both unknown
-        if (indexA === -1) return 1; // Put unknown categories later
-        if (indexB === -1) return -1; // Put unknown categories later
-        return indexA - indexB; // Sort based on the defined order
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
     });
 
     const finalPresets: Preset[] = [];
-    const categoryCounts: Record<string, number> = {}; // Tracks count per category added to finalPresets
+    const categoryCounts: Record<string, number> = {};
 
-    // --- Pass 1: Ensure at least one preset per category (using the sorted list) ---
-    // Iterate through the defined category order first to ensure representation
     categoryOrder.forEach(category => {
-        // Find the first preset in the sorted list for this category
         const presetForCategory = sortedPresets.find(p => p.category === category);
         if (presetForCategory && finalPresets.length < 15) {
-            // Check if this specific preset instance is already added
-             const isAlreadyAdded = finalPresets.some(fp =>
+            const isAlreadyAdded = finalPresets.some(fp =>
                 fp.name === presetForCategory.name && fp.category === presetForCategory.category
-             );
-             if (!isAlreadyAdded) {
+            );
+            if (!isAlreadyAdded) {
                 finalPresets.push(presetForCategory);
-                categoryCounts[category] = 1; // Mark one added
-             }
+                categoryCounts[category] = 1;
+            }
         }
     });
 
-
-    // --- Pass 2: Add a second preset per category if available and limit not reached (using the sorted list) ---
     sortedPresets.forEach(preset => {
-        if (finalPresets.length >= 15) return; // Stop if limit reached
-
+        if (finalPresets.length >= 15) return;
         const currentCount = categoryCounts[preset.category] || 0;
-
-        // Check if this preset is already added in finalPresets
         const isAlreadyAdded = finalPresets.some(fp =>
            fp.name === preset.name && fp.category === preset.category
         );
-
-        // If not already added and we have less than 2 for this category
         if (!isAlreadyAdded && currentCount < 2) {
             finalPresets.push(preset);
-            categoryCounts[preset.category] = currentCount + 1; // Increment count
+            categoryCounts[preset.category] = currentCount + 1;
         }
     });
 
-    // Final slice to ensure the 15 limit is strictly enforced
-    // Also, check if the last preset requested ('km/L to MPG (UK)') is included, if not, replace the last item if the limit is reached
     const lastRequestedPresetName = 'km/L to MPG (UK)';
     const hasLastRequested = finalPresets.some(p => p.name === lastRequestedPresetName);
 
     if (finalPresets.length === 15 && !hasLastRequested) {
         const lastRequestedPreset = allPresets.find(p => p.name === lastRequestedPresetName);
         if (lastRequestedPreset) {
-            finalPresets[14] = lastRequestedPreset; // Replace the last item
+            finalPresets[14] = lastRequestedPreset;
         }
     } else if (finalPresets.length < 15 && !hasLastRequested) {
          const lastRequestedPreset = allPresets.find(p => p.name === lastRequestedPresetName);
          if (lastRequestedPreset) {
-            finalPresets.push(lastRequestedPreset); // Add if space allows
+            finalPresets.push(lastRequestedPreset);
          }
     }
-
-
     return finalPresets.slice(0, 15);
 };
-
-// Ensure this `allPresets` list contains at least one item for each category defined in `unitData`.
-// The filtering logic in `preset-list.tsx` will handle the display limits.
-

@@ -4,6 +4,7 @@ export type Unit = {
   name: string;
   symbol: string;
   factor: number; // Factor to convert from this unit to the base unit of the category
+  mode?: 'basic' | 'advanced' | 'all'; // To distinguish units by mode
 };
 
 export type UnitCategory =
@@ -19,7 +20,7 @@ export type UnitCategory =
   | 'Fuel Economy'
   | 'Data Storage'
   | 'Data Transfer Rate'
-  | 'Bitcoin'; // Added Bitcoin category
+  | 'Bitcoin';
 
 
 export type UnitData = {
@@ -43,3 +44,5 @@ export type Preset = {
 // Type for number formatting options
 export type NumberFormat = 'normal' | 'scientific';
 
+// Type for converter mode
+export type ConverterMode = 'basic' | 'advanced';

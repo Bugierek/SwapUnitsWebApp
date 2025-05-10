@@ -1,4 +1,5 @@
 
+
 'use client'; // This page is now a Client Component
 
 import * as React from 'react';
@@ -12,7 +13,7 @@ import { Footer } from "@/components/footer";
 import { PresetList } from "@/components/preset-list"; // For desktop
 import { UnitIcon } from '@/components/unit-icon'; // For mobile sheet
 import { getFilteredAndSortedPresets } from '@/lib/unit-data'; // For mobile sheet
-import type { Preset } from '@/types';
+import type { Preset, ConverterMode } from '@/types'; // Added ConverterMode
 
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -29,23 +30,22 @@ import { Menu, RefreshCw, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
-// JSON-LD Structured Data for WebApplication (remains the same)
+// JSON-LD Structured Data for WebApplication
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: 'SwapUnits - Free Online Unit Converter',
-  description: 'A free online tool to convert between various units of measurement including length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer rate, and Bitcoin. Convert pressure to Sound Pressure Level (SPL) and vice versa.',
+  description: 'A free online tool to convert between various units of measurement including length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer rate, and Bitcoin.',
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Any', // Web-based
-  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com', // Updated URL
+  url: process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com',
   featureList: [
     'Unit Conversion',
     'Length Conversion (m, ft, km, mi, in, cm)',
     'Mass Conversion (kg, lb, g, oz, t)',
     'Temperature Conversion (°C, °F, K)',
-    'Time Conversion (s, min, hr, day, ms)',
-    'Pressure Conversion (Pa, kPa, bar, atm, psi, dB SPL)',
-    'Sound Pressure Level Conversion (dB SPL to Pa, Pa to dB SPL)',
+    'Time Conversion (s, min, hr, day, ms, µs, ns, ps, fs)', // Added advanced time units
+    'Pressure Conversion (Pa, kPa, bar, atm, psi)',
     'Area Conversion (m², ft², km², mi², ha, acre)',
     'Volume Conversion (L, mL, m³, ft³, gal, qt, pt)',
     'Energy Conversion (J, kJ, cal, kcal, kWh, BTU)',
@@ -60,13 +60,14 @@ const jsonLd = {
     'Common Conversion Presets',
     'Copy to Clipboard',
     'Responsive Design',
+    'Basic and Advanced conversion modes',
   ],
   offers: {
     '@type': 'Offer',
     price: '0',
     priceCurrency: 'USD',
   },
-  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, satoshi, SPL, Sound Pressure Level, metric, imperial, scientific notation, presets",
+  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, satoshi, metric, imperial, scientific notation, presets, femtosecond, picosecond, nanosecond, microsecond",
 };
 
 
@@ -74,6 +75,7 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const unitConverterRef = React.useRef<UnitConverterHandle>(null);
+  const [converterMode, setConverterMode] = React.useState<ConverterMode>('basic');
 
   const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(), []);
 
@@ -91,16 +93,17 @@ export default function Home() {
   };
 
   const handleLogoClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault(); // Prevent default navigation
+    event.preventDefault(); 
 
     if (unitConverterRef.current) {
       const initialPreset: Preset = {
         category: 'Mass',
         fromUnit: 'kg',
         toUnit: 'g',
-        name: 'InitialReset', // Internal name, not displayed
+        name: 'InitialReset', 
       };
       unitConverterRef.current.handlePresetSelect(initialPreset);
+      setConverterMode('basic'); // Reset mode to basic on logo click
     }
   };
 
@@ -114,7 +117,7 @@ export default function Home() {
       />
 
       <header className="bg-background p-3 border-b flex items-center justify-between shadow-sm relative">
-        <div className="flex items-center w-1/3"> {/* Left container for menu icon */}
+        <div className="flex items-center w-1/3"> 
           {isMobile && (
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
@@ -155,7 +158,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* Centered Logo and Text - Absolute positioned */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <Link
             href="/"
@@ -171,7 +173,6 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Right container for bookmark button */}
         <div className="flex items-center justify-end w-1/3">
             <BookmarkButton />
         </div>
@@ -184,7 +185,12 @@ export default function Home() {
       )}>
         <main className="flex flex-col items-center w-full md:col-span-2" role="main">
           <Toaster />
-          <UnitConverter ref={unitConverterRef} className="h-full"/>
+          <UnitConverter 
+            ref={unitConverterRef} 
+            className="h-full"
+            converterMode={converterMode}
+            setConverterMode={setConverterMode}
+          />
         </main>
 
         <aside className="hidden md:block md:col-span-1" role="complementary">
