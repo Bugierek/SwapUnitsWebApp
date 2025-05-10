@@ -58,16 +58,17 @@ export const unitData: Record<UnitCategory, UnitData> = {
   Time: {
     name: 'Time',
     units: [
-      { name: 'Second', symbol: 's', factor: 1, mode: 'all' },
-      { name: 'Millisecond', symbol: 'ms', factor: 0.001, mode: 'all' },
-      { name: 'Microsecond', symbol: 'µs', factor: 1e-6, mode: 'advanced' },
-      { name: 'Nanosecond', symbol: 'ns', factor: 1e-9, mode: 'advanced' },
-      { name: 'Picosecond', symbol: 'ps', factor: 1e-12, mode: 'advanced' },
       { name: 'Femtosecond', symbol: 'fs', factor: 1e-15, mode: 'advanced' },
+      { name: 'Picosecond', symbol: 'ps', factor: 1e-12, mode: 'advanced' },
+      { name: 'Nanosecond', symbol: 'ns', factor: 1e-9, mode: 'advanced' },
+      { name: 'Microsecond', symbol: 'µs', factor: 1e-6, mode: 'advanced' },
+      { name: 'Millisecond', symbol: 'ms', factor: 0.001, mode: 'all' },
+      { name: 'Second', symbol: 's', factor: 1, mode: 'all' },
       { name: 'Minute', symbol: 'min', factor: 60, mode: 'all' },
       { name: 'Hour', symbol: 'hr', factor: 3600, mode: 'all' },
       { name: 'Day', symbol: 'day', factor: 86400, mode: 'all' },
-    ],
+      { name: 'Year', symbol: 'yr', factor: 31557600, mode: 'all' }, // 365.25 days
+    ].sort((a, b) => a.factor - b.factor), // Sort by factor (shortest to longest)
   },
    Pressure: {
     name: 'Pressure',
@@ -212,19 +213,19 @@ export const unitData: Record<UnitCategory, UnitData> = {
       name: 'Sound Frequency & Wavelength',
       units: [
         // Frequency units (base for frequency type: Hz)
-        { name: 'Terahertz', symbol: 'THz Sound', factor: 1e12, mode: 'advanced', unitType: 'frequency' },
-        { name: 'Gigahertz', symbol: 'GHz Sound', factor: 1e9, mode: 'advanced', unitType: 'frequency' },
-        { name: 'Megahertz', symbol: 'MHz Sound', factor: 1e6, mode: 'advanced', unitType: 'frequency' },
-        { name: 'Kilohertz', symbol: 'kHz Sound', factor: 1e3, mode: 'advanced', unitType: 'frequency' },
-        { name: 'Hertz', symbol: 'Hz Sound', factor: 1, mode: 'advanced', unitType: 'frequency' },
-        { name: 'Millihertz', symbol: 'mHz Sound', factor: 1e-3, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Terahertz', symbol: 'THz', factor: 1e12, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Gigahertz', symbol: 'GHz', factor: 1e9, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Megahertz', symbol: 'MHz', factor: 1e6, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Kilohertz', symbol: 'kHz', factor: 1e3, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Hertz', symbol: 'Hz', factor: 1, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Millihertz', symbol: 'mHz', factor: 1e-3, mode: 'advanced', unitType: 'frequency' },
         // Wavelength units (base for wavelength type: m)
-        { name: 'Kilometer (λ)', symbol: 'km (Sound λ)', factor: 1e3, mode: 'advanced', unitType: 'wavelength' },
-        { name: 'Meter (λ)', symbol: 'm (Sound λ)', factor: 1, mode: 'advanced', unitType: 'wavelength' },
-        { name: 'Centimeter (λ)', symbol: 'cm (Sound λ)', factor: 1e-2, mode: 'advanced', unitType: 'wavelength' },
-        { name: 'Millimeter (λ)', symbol: 'mm (Sound λ)', factor: 1e-3, mode: 'advanced', unitType: 'wavelength' },
-        { name: 'Micrometer (λ)', symbol: 'µm (Sound λ)', factor: 1e-6, mode: 'advanced', unitType: 'wavelength' },
-        { name: 'Nanometer (λ)', symbol: 'nm (Sound λ)', factor: 1e-9, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Kilometer (λ)', symbol: 'km (λ)', factor: 1e3, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Meter (λ)', symbol: 'm (λ)', factor: 1, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Centimeter (λ)', symbol: 'cm (λ)', factor: 1e-2, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Millimeter (λ)', symbol: 'mm (λ)', factor: 1e-3, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Micrometer (λ)', symbol: 'µm (λ)', factor: 1e-6, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Nanometer (λ)', symbol: 'nm (λ)', factor: 1e-9, mode: 'advanced', unitType: 'wavelength' },
       ],
     },
 };
@@ -263,8 +264,8 @@ export const allPresets: Preset[] = [
   { category: 'Ethereum', fromUnit: 'gwei', toUnit: 'wei', name: 'Gwei to Wei' },
   { category: 'EM Frequency', fromUnit: 'GHz', toUnit: 'nm (λ)', name: 'GHz to Nanometers (EM λ)' },
   { category: 'EM Frequency', fromUnit: 'MHz', toUnit: 'm (λ)', name: 'MHz to Meters (EM λ)' },
-  { category: 'Sound Frequency', fromUnit: 'kHz Sound', toUnit: 'm (Sound λ)', name: 'kHz to Meters (Sound λ)' },
-  { category: 'Sound Frequency', fromUnit: 'Hz Sound', toUnit: 'cm (Sound λ)', name: 'Hz to Centimeters (Sound λ)' },
+  { category: 'Sound Frequency', fromUnit: 'kHz', toUnit: 'm (λ)', name: 'kHz to Meters (Sound λ)' },
+  { category: 'Sound Frequency', fromUnit: 'Hz', toUnit: 'cm (λ)', name: 'Hz to Centimeters (Sound λ)' },
 ];
 
 const categoryOrder: UnitCategory[] = [
@@ -283,7 +284,7 @@ export const getUnitsForCategoryAndMode = (category: UnitCategory | "", mode: Co
   if (mode === 'basic') {
     return allCategoryUnits.filter(unit => unit.mode !== 'advanced');
   }
-  return allCategoryUnits;
+  return allCategoryUnits; // For 'advanced' mode, return all units
 };
 
 export const getFilteredAndSortedPresets = (): Preset[] => {
@@ -299,25 +300,29 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
     let finalPresets: Preset[] = [];
     const categoryCounts: Record<string, number> = {};
 
+    // Ensure at least one preset from each category (if available and valid units) is included first
     categoryOrder.forEach(catName => {
         if (finalPresets.length >= 15) return;
-        const presetForCategory = sortedByOrder.find(p => p.category === catName);
+        const presetForCategory = sortedByOrder.find(p => {
+            if (p.category !== catName) return false;
+            const fromUnitDetails = unitData[p.category]?.units.find(u => u.symbol === p.fromUnit);
+            const toUnitDetails = unitData[p.category]?.units.find(u => u.symbol === p.toUnit);
+            return fromUnitDetails && toUnitDetails; // Ensure units are valid
+        });
+
         if (presetForCategory) {
              const isAlreadyAdded = finalPresets.some(fp =>
                 fp.name === presetForCategory.name && fp.category === presetForCategory.category
             );
             if (!isAlreadyAdded) {
-                const fromUnitDetails = unitData[presetForCategory.category]?.units.find(u => u.symbol === presetForCategory.fromUnit);
-                const toUnitDetails = unitData[presetForCategory.category]?.units.find(u => u.symbol === presetForCategory.toUnit);
-
-                if (fromUnitDetails && toUnitDetails) {
-                    finalPresets.push(presetForCategory);
-                    categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
-                }
+                finalPresets.push(presetForCategory);
+                categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
             }
         }
     });
 
+    // Fill remaining slots up to 15, prioritizing diversity (max 2 per category)
+    // and considering units valid in any mode for presets.
     sortedByOrder.forEach(preset => {
         if (finalPresets.length >= 15) return;
 
@@ -327,15 +332,36 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
         );
 
         if (!isAlreadyAdded && currentCount < 2) {
+            // Check if units in preset are valid (exist in unitData for that category)
              const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
              const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
-             if (fromUnitDetails && toUnitDetails) {
+             if (fromUnitDetails && toUnitDetails) { // Only add if units are valid
                 finalPresets.push(preset);
                 categoryCounts[preset.category] = currentCount + 1;
              }
         }
     });
 
+    // Ensure "Bitcoin to Satoshi" is in the 5th position (index 4) if possible, or adds it
+    const bitcoinPresetTarget = 'Bitcoin to Satoshi';
+    const bitcoinCategoryTarget: UnitCategory = 'Bitcoin';
+    let btcPresetInstance = allPresets.find(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategoryTarget);
+
+    // Remove any existing instances of the target Bitcoin preset to avoid duplicates before re-inserting
+    finalPresets = finalPresets.filter(p => !(p.name === bitcoinPresetTarget && p.category === bitcoinCategoryTarget));
+
+    if(btcPresetInstance) {
+        const fromUnitBtc = unitData[btcPresetInstance.category]?.units.find(u => u.symbol === btcPresetInstance!.fromUnit);
+        const toUnitBtc = unitData[btcPresetInstance.category]?.units.find(u => u.symbol === btcPresetInstance!.toUnit);
+        if(fromUnitBtc && toUnitBtc) { // Check if preset units are valid
+            if (finalPresets.length >= 4) {
+                finalPresets.splice(4, 0, btcPresetInstance); // Insert at 5th position
+            } else {
+                finalPresets.push(btcPresetInstance); // Add to end if list is too short
+            }
+        }
+    }
+     // Ensure "km/L to MPG (UK)" is present, replacing the last item if list is full and it's not Bitcoin
     const lastRequestedPresetName = 'km/L to MPG (UK)';
     const lastRequestedPresetCategory: UnitCategory = 'Fuel Economy';
     const hasLastRequested = finalPresets.some(p => p.name === lastRequestedPresetName && p.category === lastRequestedPresetCategory);
@@ -345,71 +371,48 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
         if (presetToAdd) {
              const fromUnitDetails = unitData[presetToAdd.category]?.units.find(u => u.symbol === presetToAdd.fromUnit);
              const toUnitDetails = unitData[presetToAdd.category]?.units.find(u => u.symbol === presetToAdd.toUnit);
-            if (fromUnitDetails && toUnitDetails) {
+            if (fromUnitDetails && toUnitDetails) { // Check if preset units are valid
                 if (finalPresets.length < 15) {
                     finalPresets.push(presetToAdd);
                 } else {
+                    // Try to replace a preset from a category that has 2 entries, is not Bitcoin, and not Fuel Economy itself
                     let replaced = false;
                     for (let i = finalPresets.length - 1; i >= 0; i--) {
                         const cat = finalPresets[i].category;
-                        if (categoryCounts[cat] > 1 && cat !== 'Bitcoin' && cat !== lastRequestedPresetCategory) {
-                            const firstIndexOfCat = finalPresets.findIndex(fp => fp.category === cat);
-                            if (i !== firstIndexOfCat) { 
+                        if (categoryCounts[cat] > 1 && cat !== bitcoinCategoryTarget && cat !== lastRequestedPresetCategory) {
+                            // Ensure we are not removing the *only* instance from a category that should have one
+                             const firstIndexOfCat = finalPresets.findIndex(fp => fp.category === cat);
+                             if (i !== firstIndexOfCat) { // if this is the second instance
                                 finalPresets[i] = presetToAdd;
                                 if(categoryCounts[cat]) categoryCounts[cat]--;
                                 categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
                                 replaced = true;
                                 break;
-                            }
+                             }
                         }
                     }
-                    if (!replaced && finalPresets.length > 0 &&
-                        finalPresets[finalPresets.length - 1].category !== 'Bitcoin' && 
-                        finalPresets[finalPresets.length - 1].category !== lastRequestedPresetCategory
-                        ) {
+                     // If no suitable replacement found by above logic, replace the last item if it's not Bitcoin
+                    if (!replaced && finalPresets.length > 0 && finalPresets[finalPresets.length - 1].category !== bitcoinCategoryTarget) {
                          const removedCat = finalPresets[finalPresets.length - 1].category;
                          finalPresets[finalPresets.length - 1] = presetToAdd;
-                         if (categoryCounts[removedCat]) categoryCounts[removedCat]--;
-                         categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
+                         if (categoryCounts[removedCat]) categoryCounts[removedCat]--; // Decrement count of removed category
+                         categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1; // Increment count of added
                     }
                 }
             }
         }
     }
 
+    // Final sort by categoryOrder and remove duplicates, then slice to 15
     finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
-    let uniquePresetTracker = new Set<string>();
-    finalPresets = finalPresets.filter(p => {
-        const key = `${p.category}-${p.name}`;
-        if (uniquePresetTracker.has(key)) return false;
-        uniquePresetTracker.add(key);
-        return true;
-    });
-
-
-    const bitcoinPresetTarget = 'Bitcoin to Satoshi';
-    const bitcoinCategory: UnitCategory = 'Bitcoin';
-
-    let btcPresetInstance = allPresets.find(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategory);
-    finalPresets = finalPresets.filter(p => !(p.name === bitcoinPresetTarget && p.category === bitcoinCategory)); 
-
-    if(btcPresetInstance) {
-         const fromUnitDetailsBtc = unitData[btcPresetInstance.category]?.units.find(u => u.symbol === btcPresetInstance!.fromUnit);
-         const toUnitDetailsBtc = unitData[btcPresetInstance.category]?.units.find(u => u.symbol === btcPresetInstance!.toUnit);
-        if (fromUnitDetailsBtc && toUnitDetailsBtc) {
-            if (finalPresets.length >= 4) { 
-                finalPresets.splice(4, 0, btcPresetInstance);
-            } else {
-                finalPresets.push(btcPresetInstance); 
-            }
-        }
-    }
     
-    finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
-    uniquePresetTracker = new Set<string>();
-    return finalPresets.filter(p => {
-        const duplicate = uniquePresetTracker.has(p.name + p.category);
-        uniquePresetTracker.add(p.name+p.category);
+    // Remove duplicates that might have been pushed to the end if category count was already 1 for Bitcoin
+    const uniqueNames = new Set<string>();
+    finalPresets = finalPresets.filter(p => {
+        const duplicate = uniqueNames.has(p.name + p.category);
+        uniqueNames.add(p.name+p.category);
         return !duplicate;
-    }).slice(0,15);
+    });
+    
+    return finalPresets.slice(0,15);
 };
