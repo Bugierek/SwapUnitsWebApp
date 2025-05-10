@@ -180,9 +180,9 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Satoshi', symbol: 'sat', factor: 1e-8, mode: 'all' },
         ],
     },
-    Ethereum: { // Ethereum category will only be available in advanced mode
+    Ethereum: { 
         name: 'Ethereum',
-        units: [ // All Ethereum units are advanced
+        units: [ 
             { name: 'Ether', symbol: 'ETH', factor: 1e18, mode: 'advanced' }, // Base unit is Wei
             { name: 'Gwei', symbol: 'gwei', factor: 1e9, mode: 'advanced' },
             { name: 'Wei', symbol: 'wei', factor: 1, mode: 'advanced' },
@@ -260,7 +260,8 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
 
     categoryOrder.forEach(catName => {
         if (finalPresets.length >= 15) return;
-        const presetForCategory = sortedByOrder.find(p => p.category === catName && (catName !== 'Ethereum')); // Exclude Ethereum from this initial pass for basic presets
+        // Consider all presets for each category initially
+        const presetForCategory = sortedByOrder.find(p => p.category === catName); 
         if (presetForCategory) {
              const isAlreadyAdded = finalPresets.some(fp =>
                 fp.name === presetForCategory.name && fp.category === presetForCategory.category
@@ -280,10 +281,8 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
            fp.name === preset.name && fp.category === preset.category
         );
         
-        // Ensure Ethereum presets are not added here if we are in basic mode context
-        // This function however, should list all *potential* presets. UI filters by mode.
-        // For now, let's assume this function is for "all displayable presets if mode allows"
-        if (!isAlreadyAdded && currentCount < 2 && (preset.category !== 'Ethereum')) { // Initially exclude Ethereum, will be added if advanced mode
+        // Add a second preset if available, for any category
+        if (!isAlreadyAdded && currentCount < 2) { 
             finalPresets.push(preset);
             categoryCounts[preset.category] = currentCount + 1;
         }
@@ -298,79 +297,72 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
         if (presetToAdd) {
             if (finalPresets.length < 15) {
                 finalPresets.push(presetToAdd);
-                finalPresets.sort((a, b) => {
-                    const indexA = categoryOrder.indexOf(a.category);
-                    const indexB = categoryOrder.indexOf(b.category);
-                    return indexA - indexB;
-                });
             } else {
+                // Attempt to replace a preset from a category that already has 2, or the last item if all have 1
                 let replaced = false;
                 for (let i = finalPresets.length - 1; i >= 0; i--) {
                     const cat = finalPresets[i].category;
-                    if (categoryCounts[cat] > 1 && cat !== 'Bitcoin' && cat !== 'Ethereum') { 
+                    if (categoryCounts[cat] > 1 && cat !== 'Bitcoin' && cat !== lastRequestedPresetCategory) { 
                         const firstIndexOfCat = finalPresets.findIndex(fp => fp.category === cat);
                         if (i !== firstIndexOfCat) { 
                             finalPresets[i] = presetToAdd;
+                            categoryCounts[cat]--; // Decrement count for the replaced category
+                            categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
                             replaced = true;
-                             finalPresets.sort((a, b) => {
-                                const indexA = categoryOrder.indexOf(a.category);
-                                const indexB = categoryOrder.indexOf(b.category);
-                                return indexA - indexB;
-                            });
                             break;
                         }
                     }
                 }
                 if (!replaced && finalPresets.length > 0 && 
-                    finalPresets[finalPresets.length - 1].category !== 'Bitcoin' && 
-                    finalPresets[finalPresets.length - 1].category !== 'Ethereum') {
+                    finalPresets[finalPresets.length - 1].category !== 'Bitcoin' &&
+                    finalPresets[finalPresets.length - 1].category !== lastRequestedPresetCategory
+                    ) {
+                     const removedCat = finalPresets[finalPresets.length - 1].category;
                      finalPresets[finalPresets.length - 1] = presetToAdd;
-                     finalPresets.sort((a, b) => {
-                        const indexA = categoryOrder.indexOf(a.category);
-                        const indexB = categoryOrder.indexOf(b.category);
-                        return indexA - indexB;
-                    });
+                     if (categoryCounts[removedCat]) categoryCounts[removedCat]--;
+                     categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
                 }
             }
         }
     }
+    
+    // Sort again before Bitcoin placement, as categoryCounts might have changed
+    finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
+    // Remove duplicates that might have occurred due to replacement logic
+    const uniquePresetTracker = new Set<string>();
+    finalPresets = finalPresets.filter(p => {
+        const key = `${p.category}-${p.name}`;
+        if (uniquePresetTracker.has(key)) return false;
+        uniquePresetTracker.add(key);
+        return true;
+    });
+
 
     // Specifically ensure Bitcoin to Satoshi is 5th if not already and space allows.
     const bitcoinPresetTarget = 'Bitcoin to Satoshi';
     const bitcoinCategory: UnitCategory = 'Bitcoin';
-    const hasBitcoinPreset = finalPresets.some(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategory);
     
-    if(!hasBitcoinPreset) {
-        const btcPreset = allPresets.find(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategory);
-        if(btcPreset) {
-            if(finalPresets.length < 15) {
-                finalPresets.splice(4, 0, btcPreset); // Insert at 5th position (index 4)
-                 // Remove duplicates that might have been pushed to the end if category count was already 1 for Bitcoin
-                const uniqueNames = new Set<string>();
-                finalPresets = finalPresets.filter(p => {
-                    const duplicate = uniqueNames.has(p.name + p.category);
-                    uniqueNames.add(p.name+p.category);
-                    return !duplicate;
-                });
+    // Remove existing Bitcoin to Satoshi preset to avoid duplicates before repositioning
+    let btcPresetInstance = allPresets.find(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategory);
+    finalPresets = finalPresets.filter(p => !(p.name === bitcoinPresetTarget && p.category === bitcoinCategory));
 
-            } else if (finalPresets.length === 15) {
-                // If full, try to replace the 5th item if it's not critical (e.g., not single preset of a category)
-                 const fifthItemCategory = finalPresets[4].category;
-                 if(categoryCounts[fifthItemCategory] > 1 || fifthItemCategory === bitcoinCategory) { // if 5th item is from a category with >1 preset OR it's already a Bitcoin preset we are replacing
-                    finalPresets[4] = btcPreset;
-                 }
-            }
-        }
-    } else {
-        // If Bitcoin preset is already there but not at 5th, move it
-        const btcIndex = finalPresets.findIndex(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategory);
-        if(btcIndex !== -1 && btcIndex !== 4) {
-            const [btcItem] = finalPresets.splice(btcIndex, 1);
-            finalPresets.splice(4,0, btcItem);
+    if(btcPresetInstance) {
+        if (finalPresets.length >= 4) { // Ensure there's a 5th slot (index 4)
+            finalPresets.splice(4, 0, btcPresetInstance);
+        } else {
+            finalPresets.push(btcPresetInstance); // Add to end if not enough space for 5th
         }
     }
+    
      // Ensure category order is respected after all manipulations and list is capped at 15
-    return finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category)).slice(0,15);
+    finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
+    // Final deduplication and slicing
+    const finalUniqueNames = new Set<string>();
+    return finalPresets.filter(p => {
+        const duplicate = finalUniqueNames.has(p.name + p.category);
+        finalUniqueNames.add(p.name+p.category);
+        return !duplicate;
+    }).slice(0,15);
 };
 
 
