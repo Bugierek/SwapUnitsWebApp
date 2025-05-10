@@ -10,21 +10,20 @@ import {
   Waves, // Using Waves for Volume as Cube isn't available
   CloudLightning, // Using CloudLightning for Energy as Bolt isn't available
   HelpCircle, // Default icon
-  // New icons
   GaugeCircle, // For Speed
   Fuel, // For Fuel Economy
   HardDrive, // For Data Storage
   Network, // For Data Transfer Rate (or Wifi)
-  // Bitcoin icon
   Bitcoin,
+  Sun, // For Light category
+  Signal, // For Frequency category
 } from 'lucide-react';
 import type { UnitCategory } from '@/types';
 
 interface UnitIconProps extends React.SVGProps<SVGSVGElement> {
-    category: UnitCategory | string; // Allow string type for flexibility
+    category: UnitCategory | string;
 }
 
-// Ethereum Icon SVG
 const EthereumIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     width="24"
@@ -51,8 +50,6 @@ const EthereumIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-
-// Memoize the component to prevent unnecessary re-renders when props haven't changed
 export const UnitIcon = React.memo(function UnitIconComponent({ category, ...props }: UnitIconProps) {
   switch (category as UnitCategory) {
     case 'Length':
@@ -68,9 +65,9 @@ export const UnitIcon = React.memo(function UnitIconComponent({ category, ...pro
     case 'Area':
         return <AreaChart {...props} />;
     case 'Volume':
-        return <Waves {...props} />; // Using Waves as a placeholder
+        return <Waves {...props} />;
     case 'Energy':
-        return <CloudLightning {...props} />; // Using CloudLightning as a placeholder
+        return <CloudLightning {...props} />;
     case 'Speed':
         return <GaugeCircle {...props} />;
     case 'Fuel Economy':
@@ -82,7 +79,11 @@ export const UnitIcon = React.memo(function UnitIconComponent({ category, ...pro
     case 'Bitcoin':
         return <Bitcoin {...props} />;
     case 'Ethereum':
-        return <EthereumIcon {...props} />; // Using custom Ethereum Icon
+        return <EthereumIcon {...props} />;
+    case 'Light':
+        return <Sun {...props} />;
+    case 'Frequency':
+        return <Signal {...props} />;
     default:
       return <HelpCircle {...props} />;
   }

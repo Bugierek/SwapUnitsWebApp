@@ -17,6 +17,8 @@ import type { UnitCategory, UnitData, Preset, Unit, ConverterMode } from '@/type
 // Data Transfer Rate: Bits per second (bps)
 // Bitcoin: Bitcoin (BTC)
 // Ethereum: Wei (wei)
+// Light: Candela (cd) for Luminous Intensity, Lumen (lm) for Luminous Flux, Lux (lx) for Illuminance
+// Frequency: Hertz (Hz)
 
 export const unitData: Record<UnitCategory, UnitData> = {
   Length: {
@@ -40,7 +42,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Kilogram', symbol: 'kg', factor: 1, mode: 'all' },
       { name: 'Gram', symbol: 'g', factor: 0.001, mode: 'all' },
       { name: 'Milligram', symbol: 'mg', factor: 0.000001, mode: 'all' },
-      { name: 'Metric Ton', symbol: 't', factor: 1000, mode: 'all' }, // Changed from 'advanced' to 'all'
+      { name: 'Metric Ton', symbol: 't', factor: 1000, mode: 'all' },
       { name: 'Pound', symbol: 'lb', factor: 0.453592, mode: 'all' },
       { name: 'Ounce', symbol: 'oz', factor: 0.0283495, mode: 'all' },
     ],
@@ -48,7 +50,6 @@ export const unitData: Record<UnitCategory, UnitData> = {
   Temperature: {
     name: 'Temperature',
     units: [
-      // Factors are handled specially for temperature
       { name: 'Celsius', symbol: '°C', factor: 1, mode: 'all' },
       { name: 'Fahrenheit', symbol: '°F', factor: 1, mode: 'all' },
       { name: 'Kelvin', symbol: 'K', factor: 1, mode: 'all' },
@@ -134,14 +135,14 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Kilometer per hour', symbol: 'km/h', factor: 1 / 3.6, mode: 'all' },
             { name: 'Mile per hour', symbol: 'mph', factor: 0.44704, mode: 'all' },
             { name: 'Foot per second', symbol: 'ft/s', factor: 0.3048, mode: 'advanced' },
-            { name: 'Knot', symbol: 'kn', factor: 0.514444, mode: 'advanced' }, // Nautical mile per hour
+            { name: 'Knot', symbol: 'kn', factor: 0.514444, mode: 'advanced' },
         ],
     },
     'Fuel Economy': {
         name: 'Fuel Economy',
         units: [
             { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1, mode: 'all' },
-            { name: 'Liter per 100 kilometers', symbol: 'L/100km', factor: 100, mode: 'all' }, // Higher value is worse, special handling might be needed
+            { name: 'Liter per 100 kilometers', symbol: 'L/100km', factor: 100, mode: 'all' },
             { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425144, mode: 'all' },
             { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.354006, mode: 'all' },
         ],
@@ -180,14 +181,45 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Satoshi', symbol: 'sat', factor: 1e-8, mode: 'all' },
         ],
     },
-    Ethereum: { 
+    Ethereum: {
         name: 'Ethereum',
-        units: [ 
+        units: [
             { name: 'Ether', symbol: 'ETH', factor: 1e18, mode: 'advanced' }, // Base unit is Wei
             { name: 'Gwei', symbol: 'gwei', factor: 1e9, mode: 'advanced' },
             { name: 'Wei', symbol: 'wei', factor: 1, mode: 'advanced' },
         ],
-    }
+    },
+    Light: {
+      name: 'Light',
+      units: [
+        // Luminous Intensity (base: Candela)
+        { name: 'Candela', symbol: 'cd', factor: 1, mode: 'advanced' },
+        // Luminous Flux (base: Lumen)
+        { name: 'Lumen', symbol: 'lm', factor: 1, mode: 'advanced' },
+        // Illuminance (base: Lux)
+        { name: 'Lux', symbol: 'lx', factor: 1, mode: 'advanced' },
+        { name: 'Foot-candle', symbol: 'fc', factor: 10.7639, mode: 'advanced' }, // 1 fc = 10.7639 lx (lx is base for this group)
+      ],
+    },
+    Frequency: {
+      name: 'Frequency',
+      units: [
+        // Frequency units (base for frequency type: Hz)
+        { name: 'Terahertz', symbol: 'THz', factor: 1e12, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Gigahertz', symbol: 'GHz', factor: 1e9, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Megahertz', symbol: 'MHz', factor: 1e6, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Kilohertz', symbol: 'kHz', factor: 1e3, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Hertz', symbol: 'Hz', factor: 1, mode: 'advanced', unitType: 'frequency' },
+        { name: 'Millihertz', symbol: 'mHz', factor: 1e-3, mode: 'advanced', unitType: 'frequency' },
+        // Wavelength units (base for wavelength type: m)
+        { name: 'Kilometer (wavelength)', symbol: 'km (λ)', factor: 1e3, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Meter (wavelength)', symbol: 'm (λ)', factor: 1, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Centimeter (wavelength)', symbol: 'cm (λ)', factor: 1e-2, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Millimeter (wavelength)', symbol: 'mm (λ)', factor: 1e-3, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Micrometer (wavelength)', symbol: 'µm (λ)', factor: 1e-6, mode: 'advanced', unitType: 'wavelength' },
+        { name: 'Nanometer (wavelength)', symbol: 'nm (λ)', factor: 1e-9, mode: 'advanced', unitType: 'wavelength' },
+      ],
+    },
 };
 
 export const allPresets: Preset[] = [
@@ -222,26 +254,28 @@ export const allPresets: Preset[] = [
   { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
   { category: 'Ethereum', fromUnit: 'ETH', toUnit: 'gwei', name: 'ETH to Gwei' },
   { category: 'Ethereum', fromUnit: 'gwei', toUnit: 'wei', name: 'Gwei to Wei' },
+  { category: 'Light', fromUnit: 'lx', toUnit: 'fc', name: 'Lux to Foot-candle' },
+  { category: 'Frequency', fromUnit: 'GHz', toUnit: 'nm (λ)', name: 'GHz to Nanometers (λ)' },
+  { category: 'Frequency', fromUnit: 'MHz', toUnit: 'm (λ)', name: 'MHz to Meters (λ)' },
+  { category: 'Frequency', fromUnit: 'THz', toUnit: 'kHz', name: 'Terahertz to Kilohertz' },
 ];
 
 const categoryOrder: UnitCategory[] = [
-  'Length', 'Mass', 'Temperature', 'Time', 'Bitcoin', 
+  'Length', 'Mass', 'Temperature', 'Time', 'Bitcoin',
   'Pressure', 'Area', 'Volume', 'Energy', 'Speed',
-  'Fuel Economy', 'Data Storage', 'Data Transfer Rate', 'Ethereum'
+  'Fuel Economy', 'Data Storage', 'Data Transfer Rate', 'Ethereum', 'Light', 'Frequency'
 ];
 
 export const getUnitsForCategoryAndMode = (category: UnitCategory | "", mode: ConverterMode): Unit[] => {
-  const categoryKey = category as UnitCategory; // Type assertion
+  const categoryKey = category as UnitCategory;
   if (!category || !unitData[categoryKey]) {
     return [];
   }
   const allCategoryUnits = unitData[categoryKey].units ?? [];
 
   if (mode === 'basic') {
-    // Filter out units specifically marked as 'advanced'
     return allCategoryUnits.filter(unit => unit.mode !== 'advanced');
   }
-  // Advanced mode gets all units (includes 'basic', 'advanced', 'all')
   return allCategoryUnits;
 };
 
@@ -260,8 +294,7 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
 
     categoryOrder.forEach(catName => {
         if (finalPresets.length >= 15) return;
-        // Consider all presets for each category initially
-        const presetForCategory = sortedByOrder.find(p => p.category === catName); 
+        const presetForCategory = sortedByOrder.find(p => p.category === catName);
         if (presetForCategory) {
              const isAlreadyAdded = finalPresets.some(fp =>
                 fp.name === presetForCategory.name && fp.category === presetForCategory.category
@@ -280,14 +313,16 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
         const isAlreadyAdded = finalPresets.some(fp =>
            fp.name === preset.name && fp.category === preset.category
         );
-        
-        // Add a second preset if available, for any category
-        if (!isAlreadyAdded && currentCount < 2) { 
+
+        if (!isAlreadyAdded && currentCount < 2) {
+            // Check if the preset's units are available in basic mode if the app is in basic mode
+            // For the sake of the preset list, we assume it can show presets that might require advanced mode
+            // (user clicking it would switch to advanced mode if necessary - handled in UnitConverter)
             finalPresets.push(preset);
             categoryCounts[preset.category] = currentCount + 1;
         }
     });
-    
+
     const lastRequestedPresetName = 'km/L to MPG (UK)';
     const lastRequestedPresetCategory: UnitCategory = 'Fuel Economy';
     const hasLastRequested = finalPresets.some(p => p.name === lastRequestedPresetName && p.category === lastRequestedPresetCategory);
@@ -298,22 +333,21 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
             if (finalPresets.length < 15) {
                 finalPresets.push(presetToAdd);
             } else {
-                // Attempt to replace a preset from a category that already has 2, or the last item if all have 1
                 let replaced = false;
                 for (let i = finalPresets.length - 1; i >= 0; i--) {
                     const cat = finalPresets[i].category;
-                    if (categoryCounts[cat] > 1 && cat !== 'Bitcoin' && cat !== lastRequestedPresetCategory) { 
+                    if (categoryCounts[cat] > 1 && cat !== 'Bitcoin' && cat !== lastRequestedPresetCategory) {
                         const firstIndexOfCat = finalPresets.findIndex(fp => fp.category === cat);
-                        if (i !== firstIndexOfCat) { 
+                        if (i !== firstIndexOfCat) {
                             finalPresets[i] = presetToAdd;
-                            categoryCounts[cat]--; // Decrement count for the replaced category
+                            if(categoryCounts[cat]) categoryCounts[cat]--;
                             categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
                             replaced = true;
                             break;
                         }
                     }
                 }
-                if (!replaced && finalPresets.length > 0 && 
+                if (!replaced && finalPresets.length > 0 &&
                     finalPresets[finalPresets.length - 1].category !== 'Bitcoin' &&
                     finalPresets[finalPresets.length - 1].category !== lastRequestedPresetCategory
                     ) {
@@ -325,10 +359,8 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
             }
         }
     }
-    
-    // Sort again before Bitcoin placement, as categoryCounts might have changed
+
     finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
-    // Remove duplicates that might have occurred due to replacement logic
     const uniquePresetTracker = new Set<string>();
     finalPresets = finalPresets.filter(p => {
         const key = `${p.category}-${p.name}`;
@@ -338,25 +370,21 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
     });
 
 
-    // Specifically ensure Bitcoin to Satoshi is 5th if not already and space allows.
     const bitcoinPresetTarget = 'Bitcoin to Satoshi';
     const bitcoinCategory: UnitCategory = 'Bitcoin';
-    
-    // Remove existing Bitcoin to Satoshi preset to avoid duplicates before repositioning
+
     let btcPresetInstance = allPresets.find(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategory);
     finalPresets = finalPresets.filter(p => !(p.name === bitcoinPresetTarget && p.category === bitcoinCategory));
 
     if(btcPresetInstance) {
-        if (finalPresets.length >= 4) { // Ensure there's a 5th slot (index 4)
+        if (finalPresets.length >= 4) {
             finalPresets.splice(4, 0, btcPresetInstance);
         } else {
-            finalPresets.push(btcPresetInstance); // Add to end if not enough space for 5th
+            finalPresets.push(btcPresetInstance);
         }
     }
-    
-     // Ensure category order is respected after all manipulations and list is capped at 15
+
     finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
-    // Final deduplication and slicing
     const finalUniqueNames = new Set<string>();
     return finalPresets.filter(p => {
         const duplicate = finalUniqueNames.has(p.name + p.category);
@@ -364,5 +392,3 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
         return !duplicate;
     }).slice(0,15);
 };
-
-

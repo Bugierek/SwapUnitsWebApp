@@ -5,6 +5,7 @@ export type Unit = {
   symbol: string;
   factor: number; // Factor to convert from this unit to the base unit of the category
   mode?: 'basic' | 'advanced' | 'all'; // To distinguish units by mode
+  unitType?: 'frequency' | 'wavelength'; // To distinguish unit types within a category like Frequency
 };
 
 export type UnitCategory =
@@ -21,7 +22,9 @@ export type UnitCategory =
   | 'Data Storage'
   | 'Data Transfer Rate'
   | 'Bitcoin'
-  | 'Ethereum';
+  | 'Ethereum'
+  | 'Light'
+  | 'Frequency';
 
 
 export type UnitData = {
@@ -47,4 +50,5 @@ export type NumberFormat = 'normal' | 'scientific';
 
 // Type for converter mode
 export type ConverterMode = 'basic' | 'advanced';
+
 
