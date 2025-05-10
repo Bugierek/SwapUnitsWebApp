@@ -429,32 +429,34 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             </CardTitle>
           </div>
           
-          <div className="flex w-full py-3">
-            <Button
-              variant={converterMode === 'basic' ? 'default' : 'outline'}
-              onClick={() => {
-                if (converterMode !== 'basic') {
-                  setConverterMode('basic');
-                }
-              }}
-              aria-pressed={converterMode === 'basic'}
-              className="flex-1 px-5 text-sm rounded-r-none"
-            >
-              Basic
-            </Button>
-            <Button
-              variant={converterMode === 'advanced' ? 'default' : 'outline'}
-              onClick={() => {
-                if (converterMode !== 'advanced') {
-                  setConverterMode('advanced');
-                }
-              }}
-              aria-pressed={converterMode === 'advanced'}
-               className="flex-1 px-5 text-sm rounded-l-none"
-            >
-              Advanced
-            </Button>
-          </div>
+          {!isMobile && (
+            <div className="flex w-full py-3">
+              <Button
+                variant={converterMode === 'basic' ? 'default' : 'outline'}
+                onClick={() => {
+                  if (converterMode !== 'basic') {
+                    setConverterMode('basic');
+                  }
+                }}
+                aria-pressed={converterMode === 'basic'}
+                className="flex-1 px-5 text-sm rounded-r-none"
+              >
+                Basic
+              </Button>
+              <Button
+                variant={converterMode === 'advanced' ? 'default' : 'outline'}
+                onClick={() => {
+                  if (converterMode !== 'advanced') {
+                    setConverterMode('advanced');
+                  }
+                }}
+                aria-pressed={converterMode === 'advanced'}
+                className="flex-1 px-5 text-sm rounded-l-none"
+              >
+                Advanced
+              </Button>
+            </div>
+          )}
 
 
            <p className={cn("text-sm text-muted-foreground mb-2 space-y-1", isMobile && "hidden")}>
@@ -498,7 +500,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           side="bottom" 
                           avoidCollisions={false}
                           className={cn(
-                            converterMode === 'basic' ? 'max-h-[calc(100vh-200px)] sm:max-h-none' : 'max-h-[calc(100vh-200px)] overflow-y-auto' 
+                            converterMode === 'advanced' ? 'max-h-[calc(100vh-300px)] overflow-y-auto' : ''
                           )}
                         >
                           {categoriesForDropdown.map((cat) => (
@@ -670,4 +672,3 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
-

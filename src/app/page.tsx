@@ -26,7 +26,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, RefreshCw, List } from 'lucide-react';
+import { Menu, RefreshCw, List, Settings2 } from 'lucide-react'; // Added Settings2 for Mode icon
 import { cn } from '@/lib/utils';
 
 
@@ -154,7 +154,7 @@ export default function Home() {
           {isMobile && (
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Open common conversions menu">
+                <Button variant="ghost" size="icon" aria-label="Open menu">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -166,6 +166,44 @@ export default function Home() {
                       Menu
                     </SheetTitle>
                   </SheetHeader>
+
+                  {/* Mode Selection Section for Mobile Menu */}
+                  <div className="p-4 border-b">
+                    <h3 className="text-md font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <Settings2 className="h-4 w-4" aria-hidden="true" />
+                        Mode
+                    </h3>
+                    <div className="flex w-full">
+                       <SheetClose asChild>
+                        <Button
+                          variant={converterMode === 'basic' ? 'default' : 'outline'}
+                          onClick={() => {
+                            if (converterMode !== 'basic') {
+                              setConverterMode('basic');
+                            }
+                          }}
+                          aria-pressed={converterMode === 'basic'}
+                          className="flex-1 px-5 text-sm rounded-r-none"
+                        >
+                          Basic
+                        </Button>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <Button
+                          variant={converterMode === 'advanced' ? 'default' : 'outline'}
+                          onClick={() => {
+                            if (converterMode !== 'advanced') {
+                              setConverterMode('advanced');
+                            }
+                          }}
+                          aria-pressed={converterMode === 'advanced'}
+                          className="flex-1 px-5 text-sm rounded-l-none"
+                        >
+                          Advanced
+                        </Button>
+                      </SheetClose>
+                    </div>
+                  </div>
                   
                   <div className="p-4">
                     <h3 className="text-md font-semibold text-foreground mb-3">Common Conversions</h3>
