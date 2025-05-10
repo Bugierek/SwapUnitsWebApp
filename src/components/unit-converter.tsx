@@ -500,7 +500,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           side="bottom"
                           avoidCollisions={false}
                           className={cn(
-                            converterMode === 'advanced' ? 'max-h-[calc(100vh-370px)] overflow-y-auto' : ''
+                            converterMode === 'advanced' 
+                              ? 'max-h-[calc(100vh-426px)] overflow-y-auto' // Reduced height for advanced, still scrollable
+                              : 'max-h-none' // No max-height for basic, should prevent scrolling by allowing growth
                           )}
                         >
                           {categoriesForDropdown.map((cat) => (
