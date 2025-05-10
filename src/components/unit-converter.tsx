@@ -109,8 +109,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     if (magnitudeForcedScientific && numberFormat === 'normal') {
         setNumberFormat('scientific');
+    } else if (!magnitudeForcedScientific && numberFormat === 'scientific' && reason !== 'user_choice') {
+        // If no longer forced by magnitude AND user didn't pick scientific, allow normal again.
+        // The actual switch back to 'normal' would happen if user clicks the radio or if they change input
+        // such that scientific is no longer needed by magnitude.
+        // This callback primarily handles disabling the 'Normal' radio.
     }
-  }, [numberFormat]); 
+  }, [numberFormat]);
 
   const convertUnits = React.useCallback((data: Partial<FormData>): ConversionResult | null => {
     const { category, fromUnit, toUnit, value } = data;
@@ -424,7 +429,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
            {isMobile && (
             <div className="absolute top-3 right-3 flex items-center gap-1 z-10"> {/* Adjusted top/right for CardHeader padding */}
               <Label htmlFor="mobile-mode-toggle" className="text-xs font-medium text-foreground">
-                Adv
+                Advanced
               </Label>
               <Switch
                 id="mobile-mode-toggle"
@@ -501,7 +506,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           side="bottom" 
                           avoidCollisions={false}
                           className={cn(
-                            converterMode === 'basic' ? 'max-h-[calc(100vh-200px)] sm:max-h-none overflow-y-auto' : 'max-h-[calc(100vh-200px)] overflow-y-auto' 
+                            converterMode === 'basic' ? 'max-h-[calc(100vh-200px)] sm:max-h-none' : 'max-h-[calc(100vh-200px)] overflow-y-auto' 
                           )}
                         >
                           {categoriesForDropdown.map((cat) => (
@@ -673,3 +678,4 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
