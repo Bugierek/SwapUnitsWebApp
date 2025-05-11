@@ -74,8 +74,13 @@ export const unitData: Record<UnitCategory, UnitData> = {
     name: 'Area',
     units: [
         { name: 'Square Meter', symbol: 'm²', factor: 1, mode: 'all' },
+        { name: 'Square Kilometer', symbol: 'km²', factor: 1e6, mode: 'all' },
         { name: 'Square Centimeter', symbol: 'cm²', factor: 0.0001, mode: 'all' },
+        { name: 'Square Millimeter', symbol: 'mm²', factor: 1e-6, mode: 'all' },
+        { name: 'Square Mile', symbol: 'mi²', factor: 2589988.110336, mode: 'all' },
+        { name: 'Square Yard', symbol: 'yd²', factor: 0.83612736, mode: 'all' },
         { name: 'Square Foot', symbol: 'ft²', factor: 0.092903, mode: 'all' },
+        { name: 'Square Inch', symbol: 'in²', factor: 0.00064516, mode: 'all' },
         { name: 'Hectare', symbol: 'ha', factor: 10000, mode: 'all' },
         { name: 'Acre', symbol: 'acre', factor: 4046.86, mode: 'all' },
     ],
@@ -181,6 +186,8 @@ export const allPresets: Preset[] = [
   { category: 'Pressure', fromUnit: 'atm', toUnit: 'Pa', name: 'Atmospheres to Pascals' },
   { category: 'Area', fromUnit: 'm²', toUnit: 'ft²', name: 'Square Meters to Square Feet' },
   { category: 'Area', fromUnit: 'acre', toUnit: 'm²', name: 'Acres to Square Meters' },
+  { category: 'Area', fromUnit: 'km²', toUnit: 'mi²', name: 'Square Kilometers to Square Miles' },
+  { category: 'Area', fromUnit: 'm²', toUnit: 'acre', name: 'Square Meters to Acres' },
   { category: 'Volume', fromUnit: 'L', toUnit: 'gal', name: 'Liters to Gallons (US)' },
   { category: 'Volume', fromUnit: 'mL', toUnit: 'L', name: 'Milliliters to Liters' },
   { category: 'Energy', fromUnit: 'kWh', toUnit: 'BTU', name: 'Kilowatt Hours to BTU' },
@@ -209,11 +216,12 @@ export const getUnitsForCategoryAndMode = (category: UnitCategory | ""): Unit[] 
   if (!category || !unitData[categoryKey]) {
     return [];
   }
-  const allCategoryUnits = unitData[categoryKey].units ?? [];
-  return allCategoryUnits.filter(unit => unit.mode === 'all' || unit.mode === 'basic' || unit.mode === undefined);
+  // Since there's only one mode now, always return all units for the category
+  return unitData[categoryKey].units ?? [];
 };
 
 export const getFilteredAndSortedPresets = (): Preset[] => {
+    // All presets are valid in basic mode now
     const validPresets = allPresets.filter(preset => {
         const fromUnitDetails = getUnitsForCategoryAndMode(preset.category).find(u => u.symbol === preset.fromUnit);
         const toUnitDetails = getUnitsForCategoryAndMode(preset.category).find(u => u.symbol === preset.toUnit);
@@ -319,3 +327,4 @@ export const getFilteredAndSortedPresets = (): Preset[] => {
 
     return finalPresets.slice(0,15);
 };
+
