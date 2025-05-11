@@ -378,7 +378,13 @@ export default function Home() {
 
       <div className={cn(
         "flex-grow grid grid-cols-1 w-full max-w-7xl mx-auto items-stretch",
-        "pt-2 pb-4 px-4 sm:pt-4 sm:pb-8 sm:px-8 md:pt-6 md:pb-12 md:px-12 lg:pt-8 lg:pb-16 lg:px-16 xl:pt-10 xl:pb-20 xl:px-20",
+        "2xl:max-w-screen-2xl", // Wider on 2xl screens
+        "pt-2 pb-4 px-4",
+        "sm:pt-4 sm:pb-8 sm:px-8",
+        "md:pt-6 md:pb-12 md:px-12",
+        "lg:pt-8 lg:pb-16 lg:px-16",
+        "xl:pt-10 xl:pb-20 xl:px-20",
+        "2xl:pt-12 2xl:pb-24 2xl:px-24", // New paddings for 2xl
          !isMobile && "md:grid-cols-[minmax(0,20rem)_1fr_minmax(0,20rem)] md:gap-8"
       )}>
         {!isMobile && (
