@@ -68,7 +68,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
     }, [toast]);
 
     return (
-        <Card className={cn("shadow-lg flex flex-col", className)} aria-label="Conversion History">
+        <Card className={cn("shadow-lg flex flex-col w-full", className)} aria-label="Conversion History">
             <CardHeader className="flex-shrink-0">
                 <div className="flex justify-between items-center">
                     <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
