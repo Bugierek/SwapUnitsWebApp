@@ -3,11 +3,12 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ConversionHistoryItem } from '@/types';
-import { History as HistoryIconLucide } from 'lucide-react'; // Renamed to avoid conflict
+import { History as HistoryIconLucide, Copy } from 'lucide-react'; // Renamed to avoid conflict, Added Copy icon
 import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast'; // Added useToast
 
 interface HistoryListProps {
     items: ConversionHistoryItem[];
@@ -44,6 +45,30 @@ const formatHistoryNumber = (num: number): string => {
 };
 
 export const HistoryList = React.memo(function HistoryListComponent({ items, onHistorySelect, onClearHistory, className }: HistoryListProps) {
+    const { toast } = useToast(); // Initialize toast
+
+    const handleCopyHistoryItem = React.useCallback(async (item: ConversionHistoryItem) => {
+        const textToCopy = `${formatHistoryNumber(item.fromValue)} ${item.fromUnit} → ${formatHistoryNumber(item.toValue)} ${item.toUnit}`;
+        if (!textToCopy || !navigator.clipboard) return;
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            toast({
+                title: "Copied!",
+                description: `Conversion "${textToCopy}" copied to clipboard.`,
+                variant: "confirmation",
+                duration: 1500,
+            });
+        } catch (err) {
+            console.error('Failed to copy history item: ', err);
+            toast({
+                title: "Copy Failed",
+                description: "Could not copy conversion to clipboard.",
+                variant: "destructive",
+            });
+        }
+    }, [toast]);
+
     return (
         <Card className={cn("shadow-lg flex flex-col", className)} aria-label="Conversion History">
             <CardHeader className="flex-shrink-0">
@@ -66,12 +91,12 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                     </p>
                 ) : (
                     <ScrollArea className="h-full">
-                        <ul className="space-y-2 pr-3"> {/* Added pr-3 for scrollbar spacing */}
+                        <ul className="space-y-1 pr-3"> {/* Adjusted space-y */}
                             {items.map((item) => (
-                                <li key={item.id}>
+                                <li key={item.id} className="flex items-center justify-between gap-1 group/history-item">
                                   <Button
                                       variant="ghost"
-                                      className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal flex items-start gap-2 text-sm"
+                                      className="flex-grow justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal flex items-start gap-2 text-sm"
                                       onClick={() => onHistorySelect(item)}
                                       aria-label={`Apply conversion: ${formatHistoryNumber(item.fromValue)} ${item.fromUnit} to ${formatHistoryNumber(item.toValue)} ${item.toUnit}`}
                                   >
@@ -84,6 +109,18 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                               {item.category} - {format(new Date(item.timestamp), 'MMM d, yyyy h:mm a')}
                                           </p>
                                       </div>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/history-item:opacity-100 focus:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent onHistorySelect from firing
+                                        handleCopyHistoryItem(item);
+                                    }}
+                                    aria-label="Copy this history item to clipboard"
+                                  >
+                                    <Copy className="h-4 w-4" />
                                   </Button>
                                 </li>
                             ))}

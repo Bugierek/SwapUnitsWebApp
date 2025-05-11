@@ -13,8 +13,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { Footer } from "@/components/footer";
 import { PresetList } from "@/components/preset-list"; 
 import { HistoryList } from "@/components/history-list";
+import AdPlaceholder from "@/components/ad-placeholder"; // Changed to default import
 import { UnitIcon } from '@/components/unit-icon'; 
-import { unitData, getFilteredAndSortedPresets } from '@/lib/unit-data'; 
+import { unitData, getFilteredAndSortedPresets, getUnitsForCategoryAndMode } from '@/lib/unit-data'; 
 import type { Preset, ConverterMode, UnitCategory, ConversionHistoryItem } from '@/types'; 
 
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -76,16 +77,32 @@ export default function Home() {
 
   const onHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
     if (unitConverterRef.current) {
-      const fromUnitDetails = unitData[item.category]?.units.find(u => u.symbol === item.fromUnit);
-      const toUnitDetails = unitData[item.category]?.units.find(u => u.symbol === item.toUnit);
-      if ((fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') && converterMode === 'basic') {
-        setConverterMode('advanced');
+      const fromUnitDetails = getUnitsForCategoryAndMode(item.category, 'advanced').find(u => u.symbol === item.fromUnit);
+      const toUnitDetails = getUnitsForCategoryAndMode(item.category, 'advanced').find(u => u.symbol === item.toUnit);
+      
+      let targetMode = converterMode;
+      if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
+        targetMode = 'advanced';
+      } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
+        // If both units are basic, and current mode is advanced, consider switching to basic,
+        // or let user decide. For now, we'll switch if both are strictly basic.
+        const allUnitsInCat = getUnitsForCategoryAndMode(item.category, 'advanced');
+        const isFromUnitStrictlyBasic = allUnitsInCat.find(u=>u.symbol === item.fromUnit)?.mode === 'basic';
+        const isToUnitStrictlyBasic = allUnitsInCat.find(u=>u.symbol === item.toUnit)?.mode === 'basic';
+        if(isFromUnitStrictlyBasic && isToUnitStrictlyBasic){
+            targetMode = 'basic';
+        }
       }
+
+      if (targetMode !== converterMode) {
+        setConverterMode(targetMode);
+      }
+      
       setTimeout(() => {
         if (unitConverterRef.current) {
           unitConverterRef.current.applyHistorySelect(item);
         }
-      }, 0);
+      }, 0); // Ensure mode switch is processed before applying history
     }
     if (isMobile) setIsSheetOpen(false);
   }, [converterMode, isMobile, setConverterMode]);
@@ -143,8 +160,8 @@ export default function Home() {
   const formatHistoryNumberMobile = (num: number): string => {
     if (!isFinite(num)) return '-';
     const absNum = Math.abs(num);
-    if (absNum > 1e4 || (absNum < 1e-3 && absNum !== 0)) { // Slightly different thresholds for mobile for brevity
-      let exp = num.toExponential(2).replace('e', 'E'); // Fewer decimal places for mobile
+    if (absNum > 1e4 || (absNum < 1e-3 && absNum !== 0)) { 
+      let exp = num.toExponential(2).replace('e', 'E'); 
       const match = exp.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
       if (match) {
           let coeff = match[1];
@@ -157,7 +174,7 @@ export default function Home() {
       }
       return exp;
     }
-    const rounded = parseFloat(num.toFixed(3)); // Fewer decimal places for mobile
+    const rounded = parseFloat(num.toFixed(3)); 
     if (rounded % 1 === 0) {
       return rounded.toLocaleString(undefined, { maximumFractionDigits: 0 });
     }
@@ -255,7 +272,7 @@ export default function Home() {
                       <p className="text-sm text-muted-foreground">No history yet.</p>
                     ) : (
                       <ul className="space-y-2">
-                        {history.slice(0, 5).map((item) => (
+                        {history.slice(0, 5).map((item) => ( // Show only top 5 for brevity in sheet
                           <li key={item.id}>
                             <SheetClose asChild>
                               <Button
@@ -313,6 +330,7 @@ export default function Home() {
       )}>
         {!isMobile && (
           <aside className="hidden md:block max-w-[280px]" role="complementary">
+             {/* Ensure HistoryList takes full available height of its grid cell */}
             <HistoryList items={history} onHistorySelect={onHistoryItemSelect} onClearHistory={clearHistory} className="h-full"/>
           </aside>
         )}
@@ -320,7 +338,7 @@ export default function Home() {
           <Toaster />
           <UnitConverter 
             ref={unitConverterRef} 
-            className="h-full"
+            className="h-full" // Make UnitConverter take full height
             converterMode={converterMode}
             setConverterMode={setConverterMode}
             onResultCopied={handleResultCopied}
@@ -328,11 +346,16 @@ export default function Home() {
         </main>
         {!isMobile && (
           <aside className="hidden md:block max-w-[280px]" role="complementary">
+             {/* Ensure PresetList takes full available height of its grid cell */}
             <PresetList onPresetSelect={handlePresetSelectFromDesktop} className="h-full"/>
           </aside>
         )}
       </div>
+      {!isMobile && <AdPlaceholder />}
       <Footer />
+      {isMobile && <AdPlaceholder />}
+
     </>
   );
 }
+
