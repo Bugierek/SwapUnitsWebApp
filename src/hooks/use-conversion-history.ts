@@ -1,14 +1,14 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import type { ConversionHistoryItem, UnitCategory } from '@/types';
 
 const HISTORY_KEY = 'swapUnitsConversionHistory';
-const MAX_HISTORY_ITEMS = 8; // Updated to 8
+const MAX_HISTORY_ITEMS = 8; 
 
 export function useConversionHistory() {
   const [history, setHistory] = useState<ConversionHistoryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true); // Added isLoading state
 
   useEffect(() => {
     // Load history from localStorage on initial mount
@@ -20,9 +20,12 @@ export function useConversionHistory() {
         }
       } catch (error) {
         console.error("Error reading conversion history from localStorage:", error);
-        // Initialize with empty array if localStorage is corrupt or inaccessible
         setHistory([]);
+      } finally {
+        setIsLoading(false); // Set loading to false after attempting to load
       }
+    } else {
+      setIsLoading(false); // Fallback for non-browser environments (though this is a client hook)
     }
   }, []);
 
@@ -35,7 +38,7 @@ export function useConversionHistory() {
   }) => {
     const newItem: ConversionHistoryItem = {
       ...itemData,
-      id: crypto.randomUUID(), // Modern way to generate UUIDs
+      id: crypto.randomUUID(), 
       timestamp: Date.now(),
     };
 
@@ -46,7 +49,6 @@ export function useConversionHistory() {
           localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
         } catch (error) {
           console.error("Error saving conversion history to localStorage:", error);
-          // Potentially handle quota exceeded errors here
         }
       }
       return updatedHistory;
@@ -65,5 +67,5 @@ export function useConversionHistory() {
   }, []);
 
 
-  return { history, addHistoryItem, clearHistory };
+  return { history, addHistoryItem, clearHistory, isLoading }; // Return isLoading
 }

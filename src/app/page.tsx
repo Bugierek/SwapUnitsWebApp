@@ -1,5 +1,3 @@
-
-
 'use client'; 
 
 import * as React from 'react';
@@ -20,7 +18,7 @@ import type { Preset, ConverterMode, UnitCategory, ConversionHistoryItem } from 
 
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useConversionHistory } from '@/hooks/use-conversion-history';
-import { useToast } from '@/hooks/use-toast'; // Added useToast
+import { useToast } from '@/hooks/use-toast'; 
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -31,7 +29,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, RefreshCw, List, Settings2, History as HistoryIconLucide, Copy } from 'lucide-react'; // Added Copy
+import { Menu, RefreshCw, List, Settings2, History as HistoryIconLucide, Copy } from 'lucide-react'; 
 import { cn } from '@/lib/utils';
 
 
@@ -63,7 +61,7 @@ export default function Home() {
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const unitConverterRef = React.useRef<UnitConverterHandle>(null);
   const [converterMode, setConverterMode] = React.useState<ConverterMode>('basic');
-  const { history, addHistoryItem, clearHistory } = useConversionHistory();
+  const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
 
   const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(), []);
 
@@ -263,7 +261,7 @@ export default function Home() {
                       </h3>
                       {history.length > 0 && (
                         <SheetClose asChild>
-                          <Button variant="outline" size="xs" onClick={clearHistory} aria-label="Clear history" className="px-3 py-1.5"> {/* Increased padding */}
+                          <Button variant="outline" size="xs" onClick={clearHistory} aria-label="Clear history" className="px-3 py-1.5">
                               Clear
                           </Button>
                         </SheetClose>
@@ -272,8 +270,8 @@ export default function Home() {
                     {history.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No history yet.</p>
                     ) : (
-                      <ul className="space-y-1"> {/* Adjusted space-y */}
-                        {history.map((item) => ( // Display all available history items (max 8)
+                      <ul className="space-y-1"> 
+                        {history.map((item) => ( 
                           <li key={item.id} className="flex items-center justify-between gap-1 group/history-item-mobile">
                              <SheetClose asChild>
                               <Button
@@ -284,10 +282,10 @@ export default function Home() {
                               >
                                   <UnitIcon category={item.category} className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium break-words"> {/* Ensure text wrapping */}
+                                      <p className="font-medium break-words"> 
                                           {formatHistoryNumberMobile(item.fromValue)} {item.fromUnit} → {formatHistoryNumberMobile(item.toValue)} {item.toUnit}
                                       </p>
-                                      <p className="text-xs text-muted-foreground break-words"> {/* Ensure text wrapping */}
+                                      <p className="text-xs text-muted-foreground break-words"> 
                                           {item.category} - {format(new Date(item.timestamp), 'MMM d, p')}
                                       </p>
                                   </div>
@@ -364,7 +362,13 @@ export default function Home() {
       )}>
         {!isMobile && (
           <aside className="hidden md:block max-w-[280px]" role="complementary">
-            <HistoryList items={history} onHistorySelect={onHistoryItemSelect} onClearHistory={clearHistory} className="h-full"/>
+            <HistoryList 
+                items={history} 
+                onHistorySelect={onHistoryItemSelect} 
+                onClearHistory={clearHistory} 
+                className="h-full"
+                isLoading={isLoadingHistory}
+            />
           </aside>
         )}
         <main className="flex flex-col items-center w-full" role="main">
@@ -390,4 +394,3 @@ export default function Home() {
     </>
   );
 }
-

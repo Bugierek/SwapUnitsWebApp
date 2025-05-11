@@ -1,26 +1,26 @@
-
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { ConversionHistoryItem } from '@/types';
-import { History as HistoryIconLucide, Copy } from 'lucide-react'; // Renamed to avoid conflict, Added Copy icon
+import { History as HistoryIconLucide, Copy } from 'lucide-react';
 import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
-import { useToast } from '@/hooks/use-toast'; // Added useToast
+import { useToast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress'; // Import Progress component
 
 interface HistoryListProps {
     items: ConversionHistoryItem[];
     onHistorySelect: (item: ConversionHistoryItem) => void;
     onClearHistory?: () => void;
     className?: string;
+    isLoading?: boolean; // Added isLoading prop
 }
 
 const formatHistoryNumber = (num: number): string => {
   if (!isFinite(num)) return '-';
   const absNum = Math.abs(num);
-  // Use scientific notation for very large or very small numbers, 4 decimal places for coefficient
   if (absNum > 1e7 || (absNum < 1e-5 && absNum !== 0)) {
     let exp = num.toExponential(4).replace('e', 'E');
     const match = exp.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
@@ -28,24 +28,22 @@ const formatHistoryNumber = (num: number): string => {
         let coeff = match[1];
         const exponent = match[3];
         if (coeff.includes('.')) {
-            coeff = coeff.replace(/0+$/, ''); // Remove trailing zeros after decimal
-            coeff = coeff.replace(/\.$/, '');  // Remove decimal point if no digits follow
+            coeff = coeff.replace(/0+$/, ''); 
+            coeff = coeff.replace(/\.$/, '');  
         }
         return coeff + exponent;
     }
-    return exp; // Fallback
+    return exp; 
   }
-  // For normal numbers, round to 5 decimal places and remove trailing zeros
   const rounded = parseFloat(num.toFixed(5));
-  if (rounded % 1 === 0) { // If it's an integer after rounding
+  if (rounded % 1 === 0) { 
     return rounded.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
-  // Format with minimum 0 and maximum 5 decimal places
   return rounded.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 5 });
 };
 
-export const HistoryList = React.memo(function HistoryListComponent({ items, onHistorySelect, onClearHistory, className }: HistoryListProps) {
-    const { toast } = useToast(); // Initialize toast
+export const HistoryList = React.memo(function HistoryListComponent({ items, onHistorySelect, onClearHistory, className, isLoading }: HistoryListProps) {
+    const { toast } = useToast(); 
 
     const handleCopyHistoryItem = React.useCallback(async (item: ConversionHistoryItem) => {
         const textToCopy = `${formatHistoryNumber(item.fromValue)} ${item.fromUnit} → ${formatHistoryNumber(item.toValue)} ${item.toUnit}`;
@@ -77,7 +75,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                         <HistoryIconLucide className="h-5 w-5" aria-hidden="true" />
                         History
                     </CardTitle>
-                    {onClearHistory && items.length > 0 && (
+                    {onClearHistory && items.length > 0 && !isLoading && (
                         <Button variant="outline" size="sm" onClick={onClearHistory} aria-label="Clear history">
                             Clear
                         </Button>
@@ -85,13 +83,18 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                 </div>
             </CardHeader>
             <CardContent className="pt-2 flex-grow overflow-hidden">
-                {items.length === 0 ? (
+                {isLoading ? (
+                    <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
+                        <p className="text-sm text-muted-foreground">Loading history...</p>
+                        <Progress value={50} className="w-3/4" aria-label="Loading progress" />
+                    </div>
+                ) : items.length === 0 ? (
                     <p className="text-sm text-muted-foreground h-full flex items-center justify-center">
                         Copied results will appear here.
                     </p>
                 ) : (
                     <ScrollArea className="h-full">
-                        <ul className="space-y-1 pr-3"> {/* Adjusted space-y */}
+                        <ul className="space-y-1 pr-3"> 
                             {items.map((item) => (
                                 <li key={item.id} className="flex items-center justify-between gap-1 group/history-item">
                                   <Button
@@ -101,7 +104,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                       aria-label={`Apply conversion: ${formatHistoryNumber(item.fromValue)} ${item.fromUnit} to ${formatHistoryNumber(item.toValue)} ${item.toUnit}`}
                                   >
                                       <UnitIcon category={item.category} className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
-                                      <div className="flex-1 min-w-0"> {/*  Ensure text wrapping */}
+                                      <div className="flex-1 min-w-0"> 
                                           <p className="font-medium break-words">
                                               {formatHistoryNumber(item.fromValue)} {item.fromUnit} → {formatHistoryNumber(item.toValue)} {item.toUnit}
                                           </p>
@@ -115,7 +118,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                     size="icon"
                                     className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover/history-item:opacity-100 focus:opacity-100 transition-opacity"
                                     onClick={(e) => {
-                                        e.stopPropagation(); // Prevent onHistorySelect from firing
+                                        e.stopPropagation(); 
                                         handleCopyHistoryItem(item);
                                     }}
                                     aria-label="Copy this history item to clipboard"
