@@ -45,7 +45,8 @@ export type Preset = {
 
 export type NumberFormat = 'normal' | 'scientific';
 
-export type ConverterMode = 'basic' | 'advanced';
+// Removed ConverterMode type
+// export type ConverterMode = 'basic' | 'advanced';
 
 export type ConversionHistoryItem = {
   id: string;
@@ -56,3 +57,4 @@ export type ConversionHistoryItem = {
   toUnit: string;
   timestamp: number;
 };
+

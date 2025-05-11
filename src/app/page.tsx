@@ -1,4 +1,5 @@
 
+
 'use client'; 
 
 import * as React from 'react';
@@ -15,7 +16,7 @@ import { HistoryList } from "@/components/history-list";
 import AdPlaceholder from "@/components/ad-placeholder"; 
 import { UnitIcon } from '@/components/unit-icon'; 
 import { unitData, getFilteredAndSortedPresets, getUnitsForCategoryAndMode } from '@/lib/unit-data'; 
-import type { Preset, ConverterMode, UnitCategory, ConversionHistoryItem } from '@/types'; 
+import type { Preset, UnitCategory, ConversionHistoryItem } from '@/types'; // Removed ConverterMode
 
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useConversionHistory } from '@/hooks/use-conversion-history';
@@ -30,7 +31,7 @@ import {
   SheetClose,
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, RefreshCw, List, Settings2, History as HistoryIconLucide, Copy } from 'lucide-react'; 
+import { Menu, RefreshCw, List, /*Settings2,*/ History as HistoryIconLucide, Copy } from 'lucide-react'; // Removed Settings2
 import { cn } from '@/lib/utils';
 
 
@@ -38,7 +39,7 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
   name: 'SwapUnits - Free Online Unit Converter',
-  description: 'A free online tool to convert between various units of measurement including length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer rate, Bitcoin, Ethereum, EM Frequency, and Sound Frequency.',
+  description: 'A free online tool to convert between various units of measurement including length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer rate, Bitcoin.', // Removed Ethereum, EM Frequency, and Sound Frequency
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Any',
   url: process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com',
@@ -46,13 +47,14 @@ const jsonLd = {
     'Unit Conversion', 'Length Conversion', 'Mass Conversion', 'Temperature Conversion', 'Time Conversion', 
     'Pressure Conversion', 'Area Conversion', 'Volume Conversion', 'Energy Conversion', 'Speed Conversion', 
     'Fuel Economy Conversion', 'Data Storage Conversion', 'Data Transfer Rate Conversion', 
-    'Bitcoin Conversion', 'Ethereum Conversion', 'EM Frequency & Wavelength Conversion', 
-    'Sound Frequency & Wavelength Conversion', 'Metric Units', 'Imperial Units', 'Scientific Notation Option',
-    'Common Conversion Presets', 'Copy to Clipboard', 'Responsive Design', 'Basic and Advanced modes',
+    'Bitcoin Conversion', // Removed Ethereum, EM Frequency, Sound Frequency
+    'Metric Units', 'Imperial Units', 'Scientific Notation Option',
+    'Common Conversion Presets', 'Copy to Clipboard', 'Responsive Design', 
+    // Removed 'Basic and Advanced modes'
     'Conversion History'
   ],
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, satoshi, ethereum, gwei, wei, metric, imperial, scientific notation, presets, femtosecond, picosecond, nanosecond, microsecond, EM frequency, sound frequency, wavelength, THz, GHz, nm, Pa, yr, history",
+  keywords: "unit converter, measurement converter, convert units, online converter, free tool, calculator, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, bitcoin, satoshi, metric, imperial, scientific notation, presets, yr, history", // Removed advanced-only keywords
 };
 
 
@@ -61,10 +63,11 @@ export default function Home() {
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const unitConverterRef = React.useRef<UnitConverterHandle>(null);
-  const [converterMode, setConverterMode] = React.useState<ConverterMode>('basic');
+  // const [converterMode, setConverterMode] = React.useState<ConverterMode>('basic'); // Removed
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
 
-  const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(converterMode), [converterMode]);
+  // Simplified: no converterMode dependency
+  const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(), []);
 
   const handleResultCopied = React.useCallback((data: {
     category: UnitCategory;
@@ -78,83 +81,85 @@ export default function Home() {
 
   const onHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
     if (unitConverterRef.current) {
-      const fromUnitDetails = getUnitsForCategoryAndMode(item.category, 'advanced').find(u => u.symbol === item.fromUnit);
-      const toUnitDetails = getUnitsForCategoryAndMode(item.category, 'advanced').find(u => u.symbol === item.toUnit);
+      // Removed mode switching logic
+      // const fromUnitDetails = getUnitsForCategoryAndMode(item.category, 'advanced').find(u => u.symbol === item.fromUnit);
+      // const toUnitDetails = getUnitsForCategoryAndMode(item.category, 'advanced').find(u => u.symbol === item.toUnit);
       
-      let targetMode = converterMode;
-      if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
-        targetMode = 'advanced';
-      } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
-        const allUnitsInCat = getUnitsForCategoryAndMode(item.category, 'advanced');
-        // Check if units are strictly basic, not 'all'
-        const isFromUnitStrictlyBasic = allUnitsInCat.find(u=>u.symbol === item.fromUnit)?.mode === 'basic';
-        const isToUnitStrictlyBasic = allUnitsInCat.find(u=>u.symbol === item.toUnit)?.mode === 'basic';
+      // let targetMode = converterMode;
+      // if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
+      //   targetMode = 'advanced';
+      // } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
+      //   const allUnitsInCat = getUnitsForCategoryAndMode(item.category, 'advanced');
+      //   const isFromUnitStrictlyBasic = allUnitsInCat.find(u=>u.symbol === item.fromUnit)?.mode === 'basic';
+      //   const isToUnitStrictlyBasic = allUnitsInCat.find(u=>u.symbol === item.toUnit)?.mode === 'basic';
 
-        if(isFromUnitStrictlyBasic && isToUnitStrictlyBasic){
-            targetMode = 'basic';
-        }
-      }
+      //   if(isFromUnitStrictlyBasic && isToUnitStrictlyBasic){
+      //       targetMode = 'basic';
+      //   }
+      // }
 
-      if (targetMode !== converterMode) {
-        setConverterMode(targetMode);
-      }
+      // if (targetMode !== converterMode) {
+      //   setConverterMode(targetMode);
+      // }
       
-      setTimeout(() => {
-        if (unitConverterRef.current) {
-          unitConverterRef.current.applyHistorySelect(item);
-        }
-      }, 0); 
+      // setTimeout(() => { // setTimeout might still be useful for other reasons, but mode change is gone
+      if (unitConverterRef.current) {
+        unitConverterRef.current.applyHistorySelect(item);
+      }
+      // }, 0); 
     }
     if (isMobile) setIsSheetOpen(false);
-  }, [converterMode, isMobile, setConverterMode]);
+  }, [isMobile /*, converterMode, setConverterMode*/]); // Removed converterMode, setConverterMode
 
 
   const onMobilePresetSelect = (preset: Preset) => {
     if (unitConverterRef.current) {
-      const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
-      const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
+      // Removed mode switching logic
+      // const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
+      // const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
       
-      let targetMode = converterMode;
-      if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
-          targetMode = 'advanced';
-      } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
-          targetMode = 'basic';
-      }
+      // let targetMode = converterMode;
+      // if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
+      //     targetMode = 'advanced';
+      // } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
+      //     targetMode = 'basic';
+      // }
       
-      if (targetMode !== converterMode) {
-        setConverterMode(targetMode);
-      }
+      // if (targetMode !== converterMode) {
+      //   setConverterMode(targetMode);
+      // }
 
-      setTimeout(() => {
-        if (unitConverterRef.current) {
-         unitConverterRef.current.handlePresetSelect(preset);
-        }
-      },0);
+      // setTimeout(() => {
+      if (unitConverterRef.current) {
+        unitConverterRef.current.handlePresetSelect(preset);
+      }
+      // },0);
     }
     setIsSheetOpen(false); 
   };
 
   const handlePresetSelectFromDesktop = (preset: Preset) => {
     if (unitConverterRef.current) {
-      const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
-      const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
+      // Removed mode switching logic
+      // const fromUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.fromUnit);
+      // const toUnitDetails = unitData[preset.category]?.units.find(u => u.symbol === preset.toUnit);
 
-      let targetMode = converterMode;
-       if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
-          targetMode = 'advanced';
-      } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
-          targetMode = 'basic';
-      }
+      // let targetMode = converterMode;
+      //  if (fromUnitDetails?.mode === 'advanced' || toUnitDetails?.mode === 'advanced') {
+      //     targetMode = 'advanced';
+      // } else if (fromUnitDetails?.mode === 'basic' && toUnitDetails?.mode === 'basic' && converterMode === 'advanced') {
+      //     targetMode = 'basic';
+      // }
 
-      if (targetMode !== converterMode) {
-        setConverterMode(targetMode);
-      }
+      // if (targetMode !== converterMode) {
+      //   setConverterMode(targetMode);
+      // }
       
-      setTimeout(() => {
-         if (unitConverterRef.current) {
-            unitConverterRef.current.handlePresetSelect(preset);
-         }
-      }, 0);
+      // setTimeout(() => {
+      if (unitConverterRef.current) {
+          unitConverterRef.current.handlePresetSelect(preset);
+      }
+      // }, 0);
     }
   };
 
@@ -167,7 +172,7 @@ export default function Home() {
         toUnit: 'g',
         name: 'InitialReset', 
       };
-      setConverterMode('basic'); 
+      // setConverterMode('basic'); // Removed
       Promise.resolve().then(() => {
         if (unitConverterRef.current) {
           unitConverterRef.current.handlePresetSelect(initialPreset);
@@ -249,30 +254,8 @@ export default function Home() {
                     </SheetTitle>
                   </SheetHeader>
 
-                  <div className="p-4 border-b">
-                    <h3 className="text-md font-semibold text-foreground mb-3 flex items-center gap-2">
-                        <Settings2 className="h-4 w-4" aria-hidden="true" />
-                        Mode
-                    </h3>
-                    <div className="flex w-full">
-                       <SheetClose asChild>
-                        <Button
-                          variant={converterMode === 'basic' ? 'secondary' : 'outline'}
-                          onClick={() => { if (converterMode !== 'basic') setConverterMode('basic'); }}
-                          aria-pressed={converterMode === 'basic'}
-                          className="flex-1 px-5 text-sm rounded-r-none"
-                        > Basic </Button>
-                      </SheetClose>
-                      <SheetClose asChild>
-                        <Button
-                          variant={converterMode === 'advanced' ? 'secondary' : 'outline'}
-                          onClick={() => { if (converterMode !== 'advanced') setConverterMode('advanced'); }}
-                          aria-pressed={converterMode === 'advanced'}
-                          className="flex-1 px-5 text-sm rounded-l-none"
-                        > Advanced </Button>
-                      </SheetClose>
-                    </div>
-                  </div>
+                  {/* Removed Mode Section */}
+                  {/* <div className="p-4 border-b"> ... </div> */}
                   
                   <div className="p-4 border-b">
                     <div className="flex justify-between items-center mb-3">
@@ -378,13 +361,13 @@ export default function Home() {
 
       <div className={cn(
         "flex-grow grid grid-cols-1 w-full max-w-7xl mx-auto items-stretch",
-        "2xl:max-w-screen-2xl", // Wider on 2xl screens
+        "2xl:max-w-screen-2xl", 
         "pt-2 pb-4 px-4",
         "sm:pt-4 sm:pb-8 sm:px-8",
         "md:pt-6 md:pb-12 md:px-12",
         "lg:pt-8 lg:pb-16 lg:px-16",
         "xl:pt-10 xl:pb-20 xl:px-20",
-        "2xl:pt-12 2xl:pb-24 2xl:px-24", // New paddings for 2xl
+        "2xl:pt-12 2xl:pb-24 2xl:px-24", 
          !isMobile && "md:grid-cols-[minmax(0,20rem)_1fr_minmax(0,20rem)] md:gap-8"
       )}>
         {!isMobile && (
@@ -403,8 +386,8 @@ export default function Home() {
           <UnitConverter 
             ref={unitConverterRef} 
             className="h-full" 
-            converterMode={converterMode}
-            setConverterMode={setConverterMode}
+            // converterMode={converterMode} // Removed
+            // setConverterMode={setConverterMode} // Removed
             onResultCopied={handleResultCopied}
           />
         </main>

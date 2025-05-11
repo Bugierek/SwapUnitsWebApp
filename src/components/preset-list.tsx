@@ -1,8 +1,9 @@
+
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getFilteredAndSortedPresets } from "@/lib/unit-data"; 
-import type { Preset, ConverterMode } from '@/types'; // Added ConverterMode
+import type { Preset } from '@/types'; 
 import { List } from 'lucide-react';
 import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
@@ -10,16 +11,13 @@ import { cn } from "@/lib/utils";
 interface PresetListProps {
     onPresetSelect: (preset: Preset) => void;
     className?: string; 
-    // converterMode?: ConverterMode; // Optional: pass if needed for filtering, or handle filtering in getFilteredAndSortedPresets
 }
 
 export const PresetList = React.memo(function PresetListComponent({ onPresetSelect, className }: PresetListProps) {
-    // Consider passing converterMode if presets should dynamically change with mode
-    // For now, assuming getFilteredAndSortedPresets handles mode or shows all relevant ones
-    const displayPresets = getFilteredAndSortedPresets(); // Potentially: getFilteredAndSortedPresets(converterMode)
+    const displayPresets = getFilteredAndSortedPresets(); 
 
     return (
-        <Card className={cn("shadow-lg hidden md:block w-full", className)} aria-label="Common Unit Conversion Presets">
+        <Card className={cn("shadow-lg hidden md:block w-full max-w-xs", className)} aria-label="Common Unit Conversion Presets">
             <CardHeader>
                 <CardTitle className="text-xl font-semibold text-primary flex items-center gap-2">
                     <List className="h-5 w-5" aria-hidden="true" />
