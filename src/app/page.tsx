@@ -88,18 +88,14 @@ export default function Home() {
 
   const onMobilePresetSelect = (preset: Preset) => {
     if (unitConverterRef.current) {
-      if (unitConverterRef.current) {
         unitConverterRef.current.handlePresetSelect(preset);
-      }
     }
     setIsSheetOpen(false); 
   };
 
   const handlePresetSelectFromDesktop = (preset: Preset) => {
     if (unitConverterRef.current) {
-      if (unitConverterRef.current) {
-          unitConverterRef.current.handlePresetSelect(preset);
-      }
+        unitConverterRef.current.handlePresetSelect(preset);
     }
   };
 
@@ -112,11 +108,25 @@ export default function Home() {
         toUnit: 'g',
         name: 'InitialReset', 
       };
-      Promise.resolve().then(() => {
-        if (unitConverterRef.current) {
-          unitConverterRef.current.handlePresetSelect(initialPreset);
-        }
-      });
+      // Ensure the value is reset to 1 explicitly when logo is clicked to reset the app state
+      // This is different from selecting a preset where the value might be preserved.
+      // The handlePresetSelect in UnitConverter will set value to 1 if name is 'InitialReset' (or similar logic).
+      // For this specific logo click, we want to ensure the value resets.
+      // The internalHandlePresetSelect needs to be aware if it's a full reset.
+      // Or, we can add a specific reset method to the handle.
+      // For now, relying on handlePresetSelect to reset value to 1 for 'InitialReset'
+      // Let's adjust handlePresetSelect to take an optional flag or check preset name for full reset.
+      // Simpler: call applyHistorySelect with a crafted item that includes value: 1.
+      const resetItem: ConversionHistoryItem = {
+        id: 'reset',
+        category: 'Mass' as UnitCategory,
+        fromUnit: 'kg',
+        toUnit: 'g',
+        fromValue: 1,
+        toValue: 1000, // Placeholder, will be recalculated
+        timestamp: Date.now()
+      };
+      unitConverterRef.current.applyHistorySelect(resetItem);
     }
   };
 
