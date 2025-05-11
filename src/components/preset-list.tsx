@@ -94,7 +94,9 @@ export const PresetList = React.memo(function PresetListComponent({
                 )}
             </CardContent>
 
-            <Separator className="my-0 mx-4 flex-shrink-0" /> 
+            <div className="px-4 flex-shrink-0">
+                <Separator className="my-0" />
+            </div>
 
             {/* Common Conversions Section */}
             <CardHeader className="p-4 pb-2 flex-shrink-0"> {/* Adjusted padding */}
