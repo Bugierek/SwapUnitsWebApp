@@ -86,7 +86,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                 {isLoading ? (
                     <div className="h-full flex flex-col items-center justify-center gap-3 text-center">
                         <p className="text-sm text-muted-foreground">Loading history...</p>
-                        <Progress value={50} className="w-3/4" aria-label="Loading progress" />
+                        <Progress value={50} className="w-full" aria-label="Loading progress" />
                     </div>
                 ) : items.length === 0 ? (
                     <p className="text-sm text-muted-foreground h-full flex items-center justify-center">
