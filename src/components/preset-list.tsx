@@ -80,7 +80,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover/fav-item:opacity-100 focus:opacity-100 transition-opacity"
+                                    className="h-8 w-8 shrink-0 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover/fav-item:opacity-100 focus:opacity-100 transition-opacity"
                                     onClick={(e) => {
                                         e.stopPropagation(); 
                                         onRemoveFavorite(fav.id);

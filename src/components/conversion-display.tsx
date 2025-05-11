@@ -256,11 +256,11 @@ export const ConversionDisplay = React.memo(function ConversionDisplayComponent(
                         variant="ghost"
                         size="icon"
                         onClick={handleSaveToFavoritesInternal}
-                        className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-accent focus:text-accent disabled:text-muted-foreground/50 disabled:hover:text-muted-foreground/50"
+                        className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:bg-transparent hover:text-accent focus:text-accent disabled:text-muted-foreground/50 disabled:hover:text-muted-foreground/50 group"
                         aria-label="Save conversion to favorites"
                         disabled={finalSaveDisabled}
                     >
-                        <Star className={cn("h-5 w-5", !finalSaveDisabled && "text-accent/80 hover:text-accent")} />
+                        <Star className={cn("h-5 w-5", !finalSaveDisabled ? "text-accent/80 group-hover:fill-current" : "text-muted-foreground/50")} />
                     </Button>
                 )}
             </Card>
