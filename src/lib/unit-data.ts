@@ -1,6 +1,6 @@
 
 
-import type { UnitCategory, UnitData, Preset, Unit } from '@/types';
+import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types';
 
 // Base units:
 // Length: Meter (m)
@@ -153,8 +153,6 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Satoshi', symbol: 'sat', factor: 1e-8, mode: 'all' },
         ],
     },
-    // Categories below were advanced-only and are now effectively removed
-    // by having no units with mode 'all' or 'basic'
     Ethereum: {
         name: 'Ethereum',
         units: [],
@@ -216,115 +214,40 @@ export const getUnitsForCategoryAndMode = (category: UnitCategory | ""): Unit[] 
   if (!category || !unitData[categoryKey]) {
     return [];
   }
-  // Since there's only one mode now, always return all units for the category
   return unitData[categoryKey].units ?? [];
 };
 
-export const getFilteredAndSortedPresets = (): Preset[] => {
-    // All presets are valid in basic mode now
-    const validPresets = allPresets.filter(preset => {
+export const getFilteredAndSortedPresets = (favorites: FavoriteItem[] = []): Preset[] => {
+    const favoriteSignatures = new Set(
+        favorites.map(fav => `${fav.category}-${fav.fromUnit}-${fav.toUnit}`)
+    );
+
+    // Filter out presets that are already favorites
+    const availablePresets = allPresets.filter(preset => {
+        const presetSignature = `${preset.category}-${preset.fromUnit}-${preset.toUnit}`;
+        return !favoriteSignatures.has(presetSignature);
+    });
+    
+    // Validate that units in presets are available in the 'all' mode (which is the only mode now)
+    const validPresets = availablePresets.filter(preset => {
         const fromUnitDetails = getUnitsForCategoryAndMode(preset.category).find(u => u.symbol === preset.fromUnit);
         const toUnitDetails = getUnitsForCategoryAndMode(preset.category).find(u => u.symbol === preset.toUnit);
-        return fromUnitDetails && toUnitDetails;
+        return fromUnitDetails && toUnitDetails; // Both units must exist in the 'all' mode for the category
     });
 
-    const sortedByOrder = [...validPresets].sort((a, b) => {
+
+    // Sort according to existing logic (categoryOrder, then maybe by name)
+    const sortedAvailablePresets = [...validPresets].sort((a, b) => {
         const indexA = categoryOrder.indexOf(a.category);
         const indexB = categoryOrder.indexOf(b.category);
-        if (indexA === -1 && indexB === -1) return 0;
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-    });
 
-    let finalPresets: Preset[] = [];
-    const categoryCounts: Record<string, number> = {};
-
-    categoryOrder.forEach(catName => {
-        if (finalPresets.length >= 15) return;
-        const presetForCategory = sortedByOrder.find(p => p.category === catName);
-
-        if (presetForCategory) {
-             const isAlreadyAdded = finalPresets.some(fp =>
-                fp.name === presetForCategory.name && fp.category === presetForCategory.category
-            );
-            if (!isAlreadyAdded) {
-                finalPresets.push(presetForCategory);
-                categoryCounts[catName] = (categoryCounts[catName] || 0) + 1;
-            }
+        if (indexA !== indexB) {
+            if (indexA === -1) return 1; // Presets with categories not in order go to the end
+            if (indexB === -1) return -1;
+            return indexA - indexB;
         }
+        // Fallback sort by name if categories are the same or not in order
+        return a.name.localeCompare(b.name);
     });
-
-    sortedByOrder.forEach(preset => {
-        if (finalPresets.length >= 15) return;
-        const currentCount = categoryCounts[preset.category] || 0;
-        const isAlreadyAdded = finalPresets.some(fp =>
-           fp.name === preset.name && fp.category === preset.category
-        );
-
-        if (!isAlreadyAdded && currentCount < 2) {
-            finalPresets.push(preset);
-            categoryCounts[preset.category] = currentCount + 1;
-        }
-    });
-
-    const bitcoinPresetTarget = 'Bitcoin to Satoshi';
-    const bitcoinCategoryTarget: UnitCategory = 'Bitcoin';
-    let btcPresetInstance = validPresets.find(p => p.name === bitcoinPresetTarget && p.category === bitcoinCategoryTarget);
-
-    finalPresets = finalPresets.filter(p => !(p.name === bitcoinPresetTarget && p.category === bitcoinCategoryTarget));
-
-    if(btcPresetInstance) {
-        if (finalPresets.length >= 4) {
-            finalPresets.splice(4, 0, btcPresetInstance);
-        } else {
-            finalPresets.push(btcPresetInstance);
-        }
-    }
-
-    const lastRequestedPresetName = 'km/L to MPG (UK)';
-    const lastRequestedPresetCategory: UnitCategory = 'Fuel Economy';
-    const hasLastRequested = finalPresets.some(p => p.name === lastRequestedPresetName && p.category === lastRequestedPresetCategory);
-
-    if (!hasLastRequested) {
-        const presetToAdd = validPresets.find(p => p.name === lastRequestedPresetName && p.category === lastRequestedPresetCategory);
-        if (presetToAdd) {
-            if (finalPresets.length < 15) {
-                finalPresets.push(presetToAdd);
-            } else {
-                let replaced = false;
-                for (let i = finalPresets.length - 1; i >= 0; i--) {
-                    const cat = finalPresets[i].category;
-                    if (categoryCounts[cat] > 1 && cat !== bitcoinCategoryTarget && cat !== lastRequestedPresetCategory) {
-                         const firstIndexOfCat = finalPresets.findIndex(fp => fp.category === cat);
-                         if (i !== firstIndexOfCat) {
-                            finalPresets[i] = presetToAdd;
-                            if(categoryCounts[cat]) categoryCounts[cat]--;
-                            categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
-                            replaced = true;
-                            break;
-                         }
-                    }
-                }
-                if (!replaced && finalPresets.length > 0 && finalPresets[finalPresets.length - 1].category !== bitcoinCategoryTarget) {
-                     const removedCat = finalPresets[finalPresets.length - 1].category;
-                     finalPresets[finalPresets.length - 1] = presetToAdd;
-                     if (categoryCounts[removedCat]) categoryCounts[removedCat]--;
-                     categoryCounts[lastRequestedPresetCategory] = (categoryCounts[lastRequestedPresetCategory] || 0) + 1;
-                }
-            }
-        }
-    }
-
-    finalPresets.sort((a,b) => categoryOrder.indexOf(a.category) - categoryOrder.indexOf(b.category));
-
-    const uniqueNames = new Set<string>();
-    finalPresets = finalPresets.filter(p => {
-        const duplicate = uniqueNames.has(p.name + p.category);
-        uniqueNames.add(p.name+p.category);
-        return !duplicate;
-    });
-
-    return finalPresets.slice(0,15);
+    return sortedAvailablePresets;
 };
-

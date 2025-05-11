@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getFilteredAndSortedPresets } from "@/lib/unit-data"; 
+// Removed: import { getFilteredAndSortedPresets } from "@/lib/unit-data"; 
 import type { Preset, FavoriteItem } from '@/types'; 
 import { List, Star, X } from 'lucide-react'; // Added Star and X icons
 import { UnitIcon } from './unit-icon';
@@ -12,16 +12,18 @@ import { Separator } from '@/components/ui/separator'; // Import Separator
 import { Progress } from '@/components/ui/progress';
 
 interface PresetListProps {
+    presetsToDisplay: Preset[]; // Use this prop for the list of presets
     onPresetSelect: (preset: Preset) => void;
     favorites: FavoriteItem[];
     onFavoriteSelect: (favorite: FavoriteItem) => void;
     onRemoveFavorite: (favoriteId: string) => void;
-    onClearAllFavorites?: () => void; // Optional: if you want a "Clear All Favorites" button
+    onClearAllFavorites?: () => void; 
     className?: string; 
-    isLoadingFavorites?: boolean; // Added isLoading prop
+    isLoadingFavorites?: boolean; 
 }
 
 export const PresetList = React.memo(function PresetListComponent({ 
+    presetsToDisplay, // Use this prop
     onPresetSelect, 
     favorites,
     onFavoriteSelect,
@@ -30,7 +32,7 @@ export const PresetList = React.memo(function PresetListComponent({
     className,
     isLoadingFavorites 
 }: PresetListProps) {
-    const displayPresets = getFilteredAndSortedPresets(); 
+    // Removed: const displayPresets = getFilteredAndSortedPresets(); 
 
     return (
         <Card className={cn("shadow-lg hidden md:flex md:flex-col w-full max-w-xs", className)} aria-label="Favorite and Common Unit Conversions">
@@ -105,24 +107,30 @@ export const PresetList = React.memo(function PresetListComponent({
                     Common Conversions
                 </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-2 flex-grow overflow-hidden"> {/* Adjusted padding, flex-grow will make this content area expand */}
-                <ScrollArea className="h-full pr-1"> {/* h-full makes ScrollArea fill its CardContent parent */}
-                    <ul className="space-y-2">
-                        {displayPresets.map((preset, index) => (
-                            <li key={`${preset.category}-${preset.name}-${index}`}>
-                              <Button
-                                  variant="ghost"
-                                  className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal flex items-center gap-2 text-sm" 
-                                  onClick={() => onPresetSelect(preset)} 
-                                  aria-label={`Select preset: ${preset.name}`}
-                              >
-                                  <UnitIcon category={preset.category} className="h-4 w-4 shrink-0" aria-hidden="true" />
-                                  <span className="flex-1">{preset.name}</span>
-                              </Button>
-                            </li>
-                        ))}
-                    </ul>
-                </ScrollArea>
+            <CardContent className="p-4 pt-2 flex-grow overflow-hidden"> 
+                 {presetsToDisplay.length === 0 && !isLoadingFavorites ? (
+                     <p className="text-sm text-muted-foreground h-full flex items-center justify-center">
+                        No common conversions to show.
+                    </p>
+                ) : (
+                    <ScrollArea className="h-full pr-1"> 
+                        <ul className="space-y-2">
+                            {presetsToDisplay.map((preset, index) => ( // Use presetsToDisplay
+                                <li key={`${preset.category}-${preset.name}-${index}`}>
+                                  <Button
+                                      variant="ghost"
+                                      className="w-full justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal flex items-center gap-2 text-sm" 
+                                      onClick={() => onPresetSelect(preset)} 
+                                      aria-label={`Select preset: ${preset.name}`}
+                                  >
+                                      <UnitIcon category={preset.category} className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                      <span className="flex-1">{preset.name}</span>
+                                  </Button>
+                                </li>
+                            ))}
+                        </ul>
+                    </ScrollArea>
+                )}
             </CardContent>
         </Card>
     );

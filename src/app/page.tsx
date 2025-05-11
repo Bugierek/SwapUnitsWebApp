@@ -1,3 +1,4 @@
+
 'use client'; 
 
 import * as React from 'react';
@@ -64,8 +65,10 @@ export default function Home() {
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
   const { favorites, addFavorite, removeFavorite, clearAllFavorites, isLoadingFavorites } = useFavorites(); 
 
+  const availablePresets = React.useMemo(() => getFilteredAndSortedPresets(favorites), [favorites]);
+  const displayPresetCount = Math.max(0, 12 - favorites.length);
+  const displayPresetsForList = React.useMemo(() => availablePresets.slice(0, displayPresetCount), [availablePresets, displayPresetCount]);
 
-  const displayPresets = React.useMemo(() => getFilteredAndSortedPresets(), []);
 
   const handleResultCopied = React.useCallback((data: {
     category: UnitCategory;
@@ -319,8 +322,11 @@ export default function Home() {
                         <List className="h-4 w-4" aria-hidden="true" />
                         Common Conversions
                     </h3>
+                     {displayPresetsForList.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No common conversions available.</p>
+                    ) : (
                     <ul className="space-y-2">
-                      {displayPresets.map((preset, index) => (
+                      {displayPresetsForList.map((preset, index) => (
                         <li key={`${preset.category}-${preset.name}-${index}`}>
                            <SheetClose asChild>
                             <Button
@@ -336,6 +342,7 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
+                    )}
                   </div>
                 </ScrollArea>
               </SheetContent>
@@ -397,6 +404,7 @@ export default function Home() {
         {!isMobile && (
           <aside className="hidden md:block w-full max-w-xs" role="complementary">
             <PresetList 
+                presetsToDisplay={displayPresetsForList}
                 onPresetSelect={handlePresetSelectFromDesktop} 
                 favorites={favorites}
                 onFavoriteSelect={handlePresetSelectFromDesktop} 

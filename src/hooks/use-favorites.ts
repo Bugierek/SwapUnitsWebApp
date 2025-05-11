@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FavoriteItem, UnitCategory } from '@/types';
 
 const FAVORITES_KEY = 'swapUnitsFavorites';
-const MAX_FAVORITE_ITEMS = 15; // Maximum number of favorites to store
+const MAX_FAVORITE_ITEMS = 6; // Maximum number of favorites to store
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -92,3 +92,4 @@ export function useFavorites() {
 
   return { favorites, addFavorite, removeFavorite, clearAllFavorites, isLoadingFavorites };
 }
+
