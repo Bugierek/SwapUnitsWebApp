@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google"; // Using Inter font
 import "./globals.css";
 import { cn } from "@/lib/utils"; // Import cn utility
+import { GoogleAnalytics } from "@/components/google-analytics"; // Import GoogleAnalytics
 
 // Use Inter font - known for readability
 const inter = Inter({
@@ -83,6 +84,7 @@ export default function RootLayout({
           "min-h-screen bg-background flex flex-col" // Ensure body takes full height and uses flex column
           )}
       >
+        <GoogleAnalytics />
         {children}
       </body>
     </html>
