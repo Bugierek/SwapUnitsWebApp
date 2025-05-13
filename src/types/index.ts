@@ -1,11 +1,10 @@
 
-
 export type Unit = {
   name: string;
   symbol: string;
   factor: number; // Factor to convert from this unit to the base unit of the category
   mode?: 'basic' | 'all' | 'advanced';
-  unitType?: 'frequency' | 'wavelength' | 'direct_efficiency' | 'inverse_consumption'; // Added types for Fuel Economy
+  unitType?: 'frequency' | 'wavelength' | 'direct_efficiency' | 'inverse_consumption';
 };
 
 export type UnitCategory =
@@ -21,10 +20,8 @@ export type UnitCategory =
   | 'Fuel Economy'
   | 'Data Storage'
   | 'Data Transfer Rate'
-  | 'Bitcoin'
-  | 'Ethereum'
-  | 'EM Frequency' 
-  | 'Sound Frequency'; 
+  | 'Bitcoin';
+  // Removed: | 'Ethereum' | 'EM Frequency' | 'Sound Frequency'
 
 export type UnitData = {
   name: string;
@@ -63,6 +60,6 @@ export type ConversionHistoryItem = {
   timestamp: number;
 };
 
-// Added ConverterMode type for clarity, used in unit-data.ts and unit-converter.tsx
 export type ConverterMode = 'basic' | 'advanced';
+
 

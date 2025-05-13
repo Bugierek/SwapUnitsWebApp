@@ -70,7 +70,6 @@ export interface UnitConverterHandle {
   applyHistorySelect: (item: ConversionHistoryItem) => void;
 }
 
-// Helper function to format numbers
 const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     formattedString: string;
     actualFormatUsed: NumberFormat;
@@ -84,7 +83,7 @@ const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     let formattedString: string;
     let scientificReason: 'magnitude' | 'user_choice' | null = null;
 
-    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0;
+    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || (Math.abs(num) < 1e-7 && num !== 0));
 
     if (requestedFormat === 'scientific' || useScientificDueToMagnitude) {
         actualFormatUsed = 'scientific';
@@ -118,12 +117,11 @@ const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     return { formattedString, actualFormatUsed, scientificReason };
 };
 
-// Helper function to format the "From" value input for display purposes
 const formatFromValue = (num: number | undefined): string => {
     if (num === undefined || !isFinite(num)) {
         return '-';
     }
-    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0;
+    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || (Math.abs(num) < 1e-7 && num !== 0));
 
     if (useScientificDueToMagnitude) {
         let exponential = num.toExponential(7).replace('e', 'E'); 
@@ -277,13 +275,16 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
         let newFromUnitSymbol = rhfFromUnit;
         let newToUnitSymbol = rhfToUnit;
-        let resetValueToDefault = false;
+        let resetValueToDefaultDueToCategoryChange = true; // Assume value reset unless specific preset/history action
+
+        // Check if this category change was due to a preset/history selection
+        // This is a bit tricky to detect directly here. The preset/history handlers will manage value preservation.
+        // For a direct user category change, we always reset the value.
 
         const fromUnitStillValidInNewContext = availableUnits.some(u => u.symbol === newFromUnitSymbol);
         const toUnitStillValidInNewContext = availableUnits.some(u => u.symbol === newToUnitSymbol);
 
         if (categoryToProcess !== selectedCategoryLocal || !fromUnitStillValidInNewContext || !toUnitStillValidInNewContext) {
-            resetValueToDefault = true;
             switch (categoryToProcess) {
                 case 'Length': newFromUnitSymbol = 'm'; newToUnitSymbol = 'ft'; break;
                 case 'Mass': newFromUnitSymbol = 'kg'; newToUnitSymbol = 'g'; break;
@@ -321,13 +322,21 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             setValue("toUnit", newToUnitSymbol, { shouldValidate: true, shouldDirty: true });
         }
 
-
-        if (resetValueToDefault) {
+        // Only reset value if it's a direct category change by user, not preset/history
+        // This effect doesn't know the source of category change, so preset/history handlers must restore value.
+        // For direct user category change, we reset value:
+        const formValues = getValues();
+        if (formValues.fromUnit === newFromUnitSymbol && formValues.toUnit === newToUnitSymbol) { // Check if units were actually updated by above logic
+             // If units were just set, and it's a category change, it's likely a user direct change or initial load.
+             // The preset/history handlers will explicitly set the value again if they initiated the category change.
+             // So, if THIS effect is the one primarily handling a category change (not overridden by preset/history value restoration), reset the value.
+             // This is tricky. Let's simplify: if category changes, reset value, and let preset/history restore it.
             setValue("value", 1, { shouldValidate: true, shouldDirty: true });
             setLastValidInputValue(1);
             setNumberFormat('normal');
             setIsNormalFormatDisabled(false);
         }
+
 
         Promise.resolve().then(() => {
             const currentVals = getValues();
@@ -338,7 +347,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         });
     }
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [rhfCategory, setValue, getValues, convertUnits, selectedCategoryLocal, rhfFromUnit, rhfToUnit]);
+ }, [rhfCategory, setValue, getValues, convertUnits, selectedCategoryLocal]);
 
 
   React.useEffect(() => {
@@ -409,7 +418,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const presetCategory = Object.keys(unitData).find(catKey => catKey === preset.category) as UnitCategory | undefined;
     if (!presetCategory) return;
 
+    const currentValueInForm = getValues("value");
+    const valueToKeep = (currentValueInForm !== undefined && String(currentValueInForm).trim() !== '' && !isNaN(Number(currentValueInForm)))
+        ? Number(currentValueInForm)
+        : lastValidInputValue;
+
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
+    
+    // Use Promise.resolve().then() to ensure state updates from category change propagate
     Promise.resolve().then(() => {
         const availableUnits = getUnitsForCategoryAndMode(presetCategory);
         const fromUnitValid = availableUnits.some(u => u.symbol === preset.fromUnit);
@@ -425,21 +441,23 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         setValue("fromUnit", finalFromUnit, { shouldValidate: true, shouldDirty: true });
         setValue("toUnit", finalToUnit, { shouldValidate: true, shouldDirty: true });
         
-        setNumberFormat('normal');
-        setIsNormalFormatDisabled(false);
+        // Restore the original value if it was valid
+        if (valueToKeep !== undefined) {
+            setValue("value", valueToKeep, { shouldValidate: true, shouldDirty: false }); // shouldDirty: false as value itself isn't "new"
+            setLastValidInputValue(valueToKeep);
+        }
+        
+        // Let existing number format preferences remain unless explicitly reset
+        // setNumberFormat('normal'); 
+        // setIsNormalFormatDisabled(false);
         
         Promise.resolve().then(() => {
-            const updatedVals = getValues();
-            const valueForConversion = (updatedVals.value !== undefined && String(updatedVals.value).trim() !== '' && !isNaN(Number(updatedVals.value)))
-                ? Number(updatedVals.value)
-                : 1;
-
-            const result = convertUnits({...updatedVals, category: presetCategory, value: valueForConversion });
+            // Pass the preserved value explicitly to convertUnits
+            const result = convertUnits({...getValues(), category: presetCategory, value: valueToKeep });
             setConversionResult(result);
         });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setValue, getValues, convertUnits ]);
+  }, [setValue, getValues, convertUnits, lastValidInputValue]);
 
 
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
@@ -462,9 +480,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             category: category,
             fromUnit: finalFromUnit,
             toUnit: finalToUnit,
-            value: fromValue,
+            value: fromValue, // Use fromValue from history item
         });
-        setLastValidInputValue(fromValue);
+        setLastValidInputValue(fromValue); // Ensure lastValidInputValue is also updated
 
         const absToValue = Math.abs(item.toValue);
         const historyValueForcesScientific = (absToValue > 1e9 || (absToValue < 1e-7 && absToValue !== 0));
@@ -478,6 +496,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         }
         
         Promise.resolve().then(() => {
+           // getValues() will now correctly have item.fromValue as the 'value'
            const newResult = convertUnits({...getValues(), category }); 
            setConversionResult(newResult);
         });
@@ -659,7 +678,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
               {rhfCategory && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full">
-                  {/* From Group */}
                   <div className="flex items-stretch flex-grow-[2] basis-0">
                     <FormField
                       control={form.control}
@@ -685,7 +703,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               className="rounded-r-none border-r-0 focus:z-10 relative h-10 border-primary text-left"
                             />
                           </FormControl>
-                           <FormMessage /> {/* Message for value input */}
+                           <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -719,13 +737,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage /> {/* Message for fromUnit select */}
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
 
-                  {/* Swap Button */}
                    <Button
                         type="button"
                         variant="ghost"
@@ -741,18 +758,29 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     </Button>
 
 
-                  {/* To Group */}
                   <div className="flex items-stretch flex-grow-[2] basis-0">
-                    <FormItem className="flex-grow">
+                    <FormItem className="flex-grow relative"> {/* Added relative for positioning star */}
                       <Input
                         readOnly
                         value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                         className={cn(
-                          "rounded-r-none border-r-0 focus:z-10 relative h-10 text-left",
+                          "rounded-r-none border-r-0 focus:z-10 relative h-10 text-left pr-10", // Added pr-10 for star button
                           showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                         )}
                         aria-label="Conversion result"
                       />
+                       {onSaveFavoriteProp && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleSaveToFavoritesInternal}
+                            disabled={finalSaveDisabled || showPlaceholder}
+                            className="p-2 group h-8 w-8 absolute right-1 top-1/2 -translate-y-1/2" // Adjusted for positioning
+                            aria-label="Save conversion to favorites"
+                          >
+                            <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-accent/80 group-hover:fill-current" : "text-muted-foreground/50")} />
+                          </Button>
+                        )}
                     </FormItem>
                     <FormField
                       control={form.control}
@@ -784,34 +812,21 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormMessage /> {/* Message for toUnit select */}
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
                   
-                  {/* Action Buttons Group */}
                   <div className="flex items-center self-center sm:self-end gap-0.5 mt-2 sm:mt-0">
                     <Button variant="ghost" onClick={handleCopy} disabled={showPlaceholder} className="p-2 h-10 w-10 hover:bg-muted/50">
                       <Copy className="h-5 w-5" />
                     </Button>
-                    {onSaveFavoriteProp && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleSaveToFavoritesInternal}
-                        disabled={finalSaveDisabled || showPlaceholder}
-                        className="p-2 group h-10 w-10"
-                        aria-label="Save conversion to favorites"
-                      >
-                        <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent/80 group-hover:fill-current" : "text-muted-foreground/50")} />
-                      </Button>
-                    )}
                   </div>
                 </div>
               )}
               
-              <fieldset className="mt-auto pt-4"> {}
+              <fieldset className="mt-auto pt-4">
                 <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
                  <RadioGroup
                    value={numberFormat}
@@ -852,3 +867,4 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
