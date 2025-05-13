@@ -90,7 +90,7 @@ const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
         actualFormatUsed = 'scientific';
         scientificReason = useScientificDueToMagnitude ? 'magnitude' : (requestedFormat === 'scientific' ? 'user_choice' : null);
         
-        let exponential = num.toExponential(5).replace('e', 'E'); // Changed from 7 to 5
+        let exponential = num.toExponential(7).replace('e', 'E'); 
         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
         if (match) {
             let coefficient = match[1];
@@ -105,13 +105,13 @@ const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
         }
     } else {
         actualFormatUsed = 'normal';
-        const numRoundedForCheck = parseFloat(num.toFixed(5)); // Changed from 7 to 5
+        const numRoundedForCheck = parseFloat(num.toFixed(7)); 
         if (numRoundedForCheck % 1 === 0) {
             formattedString = numRoundedForCheck.toLocaleString(undefined, { maximumFractionDigits: 0 });
         } else {
-            let fixedStr = num.toFixed(5); // Changed from 7 to 5
+            let fixedStr = num.toFixed(7); 
             fixedStr = fixedStr.replace(/(\.[0-9]*[1-9])0+$|\.0+$/, '$1');
-            formattedString = parseFloat(fixedStr).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 5}); // Changed from 7 to 5
+            formattedString = parseFloat(fixedStr).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 7}); 
         }
     }
 
@@ -126,7 +126,7 @@ const formatFromValue = (num: number | undefined): string => {
     const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || Math.abs(num) < 1e-7) && num !== 0;
 
     if (useScientificDueToMagnitude) {
-        let exponential = num.toExponential(5).replace('e', 'E'); // Changed from 7 to 5
+        let exponential = num.toExponential(7).replace('e', 'E'); 
         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
         if (match) {
             let coefficient = match[1];
@@ -139,13 +139,13 @@ const formatFromValue = (num: number | undefined): string => {
         }
         return exponential;
     }
-    const numRoundedForCheck = parseFloat(num.toFixed(5)); // Changed from 7 to 5
+    const numRoundedForCheck = parseFloat(num.toFixed(7)); 
      if (numRoundedForCheck % 1 === 0) {
         return numRoundedForCheck.toLocaleString(undefined, { maximumFractionDigits: 0 });
     } else {
-        let fixedStr = num.toFixed(5); // Changed from 7 to 5
+        let fixedStr = num.toFixed(7); 
         fixedStr = fixedStr.replace(/(\.[0-9]*[1-9])0+$|\.0+$/, '$1');
-        return parseFloat(fixedStr).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 5}); // Changed from 7 to 5
+        return parseFloat(fixedStr).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 7}); 
     }
 };
 
@@ -409,10 +409,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const presetCategory = Object.keys(unitData).find(catKey => catKey === preset.category) as UnitCategory | undefined;
     if (!presetCategory) return;
 
-    const valueToKeep = (rhfValue !== undefined && String(rhfValue).trim() !== '' && !isNaN(Number(rhfValue)))
-        ? Number(rhfValue)
-        : lastValidInputValue !== undefined ? lastValidInputValue : 1;
-
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
     Promise.resolve().then(() => {
         const availableUnits = getUnitsForCategoryAndMode(presetCategory);
@@ -428,16 +424,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         
         setValue("fromUnit", finalFromUnit, { shouldValidate: true, shouldDirty: true });
         setValue("toUnit", finalToUnit, { shouldValidate: true, shouldDirty: true });
-        // Do NOT set value for presets, keep existing value
-        // setValue("value", valueToKeep, { shouldValidate: true, shouldDirty: true }); 
-        // setLastValidInputValue(valueToKeep); 
-
+        
         setNumberFormat('normal');
         setIsNormalFormatDisabled(false);
         
         Promise.resolve().then(() => {
             const updatedVals = getValues();
-            // Ensure the kept value is used for conversion if it's valid, otherwise default to 1
             const valueForConversion = (updatedVals.value !== undefined && String(updatedVals.value).trim() !== '' && !isNaN(Number(updatedVals.value)))
                 ? Number(updatedVals.value)
                 : 1;
@@ -446,7 +438,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             setConversionResult(result);
         });
     });
-  }, [setValue, getValues, convertUnits, rhfValue, lastValidInputValue]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setValue, getValues, convertUnits ]);
 
 
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
@@ -609,7 +602,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             </CardTitle>
           </div>
           <br className={cn(isMobile && "hidden")} />
-           <p className={cn("text-sm text-muted-foreground mb-2 space-y-1", isMobile && "hidden")}>
+           <p className={cn("text-sm text-muted-foreground mb-2 space-y-1")}>
              Quickly convert between units.
            </p>
            <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
@@ -708,7 +701,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           >
                             <FormControl>
                               <SelectTrigger className="rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left">
-                                <SelectValue placeholder="Unit" />
+                                {(() => {
+                                  const selectedUnitSymbol = field.value;
+                                  const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
+                                  if (selectedUnit) {
+                                    return <span>({selectedUnit.symbol})</span>;
+                                  }
+                                  return <SelectValue placeholder="Unit" />;
+                                })()}
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -765,8 +765,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             disabled={!rhfCategory}
                           >
                             <FormControl>
-                              <SelectTrigger className="rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left">
-                                <SelectValue placeholder="Unit" />
+                               <SelectTrigger className="rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left">
+                                {(() => {
+                                  const selectedUnitSymbol = field.value;
+                                  const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
+                                  if (selectedUnit) {
+                                    return <span>({selectedUnit.symbol})</span>;
+                                  }
+                                  return <SelectValue placeholder="Unit" />;
+                                })()}
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -804,9 +811,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 </div>
               )}
               
-              {/* Removed flex-grow div to bring result formatting closer */}
-              
-              <fieldset className=""> {/* Removed pt-4 */}
+              <fieldset className="mt-auto pt-4"> {}
                 <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
                  <RadioGroup
                    value={numberFormat}
