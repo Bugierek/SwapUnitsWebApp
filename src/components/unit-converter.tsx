@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -322,7 +321,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         if (formValues.fromUnit === newFromUnitSymbol && formValues.toUnit === newToUnitSymbol) {
             setValue("value", 1, { shouldValidate: true, shouldDirty: true });
             setLastValidInputValue(1);
-            setNumberFormat('normal'); // Reset number format on category change by user
+            setNumberFormat('normal'); 
             setIsNormalFormatDisabled(false);
         }
 
@@ -408,9 +407,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!presetCategory) return;
 
     const currentValueInForm = getValues("value");
-    const valueToKeep = (currentValueInForm !== undefined && String(currentValueInForm).trim() !== '' && !isNaN(Number(currentValueInForm)))
+     const valueToKeep = (currentValueInForm !== undefined && String(currentValueInForm).trim() !== '' && !isNaN(Number(currentValueInForm)))
         ? Number(currentValueInForm)
         : lastValidInputValue;
+
 
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
     
@@ -429,10 +429,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         setValue("fromUnit", finalFromUnit, { shouldValidate: true, shouldDirty: true });
         setValue("toUnit", finalToUnit, { shouldValidate: true, shouldDirty: true });
         
-        // Restore the original value if it was valid
         if (valueToKeep !== undefined) {
-            setValue("value", valueToKeep, { shouldValidate: true, shouldDirty: false }); // shouldDirty: false as value itself isn't "new"
-            setLastValidInputValue(valueToKeep);
+          setValue("value", valueToKeep, { shouldValidate: true, shouldDirty: true });
+          setLastValidInputValue(valueToKeep);
         }
         
         Promise.resolve().then(() => {
@@ -691,7 +690,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
                               disabled={!rhfFromUnit || !rhfToUnit}
                               aria-required="true"
-                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left"
+                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left max-w-36"
                             />
                           </FormControl>
                            <FormMessage />
@@ -818,7 +817,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
               )}
               
               <fieldset className="mt-auto pt-4">
-                <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
+                 <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
                  <RadioGroup
                    value={numberFormat}
                    onValueChange={(value: string) => {
