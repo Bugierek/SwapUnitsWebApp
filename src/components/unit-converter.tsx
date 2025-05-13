@@ -319,8 +319,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
         const formValues = getValues();
         if (formValues.fromUnit === newFromUnitSymbol && formValues.toUnit === newToUnitSymbol) {
-            setValue("value", 1, { shouldValidate: true, shouldDirty: true });
-            setLastValidInputValue(1);
+            const currentVal = formValues.value;
+            const valToSet = (currentVal === '' || currentVal === undefined || isNaN(Number(currentVal))) ? 1 : Number(currentVal);
+            setValue("value", valToSet, { shouldValidate: true, shouldDirty: true });
+            setLastValidInputValue(valToSet);
             setNumberFormat('normal'); 
             setIsNormalFormatDisabled(false);
         }
@@ -335,7 +337,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         });
     }
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [rhfCategory, setValue, getValues, convertUnits, selectedCategoryLocal]);
+ }, [rhfCategory, setValue, getValues, convertUnits]);
 
 
   React.useEffect(() => {
@@ -406,11 +408,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const presetCategory = Object.keys(unitData).find(catKey => catKey === preset.category) as UnitCategory | undefined;
     if (!presetCategory) return;
 
-    const currentValueInForm = getValues("value");
-     const valueToKeep = (currentValueInForm !== undefined && String(currentValueInForm).trim() !== '' && !isNaN(Number(currentValueInForm)))
-        ? Number(currentValueInForm)
-        : lastValidInputValue;
-
+    const valueToKeep = getValues("value"); // Keep current value from form
 
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
     
@@ -429,17 +427,21 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         setValue("fromUnit", finalFromUnit, { shouldValidate: true, shouldDirty: true });
         setValue("toUnit", finalToUnit, { shouldValidate: true, shouldDirty: true });
         
-        if (valueToKeep !== undefined) {
-          setValue("value", valueToKeep, { shouldValidate: true, shouldDirty: true });
-          setLastValidInputValue(valueToKeep);
-        }
+        // Do NOT set value here, keep existing value
+        // setValue("value", valueToKeep, { shouldValidate: true, shouldDirty: true });
+        // setLastValidInputValue(Number(valueToKeep)); // Update lastValidInputValue if valueToKeep is a number
+
+        const numericValueToKeep = Number(valueToKeep);
+        if (isFinite(numericValueToKeep) && String(valueToKeep).trim() !== '') {
+            setLastValidInputValue(numericValueToKeep);
+        } // else, lastValidInputValue remains as it was, or the default if this is the first valid input
         
         Promise.resolve().then(() => {
             const result = convertUnits({...getValues(), category: presetCategory, value: valueToKeep });
             setConversionResult(result);
         });
     });
-  }, [setValue, getValues, convertUnits, lastValidInputValue]);
+  }, [setValue, getValues, convertUnits]);
 
 
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
@@ -516,6 +518,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
 
   const handleCopy = React.useCallback(async () => {
+    const currentRawFormValue = getValues("value");
+    const numericFromValue = Number(currentRawFormValue);
+
     const textToCopy = showPlaceholder || !conversionResult ? '' : `${formattedResultString} ${rhfToUnit}`;
     if (!textToCopy || !navigator.clipboard) return;
 
@@ -527,10 +532,16 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             variant: "confirmation",
             duration: 1500,
         });
-        if (onResultCopied && rhfCategory && rhfCategory !== "" && rhfValue !== undefined && conversionResult && typeof rhfValue === 'number') {
+         if (
+            onResultCopied &&
+            rhfCategory && rhfCategory !== "" &&
+            conversionResult && 
+            isFinite(numericFromValue) &&
+            String(currentRawFormValue).trim() !== '' && String(currentRawFormValue).trim() !== '-'
+        ) {
             onResultCopied({
                 category: rhfCategory,
-                fromValue: rhfValue,
+                fromValue: numericFromValue,
                 fromUnit: rhfFromUnit,
                 toValue: conversionResult.value,
                 toUnit: rhfToUnit,
@@ -544,7 +555,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             variant: "destructive",
         });
     }
-  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfValue, rhfFromUnit]);
+  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfFromUnit, getValues]);
 
   const handleSaveToFavoritesInternal = React.useCallback(() => {
     if (!rhfCategory || rhfCategory === "" || !rhfFromUnit || !rhfToUnit) {
@@ -626,7 +637,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     <Select
                       onValueChange={(value) => field.onChange(value)}
                       value={field.value}
-                      
                     >
                       <FormControl>
                         <SelectTrigger id="category-select" aria-label="Select measurement category">
@@ -659,12 +669,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
               {rhfCategory && (
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full">
+                  {/* From Unit Section */}
                   <div className="flex items-stretch flex-grow-[2] basis-0">
                     <FormField
                       control={form.control}
                       name="value"
                       render={({ field }) => (
                         <FormItem className="flex-grow">
+                           {/* Removed Label for "Value to Convert" */}
                           <FormControl>
                             <Input
                               id="value-input"
@@ -690,7 +702,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
                               disabled={!rhfFromUnit || !rhfToUnit}
                               aria-required="true"
-                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left max-w-36"
+                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left max-w-36" // max-w-36 for from value
                             />
                           </FormControl>
                            <FormMessage />
@@ -702,6 +714,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       name="fromUnit"
                       render={({ field }) => (
                         <FormItem>
+                           {/* Removed Label for "From Unit" */}
                           <Select
                             onValueChange={(value) => field.onChange(value)}
                             value={field.value}
@@ -747,43 +760,33 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-accent-foreground", isSwapped && "rotate-180 scale-x-[-1]")} aria-hidden="true" />
                     </Button>
 
-
+                  {/* To Unit Section */}
                   <div className="flex items-stretch flex-grow-[2] basis-0">
-                    <FormItem className="flex-grow relative">
+                    <FormItem className="flex-grow"> {/* Result input wrapper */}
                       <Input
                         readOnly
                         value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                         className={cn(
-                          "rounded-r-none border-r-0 focus:z-10 relative h-10 text-left pr-10",
+                          "rounded-r-none border-r-0 focus:z-10 relative h-10 text-left", // Removed pr-10 from original if star was inside
+                          "max-w-[100px] xs:max-w-[120px] sm:max-w-[100px] md:max-w-[110px]", // Adjusted max-width
                           showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                         )}
                         aria-label="Conversion result"
                       />
-                       {onSaveFavoriteProp && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={handleSaveToFavoritesInternal}
-                            disabled={finalSaveDisabled || showPlaceholder}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 transform p-1 group h-8 w-8 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                            aria-label="Save conversion to favorites"
-                          >
-                            <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
-                          </Button>
-                        )}
                     </FormItem>
                     <FormField
                       control={form.control}
                       name="toUnit"
                       render={({ field }) => (
                         <FormItem>
+                          {/* Removed Label for "To Unit" */}
                           <Select
                             onValueChange={(value) => field.onChange(value)}
                             value={field.value}
                             disabled={!rhfCategory}
                           >
                             <FormControl>
-                               <SelectTrigger className="rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left">
+                               <SelectTrigger className="rounded-l-none w-auto min-w-[70px] md:min-w-[90px] h-10 text-left">
                                 {(() => {
                                   const selectedUnitSymbol = field.value;
                                   const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
@@ -808,7 +811,20 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     />
                   </div>
                   
-                  <div className="flex items-center self-center sm:self-end gap-0.5 mt-2 sm:mt-0">
+                  {/* Action Buttons: Star and Copy */}
+                  <div className="flex items-center self-center sm:self-end gap-1 mt-2 sm:mt-0 ml-auto sm:ml-1">
+                    {onSaveFavoriteProp && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleSaveToFavoritesInternal}
+                        disabled={finalSaveDisabled || showPlaceholder}
+                        className="p-2 h-10 w-10 group hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                        aria-label="Save conversion to favorites"
+                      >
+                        <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                      </Button>
+                    )}
                     <Button variant="ghost" onClick={handleCopy} disabled={showPlaceholder} className="p-2 h-10 w-10 hover:bg-muted/50">
                       <Copy className="h-5 w-5" />
                     </Button>
