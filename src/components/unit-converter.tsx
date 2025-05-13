@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -429,7 +430,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         
         const numericValueToKeep = Number(valueToKeep);
         if (isFinite(numericValueToKeep) && String(valueToKeep).trim() !== '') {
-            setLastValidInputValue(numericValueToKeep);
+             // Keep existing valid value
              setValue("value", numericValueToKeep, { shouldValidate: true, shouldDirty: true });
         } else {
             // If current value is invalid or empty, set to 1 or keep last valid
@@ -704,7 +705,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
                               disabled={!rhfFromUnit || !rhfToUnit}
                               aria-required="true"
-                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left max-w-[calc(100%-var(--from-unit-width,80px))]" 
+                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left" 
                             />
                           </FormControl>
                            <FormMessage />
@@ -724,7 +725,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             <FormControl>
                               <SelectTrigger 
                                 className="rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left"
-                                style={{ '--from-unit-width': isMobile ? '80px' : '100px' } as React.CSSProperties}
+                                
                               >
                                 {(() => {
                                   const selectedUnitSymbol = field.value;
@@ -766,25 +767,36 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
                   {/* To Unit Section with Integrated Copy Button */}
                   <div className="flex items-stretch flex-grow-[2] basis-0">
-                    <FormItem className="flex-grow"> 
+                    <FormItem className="flex-grow relative">
                       <Input
                         readOnly
                         value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                         className={cn(
-                          "rounded-r-none", 
+                          "rounded-none border-l-0 border-r-0", 
                           "focus:z-10 relative h-10 text-left",
-                          "max-w-[calc(100%-2.5rem-var(--to-unit-width,70px))]", 
                           showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                         )}
                         aria-label="Conversion result"
                       />
+                       {onSaveFavoriteProp && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleSaveToFavoritesInternal}
+                            disabled={finalSaveDisabled || showPlaceholder}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 h-7 w-7 group hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                            aria-label="Save conversion to favorites"
+                        >
+                            <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                        </Button>
+                        )}
                     </FormItem>
                     <Button 
                       type="button"
                       variant="outline"
                       onClick={handleCopy} 
                       disabled={showPlaceholder} 
-                      className="p-2 h-10 w-10 rounded-none border-l-0 hover:bg-muted/50 focus:z-10"
+                      className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-muted/50 focus:z-10 shrink-0"
                       aria-label="Copy result to clipboard"
                     >
                       <Copy className="h-5 w-5" />
@@ -804,7 +816,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                  "rounded-l-none border-l-0",
                                  "w-auto min-w-[70px] md:min-w-[90px] h-10 text-left focus:z-10"
                                 )}
-                                style={{ '--to-unit-width': isMobile ? '70px' : '90px' } as React.CSSProperties}
+                                
                                >
                                 {(() => {
                                   const selectedUnitSymbol = field.value;
@@ -830,21 +842,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     />
                   </div>
                   
-                  {/* Add to Favorites Button */}
-                  <div className="flex items-center self-center sm:self-end mt-2 sm:mt-0 ml-auto sm:ml-1">
-                    {onSaveFavoriteProp && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleSaveToFavoritesInternal}
-                        disabled={finalSaveDisabled || showPlaceholder}
-                        className="p-2 h-10 w-10 group hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                        aria-label="Save conversion to favorites"
-                      >
-                        <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
-                      </Button>
-                    )}
-                  </div>
                 </div>
               )}
               
