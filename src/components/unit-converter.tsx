@@ -43,6 +43,8 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
+  // DialogHeader, // Not needed if using aria-label
+  // DialogTitle, // Not needed if using aria-label
 } from '@/components/ui/dialog'; 
 import SimpleCalculator from '@/components/simple-calculator'; 
 
@@ -734,7 +736,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                 <Calculator className="h-5 w-5" />
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-xs p-0 bg-transparent border-0 shadow-none">
+                        <DialogContent className="sm:max-w-xs p-0 bg-transparent border-0 shadow-none" aria-label="Calculator">
                             <SimpleCalculator onSendValue={handleCalculatorValueSent} />
                         </DialogContent>
                     </Dialog>

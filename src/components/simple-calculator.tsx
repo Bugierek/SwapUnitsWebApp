@@ -142,27 +142,27 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
   };
 
   const buttons = [
-    { label: 'AC', action: clearDisplay, className: 'col-span-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground' },
-    { label: '÷', action: () => performOperation('/'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
-    { label: '×', action: () => performOperation('*'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { label: 'AC', action: clearDisplay, className: 'col-span-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground', ariaLabel: "All Clear" },
+    { label: '÷', action: () => performOperation('/'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground', ariaLabel: "Divide" },
+    { label: '×', action: () => performOperation('*'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground', ariaLabel: "Multiply" },
     { label: '7', action: () => inputDigit('7') },
     { label: '8', action: () => inputDigit('8') },
     { label: '9', action: () => inputDigit('9') },
-    { label: '-', action: () => performOperation('-'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { label: '-', action: () => performOperation('-'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground', ariaLabel: "Subtract" },
     { label: '4', action: () => inputDigit('4') },
     { label: '5', action: () => inputDigit('5') },
     { label: '6', action: () => inputDigit('6') },
-    { label: '+', action: () => performOperation('+'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground' },
+    { label: '+', action: () => performOperation('+'), className: 'bg-accent hover:bg-accent/90 text-accent-foreground', ariaLabel: "Add" },
     { label: '1', action: () => inputDigit('1') },
     { label: '2', action: () => inputDigit('2') },
     { label: '3', action: () => inputDigit('3') },
-    { label: '=', action: handleEquals, className: 'row-span-2 bg-primary hover:bg-primary/90 text-primary-foreground' },
-    { label: '0', action: () => inputDigit('0') }, // No longer col-span-2
-    { label: '.', action: inputDecimal },
+    { label: '=', action: handleEquals, className: 'bg-primary hover:bg-primary/90 text-primary-foreground', ariaLabel: "Equals" }, // Removed row-span-2
+    { label: '0', action: () => inputDigit('0'), className: 'col-span-2' }, // Added col-span-2
+    { label: '.', action: inputDecimal, ariaLabel: "Decimal" },
     { 
       label: <SendHorizonal className="h-5 w-5" />, 
       action: handleSendValue, 
-      className: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground', // Use secondary color for "Send"
+      className: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground',
       ariaLabel: 'Send value to converter'
     },
   ];
@@ -178,9 +178,9 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
         tabIndex={-1} 
       />
       <div className="grid grid-cols-4 gap-2">
-        {buttons.map((btn) => (
+        {buttons.map((btn, index) => (
           <Button
-            key={btn.label?.toString() || (btn.ariaLabel || Math.random().toString())} // Handle ReactNode label for key
+            key={typeof btn.label === 'string' ? btn.label : btn.ariaLabel || `calc-btn-${index}`}
             onClick={btn.action}
             variant={btn.className?.includes('bg-destructive') || btn.className?.includes('bg-accent') || btn.className?.includes('bg-primary') || btn.className?.includes('bg-secondary') ? 'default' : 'outline'}
             className={cn(
