@@ -408,10 +408,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const internalHandlePresetSelect = React.useCallback((preset: Preset | FavoriteItem) => {
     const presetCategory = Object.keys(unitData).find(catKey => catKey === preset.category) as UnitCategory | undefined;
     if (!presetCategory) return;
-
-    // Do not change the value when a preset is selected
-    // const valueToKeep = getValues("value"); 
-
+    
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
     
     Promise.resolve().then(() => {
@@ -428,22 +425,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         
         setValue("fromUnit", finalFromUnit, { shouldValidate: true, shouldDirty: true });
         setValue("toUnit", finalToUnit, { shouldValidate: true, shouldDirty: true });
-        
-        // const numericValueToKeep = Number(valueToKeep);
-        // if (isFinite(numericValueToKeep) && String(valueToKeep).trim() !== '') {
-        //      // setValue("value", numericValueToKeep, { shouldValidate: false, shouldDirty: false }); 
-        // } else {
-        //     const newVal = lastValidInputValue !== undefined ? lastValidInputValue : 1;
-        //     // setValue("value", newVal, { shouldValidate: false, shouldDirty: false }); 
-        // }
-        
+                
         Promise.resolve().then(() => {
-            const currentVals = getValues(); // Get potentially updated value from form state
-            const result = convertUnits({...currentVals, category: presetCategory }); // Use current value
+            const currentVals = getValues(); 
+            const result = convertUnits({...currentVals, category: presetCategory }); 
             setConversionResult(result);
         });
     });
-  }, [setValue, getValues, convertUnits /* removed lastValidInputValue */]);
+  }, [setValue, getValues, convertUnits]);
 
 
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
@@ -760,11 +749,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         onClick={handleSwapClick}
                         disabled={!rhfFromUnit || !rhfToUnit}
                         className={cn(
-                          "h-10 group hover:bg-accent flex-grow p-2",
+                          "h-10 group hover:bg-primary flex-grow p-2",
                         )}
                         aria-label="Swap from and to units"
                       >
-                        <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-accent-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                        <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
                       </Button>
                       {onSaveFavoriteProp && (
                         <Button
@@ -772,7 +761,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             variant="outline"
                             onClick={handleSaveToFavoritesInternal}
                             disabled={finalSaveDisabled || showPlaceholder}
-                            className="h-10 w-auto min-w-[80px] flex-shrink-0 group hover:border-accent focus-visible:ring-accent p-2 hover:bg-background"
+                            className="h-10 w-auto min-w-[80px] flex-shrink-0 group hover:border-accent hover:bg-background focus-visible:ring-accent p-2"
                             aria-label="Save conversion to favorites"
                         >
                             <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
@@ -786,11 +775,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       onClick={handleSwapClick}
                       disabled={!rhfFromUnit || !rhfToUnit}
                       className={cn(
-                          "h-10 w-10 p-2 self-end group hover:bg-accent shrink-0",
+                          "h-10 w-10 p-2 self-end group hover:bg-primary shrink-0",
                       )}
                       aria-label="Swap from and to units"
                       >
-                      <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-accent-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                      <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
                     </Button>
                   )}
 
@@ -865,7 +854,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             size="icon"
                             onClick={handleSaveToFavoritesInternal}
                             disabled={finalSaveDisabled || showPlaceholder}
-                            className="h-10 w-10 group shrink-0 rounded-l-none rounded-r-md border-l-0 hover:border-accent focus-visible:ring-accent hover:bg-background"
+                            className="h-10 w-10 group shrink-0 rounded-l-none rounded-r-md border-l-0 hover:border-accent hover:bg-background focus-visible:ring-accent"
                             aria-label="Save conversion to favorites"
                         >
                             <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
