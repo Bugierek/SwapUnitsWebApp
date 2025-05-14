@@ -430,10 +430,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         
         const numericValueToKeep = Number(valueToKeep);
         if (isFinite(numericValueToKeep) && String(valueToKeep).trim() !== '') {
-             setValue("value", numericValueToKeep, { shouldValidate: false, shouldDirty: false }); // Don't dirty or validate for presets
+             // setValue("value", numericValueToKeep, { shouldValidate: false, shouldDirty: false }); 
         } else {
             const newVal = lastValidInputValue !== undefined ? lastValidInputValue : 1;
-            setValue("value", newVal, { shouldValidate: false, shouldDirty: false }); // Don't dirty or validate for presets
+            // setValue("value", newVal, { shouldValidate: false, shouldDirty: false }); 
         }
         
         Promise.resolve().then(() => {
@@ -587,7 +587,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       toast({
         title: "Favorite Saved!",
         description: `"${favoriteName}" added to your favorites.`,
-        variant: "success",
+        variant: "success", // Using success variant which is orange
         duration: 2000,
       });
     }
@@ -674,10 +674,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                   isMobile ? "flex flex-col gap-2" : "flex flex-row items-end gap-2"
                 )}>
                   {/* From Input Row (Value + FromUnit) */}
-                  <div className={cn(
-                    "flex items-stretch",
-                    isMobile ? "w-full" : "flex-grow-[2] basis-0"
-                  )}>
+                  <div className={cn("flex items-stretch", isMobile ? "w-full" : "flex-grow-[2] basis-0")}>
                     <FormField
                       control={form.control}
                       name="value"
@@ -708,7 +705,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
                               disabled={!rhfFromUnit || !rhfToUnit}
                               aria-required="true"
-                              className={cn("rounded-r-none border-r-0 focus:z-10 relative h-10 text-left flex-grow", isMobile ? "max-w-[calc(100%-80px)]" : "")}
+                              className={cn("rounded-r-none border-r-0 focus:z-10 relative h-10 text-left w-full")}
                             />
                           </FormControl>
                            <FormMessage />
@@ -797,18 +794,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                   )}
 
                   {/* To Result Row (Result + Copy + ToUnit + Desktop Favorite) */}
-                  <div className={cn(
-                    "flex items-stretch",
-                    isMobile ? "w-full" : "flex-grow-[2] basis-0"
-                  )}>
+                  <div className={cn("flex items-stretch", isMobile ? "w-full" : "flex-grow-[2] basis-0")}>
                     <FormItem className="flex-grow">
                       <Input
                         readOnly
                         value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                         className={cn(
                           "rounded-l-md rounded-r-none border-r-0", 
-                          "focus:z-10 relative h-10 text-left flex-grow",
-                          isMobile ? "max-w-[calc(100%-120px)]" : "", // 120px = copy(40) + unit(80)
+                          "focus:z-10 relative h-10 text-left w-full",
                           showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                         )}
                         aria-label="Conversion result"
@@ -837,8 +830,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             <FormControl>
                                <SelectTrigger className={cn(
                                  "rounded-l-none",
-                                 !isMobile && !onSaveFavoriteProp && "rounded-r-md", // Full rounding if no fav button on desktop
-                                 !isMobile && onSaveFavoriteProp && "rounded-none border-l-0 border-r-0", // No rounding if fav button is next
+                                 !isMobile && !onSaveFavoriteProp && "rounded-r-md", 
+                                 !isMobile && onSaveFavoriteProp && "rounded-r-none border-l-0 border-r-0", 
                                  "w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none"
                                 )}
                                >
@@ -922,4 +915,3 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
-
