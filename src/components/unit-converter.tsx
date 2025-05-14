@@ -430,11 +430,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         
         const numericValueToKeep = Number(valueToKeep);
         if (isFinite(numericValueToKeep) && String(valueToKeep).trim() !== '') {
-             setValue("value", numericValueToKeep, { shouldValidate: true, shouldDirty: true });
+             setValue("value", numericValueToKeep, { shouldValidate: false, shouldDirty: false }); // Don't dirty or validate for presets
         } else {
             const newVal = lastValidInputValue !== undefined ? lastValidInputValue : 1;
-            setValue("value", newVal, { shouldValidate: true, shouldDirty: true });
-            setLastValidInputValue(newVal);
+            setValue("value", newVal, { shouldValidate: false, shouldDirty: false }); // Don't dirty or validate for presets
         }
         
         Promise.resolve().then(() => {
@@ -670,9 +669,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
               />
 
               {rhfCategory && (
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full">
-                  {/* From Unit Section */}
-                  <div className="flex items-stretch flex-grow-[2] basis-0">
+                <div className={cn(
+                  "w-full",
+                  isMobile ? "flex flex-col gap-2" : "flex flex-row items-end gap-2"
+                )}>
+                  {/* From Input Row (Value + FromUnit) */}
+                  <div className={cn(
+                    "flex items-stretch",
+                    isMobile ? "w-full" : "flex-grow-[2] basis-0"
+                  )}>
                     <FormField
                       control={form.control}
                       name="value"
@@ -700,10 +705,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                       }
                                   }
                               }}
-                               value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
+                              value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
                               disabled={!rhfFromUnit || !rhfToUnit}
                               aria-required="true"
-                              className="rounded-r-none border-r-0 focus:z-10 relative h-10 text-left" 
+                              className={cn("rounded-r-none border-r-0 focus:z-10 relative h-10 text-left flex-grow", isMobile ? "max-w-[calc(100%-80px)]" : "")}
                             />
                           </FormControl>
                            <FormMessage />
@@ -722,8 +727,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           >
                             <FormControl>
                               <SelectTrigger 
-                                className="rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left"
-                                
+                                className={cn("rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:outline-none")}
                               >
                                 {(() => {
                                   const selectedUnitSymbol = field.value;
@@ -749,29 +753,62 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     />
                   </div>
 
-                   <Button
+                  {/* Middle Row (Swap + Favorite on Mobile, Just Swap on Desktop) */}
+                  {isMobile ? (
+                    <div className="flex items-stretch w-full gap-2">
+                      <Button 
                         type="button"
                         variant="ghost"
                         onClick={handleSwapClick}
                         disabled={!rhfFromUnit || !rhfToUnit}
                         className={cn(
-                            "h-10 w-full sm:w-10 p-2 self-center sm:self-end group hover:bg-accent",
-                            isMobile ? "mt-2 sm:mt-0" : ""
+                          "h-10 group hover:bg-accent flex-grow p-2",
                         )}
                         aria-label="Swap from and to units"
+                      >
+                        <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-accent-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                      </Button>
+                      {onSaveFavoriteProp && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSaveToFavoritesInternal}
+                            disabled={finalSaveDisabled || showPlaceholder}
+                            className="h-10 w-auto min-w-[80px] group shrink-0 hover:border-accent focus-visible:ring-accent p-2"
+                            aria-label="Save conversion to favorites"
                         >
-                        <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-accent-foreground", isSwapped && "rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                            <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleSwapClick}
+                      disabled={!rhfFromUnit || !rhfToUnit}
+                      className={cn(
+                          "h-10 w-10 p-2 self-end group hover:bg-accent shrink-0",
+                      )}
+                      aria-label="Swap from and to units"
+                      >
+                      <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-accent-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
                     </Button>
+                  )}
 
-                  {/* To Unit Section with Integrated Copy Button and Favorite Button */}
-                  <div className="flex items-stretch flex-grow-[2] basis-0">
+                  {/* To Result Row (Result + Copy + ToUnit + Desktop Favorite) */}
+                  <div className={cn(
+                    "flex items-stretch",
+                    isMobile ? "w-full" : "flex-grow-[2] basis-0"
+                  )}>
                     <FormItem className="flex-grow">
                       <Input
                         readOnly
                         value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                         className={cn(
                           "rounded-l-md rounded-r-none border-r-0", 
-                          "focus:z-10 relative h-10 text-left",
+                          "focus:z-10 relative h-10 text-left flex-grow",
+                          isMobile ? "max-w-[calc(100%-120px)]" : "", // 120px = copy(40) + unit(80)
                           showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                         )}
                         aria-label="Conversion result"
@@ -799,8 +836,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           >
                             <FormControl>
                                <SelectTrigger className={cn(
-                                 "rounded-none border-l-0 border-r-0",
-                                 "w-auto min-w-[70px] md:min-w-[90px] h-10 text-left focus:z-10"
+                                 "rounded-l-none",
+                                 !isMobile && !onSaveFavoriteProp && "rounded-r-md", // Full rounding if no fav button on desktop
+                                 !isMobile && onSaveFavoriteProp && "rounded-none border-l-0 border-r-0", // No rounding if fav button is next
+                                 "w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none"
                                 )}
                                >
                                 {(() => {
@@ -825,21 +864,20 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         </FormItem>
                       )}
                     />
-                     {onSaveFavoriteProp && (
+                     {!isMobile && onSaveFavoriteProp && (
                         <Button
                             type="button"
                             variant="outline"
                             size="icon"
                             onClick={handleSaveToFavoritesInternal}
                             disabled={finalSaveDisabled || showPlaceholder}
-                            className="h-10 w-10 group shrink-0 rounded-l-none rounded-r-md border-l-0"
+                            className="h-10 w-10 group shrink-0 rounded-l-none rounded-r-md border-l-0 hover:border-accent focus-visible:ring-accent"
                             aria-label="Save conversion to favorites"
                         >
                             <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
                         </Button>
                     )}
                   </div>
-                  
                 </div>
               )}
               
@@ -884,3 +922,4 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
