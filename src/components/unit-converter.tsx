@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormMessage,
@@ -29,7 +28,7 @@ import {
   FlaskConical,
   Copy,
   Star,
-  Calculator, // Added Calculator icon import
+  Calculator, 
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -44,8 +43,8 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
-} from '@/components/ui/dialog'; // Added Dialog imports
-import SimpleCalculator from '@/components/simple-calculator'; // Added SimpleCalculator import
+} from '@/components/ui/dialog'; 
+import SimpleCalculator from '@/components/simple-calculator'; 
 
 
 const formSchema = z.object({
@@ -165,7 +164,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
   const isMobile = useIsMobile();
   const [isSwapped, setIsSwapped] = React.useState(false);
-  const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false); // Added calculator state
+  const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false); 
   const { toast } = useToast();
 
 
@@ -599,6 +598,19 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const baseSaveDisabled = !rhfCategory || rhfCategory === "" || !rhfFromUnit || !rhfToUnit;
   const finalSaveDisabled = baseSaveDisabled || disableAddFavoriteButton;
 
+  const handleCalculatorValueSent = (valueFromCalculator: string) => {
+    const numericValue = parseFloat(valueFromCalculator);
+    if (!isNaN(numericValue)) {
+      setValue("value", numericValue, { shouldValidate: true, shouldDirty: true });
+      setLastValidInputValue(numericValue); 
+      // Trigger re-conversion explicitly if needed, or rely on useEffect for rhfValue
+      const currentFormData = getValues();
+      const result = convertUnits({ ...currentFormData, value: numericValue });
+      setConversionResult(result);
+    }
+    setIsCalculatorOpen(false); // Close the dialog
+  };
+
 
   return (
      <Card className={cn("shadow-lg h-full flex flex-col", className)} aria-labelledby="unit-converter-title">
@@ -661,7 +673,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription>Select the type of unit you want to convert.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -724,7 +735,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-xs p-0 bg-transparent border-0 shadow-none">
-                            <SimpleCalculator />
+                            <SimpleCalculator onSendValue={handleCalculatorValueSent} />
                         </DialogContent>
                     </Dialog>
                     <FormField
