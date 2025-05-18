@@ -43,8 +43,8 @@ import {
   Dialog,
   DialogContent,
   DialogTrigger,
-  // DialogHeader, // Not needed if using aria-label
-  // DialogTitle, // Not needed if using aria-label
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'; 
 import SimpleCalculator from '@/components/simple-calculator'; 
 
@@ -436,8 +436,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         setValue("fromUnit", finalFromUnit, { shouldValidate: true, shouldDirty: true });
         setValue("toUnit", finalToUnit, { shouldValidate: true, shouldDirty: true });
                 
+        // Do NOT set the value field here, keep existing value.
+        // setLastValidInputValue(1); // Do not reset input value
+        // setNumberFormat('normal'); // Do not reset number format
+        // setIsNormalFormatDisabled(false);
+        
         Promise.resolve().then(() => {
-            const currentVals = getValues(); 
+            const currentVals = getValues(); // This will have the new units but old value
             const result = convertUnits({...currentVals, category: presetCategory }); 
             setConversionResult(result);
         });
@@ -605,12 +610,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!isNaN(numericValue)) {
       setValue("value", numericValue, { shouldValidate: true, shouldDirty: true });
       setLastValidInputValue(numericValue); 
-      // Trigger re-conversion explicitly if needed, or rely on useEffect for rhfValue
       const currentFormData = getValues();
       const result = convertUnits({ ...currentFormData, value: numericValue });
       setConversionResult(result);
     }
-    setIsCalculatorOpen(false); // Close the dialog
+    setIsCalculatorOpen(false); 
   };
 
 
@@ -736,8 +740,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                 <Calculator className="h-5 w-5" />
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-xs p-0 bg-transparent border-0 shadow-none" aria-label="Calculator">
-                            <SimpleCalculator onSendValue={handleCalculatorValueSent} />
+                        <DialogContent className="sm:max-w-xs p-0 bg-transparent border-0 shadow-none">
+                           <DialogHeader className="sr-only">
+                             <DialogTitle>Calculator</DialogTitle>
+                           </DialogHeader>
+                           <SimpleCalculator onSendValue={handleCalculatorValueSent} />
                         </DialogContent>
                     </Dialog>
                     <FormField
