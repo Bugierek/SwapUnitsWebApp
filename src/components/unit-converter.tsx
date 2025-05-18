@@ -29,6 +29,7 @@ import {
   Copy,
   Star,
   Calculator,
+  X,
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -44,8 +45,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
   DialogTrigger,
+  DialogClose,
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
 import { Separator } from './ui/separator';
@@ -507,12 +508,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
  const handleSwapClick = React.useCallback(() => {
     const currentFromUnit = getValues("fromUnit");
     const currentToUnit = getValues("toUnit");
+    const currentValue = getValues("value");
     let newInputValue: number | undefined = undefined;
 
     if (conversionResult && isFinite(conversionResult.value)) {
         newInputValue = conversionResult.value;
     } else {
-        const currentInputString = String(getValues("value"));
+        const currentInputString = String(currentValue);
         if (currentInputString.trim() !== '' && !isNaN(Number(currentInputString))) {
             newInputValue = Number(currentInputString);
         } else {
@@ -737,7 +739,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                              )}
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent side="bottom" avoidCollisions={false} className="max-h-60 overflow-y-auto">
+                        <SelectContent side="bottom" avoidCollisions={false} className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible">
                           {categoriesForDropdown.map((cat) => (
                             <SelectItem key={cat} value={cat}>
                                <div className="flex items-center gap-2">
@@ -806,8 +808,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                   <Calculator className="h-5 w-5" />
                               </Button>
                           </DialogTrigger>
-                           <DialogContent className="sm:max-w-xs p-0 border-0 shadow-lg"> {/* Removed bg-transparent, calculator handles its bg */}
-                             <DialogHeader className="sr-only"> {/* Added for accessibility */}
+                           <DialogContent className="sm:max-w-xs p-0 border-0 shadow-lg">
+                             <DialogHeader className="sr-only"> 
                                 <DialogTitle>Calculator</DialogTitle>
                              </DialogHeader>
                              <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
@@ -843,7 +845,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                   )}
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto">
+                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible">
                                 {currentUnitsForCategory.map((unit) => (
                                   <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
                                     {unit.name} ({unit.symbol})
@@ -858,7 +860,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     </div>
 
                    {/* Middle Row - Swap and Favorite Buttons */}
-                   <div className="flex flex-row w-full gap-2 items-stretch"> {/* items-stretch added */}
+                   <div className="flex flex-row w-full gap-2 items-stretch">
                         <Button
                             type="button"
                             variant="ghost"
@@ -894,7 +896,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                           className={cn(
                             "rounded-l-md rounded-r-none border-r-0 flex-grow",
-                            "focus:z-10 relative h-10 text-left",
+                            "focus:z-10 relative h-10 text-left w-full",
                             showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                           )}
                           aria-label="Conversion result"
@@ -941,7 +943,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                   )}
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto">
+                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible">
                                  {currentUnitsForCategory.map((unit) => (
                                   <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
                                     {unit.name} ({unit.symbol})
