@@ -5,15 +5,16 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { SendHorizonal, X } from 'lucide-react'; // Import SendHorizonal and X icons
-import { DialogClose } from '@/components/ui/dialog'; // Import DialogClose
-import { Separator } from '@/components/ui/separator'; // Import Separator
+import { SendHorizonal } from 'lucide-react'; // Removed X icon import
+// Removed: import { DialogClose } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 
 interface SimpleCalculatorProps {
   onSendValue: (value: string) => void; // Callback to send value to parent
+  onClose?: () => void; // Optional callback for closing
 }
 
-const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
+const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClose }) => {
   const [displayValue, setDisplayValue] = React.useState<string>('0');
   const [firstOperand, setFirstOperand] = React.useState<number | null>(null);
   const [operator, setOperator] = React.useState<string | null>(null);
@@ -135,6 +136,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
       return;
     }
     onSendValue(displayValue);
+    if (onClose) onClose(); // Call onClose if provided
   };
 
   const buttons = [
@@ -165,17 +167,8 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
 
   return (
     <div className="w-full max-w-xs mx-auto p-4 bg-card rounded-lg shadow-xl border relative">
-      <DialogClose asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 h-6 w-6 p-1 text-muted-foreground hover:bg-muted/50"
-          aria-label="Close calculator"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </DialogClose>
-      <Separator className="my-2 mt-8" /> {/* Line above input, with margin top for close button */}
+      {/* Removed DialogClose and X icon button from here */}
+      <Separator className="my-2" /> {/* Adjusted margin since close button is gone */}
       <Input
         type="text"
         value={displayValue}

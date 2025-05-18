@@ -29,7 +29,6 @@ import {
   Copy,
   Star,
   Calculator,
-  X,
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -42,14 +41,13 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
-  DialogClose,
+  DialogClose, // Keep DialogClose for the Send button
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
-import { Separator } from './ui/separator';
 
 
 const formSchema = z.object({
@@ -441,7 +439,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
         Promise.resolve().then(() => {
             const currentVals = getValues();
-            // Do NOT update value when selecting a preset, keep current/last valid input value
             const valueToUse = (currentVals.value === '' || currentVals.value === undefined || isNaN(Number(currentVals.value))) ? lastValidInputValue : Number(currentVals.value);
             const result = convertUnits({...currentVals, value: valueToUse, category: presetCategory, fromUnit: finalFromUnit, toUnit: finalToUnit });
             setConversionResult(result);
@@ -580,6 +577,50 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
   }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfFromUnit, getValues]);
 
+  const handleCopyTextualResult = React.useCallback(async () => {
+    const currentRawFormValue = getValues("value");
+    const numericFromValue = Number(currentRawFormValue);
+
+    const textToCopy = showPlaceholder || !conversionResult 
+        ? '' 
+        : `${formatFromValue(numericFromValue)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
+    
+    if (!textToCopy || !navigator.clipboard) return;
+
+    try {
+        await navigator.clipboard.writeText(textToCopy);
+        toast({
+            title: "Copied!",
+            description: `Conversion "${textToCopy}" copied to clipboard.`,
+            variant: "confirmation",
+            duration: 1500,
+        });
+        if (
+            onResultCopied &&
+            rhfCategory && rhfCategory !== "" &&
+            conversionResult &&
+            isFinite(numericFromValue) &&
+            String(currentRawFormValue).trim() !== '' && String(currentRawFormValue).trim() !== '-'
+        ) {
+            onResultCopied({
+                category: rhfCategory,
+                fromValue: numericFromValue,
+                fromUnit: rhfFromUnit,
+                toValue: conversionResult.value,
+                toUnit: rhfToUnit,
+            });
+        }
+    } catch (err) {
+        console.error('Failed to copy textual result: ', err);
+        toast({
+            title: "Copy Failed",
+            description: "Could not copy conversion to clipboard.",
+            variant: "destructive",
+        });
+    }
+  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, rhfFromUnit, getValues, toast, onResultCopied, rhfCategory]);
+
+
   const handleSaveToFavoritesInternal = React.useCallback(() => {
     if (!rhfCategory || rhfCategory === "" || !rhfFromUnit || !rhfToUnit) {
       toast({
@@ -617,7 +658,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const screenReaderText = showPlaceholder
     ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue))} ${rhfFromUnit}` : 'Enter a value and select units to convert')
-    : `${formatFromValue(Number(rhfValue))} ${rhfFromUnit} equals ${formattedResultString} ${rhfToUnit}`;
+    : `${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
 
   const baseSaveDisabled = !rhfCategory || rhfCategory === "" || !rhfFromUnit || !rhfToUnit;
   const finalSaveDisabled = baseSaveDisabled || disableAddFavoriteButton;
@@ -631,7 +672,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       const result = convertUnits({ ...currentFormData, value: numericValue });
       setConversionResult(result);
     }
-    setIsCalculatorOpen(false);
+    setIsCalculatorOpen(false); // Ensure this closes the dialog
   };
 
 
@@ -759,7 +800,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               <DialogHeader className="sr-only">
                                   <DialogTitle>Calculator</DialogTitle>
                               </DialogHeader>
-                             <SimpleCalculator onSendValue={handleCalculatorValueSent} />
+                             <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
                           </DialogContent>
                       </Dialog>
                       <FormField
@@ -800,34 +841,34 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       />
                     </div>
 
-                    {/* Middle Row - Swap and Favorite Buttons */}
-                      <div className="flex flex-row w-full gap-2 items-center">
-                          <Button
+                   {/* Middle Row - Swap and Favorite Buttons */}
+                    <div className="flex flex-row w-full gap-2 items-center">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleSwapClick}
+                            disabled={!rhfFromUnit || !rhfToUnit}
+                            className={cn(
+                                "h-10 group hover:bg-primary flex-grow p-2 w-full" 
+                            )}
+                            aria-label="Swap from and to units"
+                        >
+                            <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                        </Button>
+
+                        {onSaveFavoriteProp && (
+                           <Button
                               type="button"
                               variant="ghost"
-                              onClick={handleSwapClick}
-                              disabled={!rhfFromUnit || !rhfToUnit}
-                              className={cn(
-                                  "h-10 group hover:bg-primary flex-grow p-2 w-full" 
-                              )}
-                              aria-label="Swap from and to units"
-                          >
-                              <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
-                          </Button>
-
-                          {onSaveFavoriteProp && (
-                              <Button
-                                  type="button"
-                                  variant="ghost" 
-                                  onClick={handleSaveToFavoritesInternal}
-                                  disabled={finalSaveDisabled || showPlaceholder}
-                                  className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:bg-background focus-visible:ring-accent p-2"
-                                  aria-label="Save conversion to favorites"
-                              >
-                                  <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
-                              </Button>
-                          )}
-                      </div>
+                              onClick={handleSaveToFavoritesInternal}
+                              disabled={finalSaveDisabled || showPlaceholder}
+                              className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:bg-background focus-visible:ring-accent p-2"
+                              aria-label="Save conversion to favorites"
+                            >
+                              <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                            </Button>
+                        )}
+                    </div>
 
 
                     {/* To Result Row */}
@@ -893,12 +934,25 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     </div>
                   </div>
                 )}
+                
                  {/* Textual Conversion Result Display */}
                  {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                  <div className="text-center py-2">
-                    <p className="bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md">
-                      {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} equals ${formattedResultString} ${rhfToUnit}`}
-                    </p>
+                  <div className="relative text-center py-2">
+                    <div className="flex items-center justify-center bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md border-2 border-blue-400 dark:border-blue-600">
+                        <span className="flex-grow text-center">
+                            {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+                        </span>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCopyTextualResult}
+                            className="ml-2 h-7 w-7 p-1 text-purple-600 dark:text-purple-400 hover:bg-blue-200 dark:hover:bg-blue-800 shrink-0"
+                            aria-label="Copy textual result to clipboard"
+                        >
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                    </div>
                   </div>
                 )}
 
@@ -937,7 +991,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                    </RadioGroup>
                 </fieldset>
                 </div> {/* End of space-y-6 wrapper */}
-              <div className="flex-grow"></div>
+              <div className="flex-grow"></div> {/* This pushes content above it to the top and itself to the bottom */}
             </form>
           </Form>
         </CardContent>
@@ -946,4 +1000,3 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
-
