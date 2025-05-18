@@ -69,7 +69,7 @@ export default function Home() {
 
   const availablePresets = React.useMemo(() => getFilteredAndSortedPresets(favorites), [favorites]);
   const displayPresetCount = Math.max(0, 12 - favorites.length);
-  const displayPresetsForList = React.useMemo(() => availablePresets.slice(0, displayPresetCount), [availablePresets, displayPresetCount]);
+  const displayPresetsForListDesktop = React.useMemo(() => availablePresets.slice(0, displayPresetCount), [availablePresets, displayPresetCount]);
 
   const disableAddFavoriteButton = favorites.length >= MAX_FAVORITES_FOR_BUTTON_DISABLE;
 
@@ -83,19 +83,34 @@ export default function Home() {
     addHistoryItem(data);
   }, [addHistoryItem]);
 
-  const onHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
+  // Mobile sheet handlers
+  const onMobileHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
     if (unitConverterRef.current) {
       unitConverterRef.current.applyHistorySelect(item);
     }
-    setIsSheetOpen(false); // Close sheet on mobile and desktop after selection
+    setIsSheetOpen(false);
   }, []);
-
 
   const onMobilePresetSelect = (preset: Preset | FavoriteItem) => { 
     if (unitConverterRef.current) {
         unitConverterRef.current.handlePresetSelect(preset);
     }
-    setIsSheetOpen(false); // Close sheet on mobile and desktop after selection
+    setIsSheetOpen(false);
+  };
+
+  // Desktop sidebar handlers
+  const onDesktopHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
+    if (unitConverterRef.current) {
+      unitConverterRef.current.applyHistorySelect(item);
+    }
+    // No sheet to close for desktop
+  }, []);
+
+  const onDesktopPresetSelect = (preset: Preset | FavoriteItem) => { 
+    if (unitConverterRef.current) {
+        unitConverterRef.current.handlePresetSelect(preset);
+    }
+    // No sheet to close for desktop
   };
   
   const handleSaveFavorite = React.useCallback((favoriteData: Omit<FavoriteItem, 'id'>) => {
@@ -182,7 +197,6 @@ export default function Home() {
 
       <header className="sticky top-0 z-50 bg-background p-3 border-b flex items-center justify-between shadow-sm">
         <div className="flex items-center w-1/3"> 
-          {/* Menu button always visible, controls sheet for all screen sizes */}
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" aria-label="Open menu">
@@ -225,7 +239,7 @@ export default function Home() {
                               <Button
                                   variant="ghost"
                                   className="flex-grow justify-start text-left h-auto py-2 px-3 hover:bg-primary hover:text-primary-foreground overflow-hidden whitespace-normal flex items-start gap-2 text-sm"
-                                  onClick={() => onHistoryItemSelect(item)}
+                                  onClick={() => onMobileHistoryItemSelect(item)}
                                   aria-label={`Apply conversion: ${formatHistoryNumberMobile(item.fromValue)} ${item.fromUnit} to ${formatHistoryNumberMobile(item.toValue)} ${item.toUnit}`}
                               >
                                   <UnitIcon category={item.category} className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
@@ -321,11 +335,11 @@ export default function Home() {
                         <List className="h-4 w-4" aria-hidden="true" />
                         Common Conversions
                     </h3>
-                     {displayPresetsForList.length === 0 ? (
+                     {displayPresetsForListDesktop.length === 0 ? ( // Use desktop list for sheet as well for consistency
                         <p className="text-sm text-muted-foreground">No common conversions available.</p>
                     ) : (
                     <ul className="space-y-2">
-                      {displayPresetsForList.map((preset, index) => (
+                      {displayPresetsForListDesktop.map((preset, index) => (
                         <li key={`${preset.category}-${preset.name}-${index}`}>
                            <SheetClose asChild>
                             <Button
@@ -368,39 +382,46 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Simplified main content grid - single column for all screen sizes */}
       <div className={cn(
-        "flex-grow grid grid-cols-1 w-full max-w-7xl mx-auto items-stretch",
-        "2xl:max-w-screen-2xl", 
+        "flex-grow grid grid-cols-1 md:grid-cols-[minmax(250px,300px)_1fr_minmax(250px,300px)] xl:grid-cols-[minmax(300px,350px)_1fr_minmax(300px,350px)] 2xl:grid-cols-[minmax(350px,400px)_1fr_minmax(350px,400px)]",
+        "gap-4 md:gap-6 lg:gap-8 w-full max-w-screen-2xl mx-auto items-stretch", // Use items-stretch if cards are h-full
         "pt-2 pb-4 px-4",
         "sm:pt-4 sm:pb-8 sm:px-8",
-        "md:pt-6 md:pb-12 md:px-12",
-        "lg:pt-8 lg:pb-16 lg:px-16",
-        "xl:pt-10 xl:pb-20 xl:px-20",
-        "2xl:pt-12 2xl:pb-24 2xl:px-24"
+        "md:pt-6 md:pb-12 md:px-6", // Adjusted md padding
+        "lg:pt-8 lg:pb-16 lg:px-8", // Adjusted lg padding
+        "xl:pt-10 xl:pb-20 xl:px-10", // Adjusted xl padding
+        "2xl:pt-12 2xl:pb-24 2xl:px-12" // Adjusted 2xl padding
       )}>
-        <main className="flex flex-col items-center w-full" role="main">
+        <HistoryList
+            items={history}
+            onHistorySelect={onDesktopHistoryItemSelect}
+            onClearHistory={clearHistory}
+            className="hidden md:flex md:flex-col h-full" // max-h-[calc(100vh-120px)] or similar if independent scrolling is needed
+            isLoading={isLoadingHistory}
+        />
+        <main className="flex flex-col items-center w-full md:min-w-[400px] lg:min-w-[500px]" role="main"> {/* Ensure main content has some min-width */}
           <Toaster />
           <UnitConverter 
             ref={unitConverterRef} 
-            className="h-full" 
+            className="h-full w-full" 
             onResultCopied={handleResultCopied}
             onSaveFavorite={handleSaveFavorite}
             disableAddFavoriteButton={disableAddFavoriteButton} 
           />
         </main>
+        <PresetList
+            presetsToDisplay={displayPresetsForListDesktop}
+            onPresetSelect={onDesktopPresetSelect}
+            favorites={favorites}
+            onFavoriteSelect={onDesktopPresetSelect} // Assuming same handler logic for favorites
+            onRemoveFavorite={removeFavorite}
+            onClearAllFavorites={clearAllFavorites}
+            className="hidden md:flex md:flex-col h-full" // max-h-[calc(100vh-120px)] or similar for scrolling
+            isLoadingFavorites={isLoadingFavorites}
+        />
       </div>
       
-      {/* Ad Placeholder now outside the grid, in the main flow */}
-      {/* Removed AdPlaceholder to fix module not found error */}
-      {/*
-      <div className="w-full my-4 flex justify-center px-4">
-        <AdPlaceholder />
-      </div>
-      */}
-
       <Footer />
     </>
   );
 }
-
