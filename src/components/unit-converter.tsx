@@ -29,6 +29,7 @@ import {
   Copy,
   Star,
   Calculator,
+  X,
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -41,12 +42,14 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
+import { Separator } from './ui/separator';
 
 
 const formSchema = z.object({
@@ -438,6 +441,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
         Promise.resolve().then(() => {
             const currentVals = getValues();
+            // Do NOT update value when selecting a preset, keep current/last valid input value
             const valueToUse = (currentVals.value === '' || currentVals.value === undefined || isNaN(Number(currentVals.value))) ? lastValidInputValue : Number(currentVals.value);
             const result = convertUnits({...currentVals, value: valueToUse, category: presetCategory, fromUnit: finalFromUnit, toUnit: finalToUnit });
             setConversionResult(result);
@@ -498,17 +502,17 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
  const handleSwapClick = React.useCallback(() => {
     const currentFromUnit = getValues("fromUnit");
     const currentToUnit = getValues("toUnit");
-    const currentInputValue = getValues("value"); // This is string | number | undefined
+    const currentInputValue = getValues("value"); 
 
     let newInputValue: number | undefined = undefined;
     if (conversionResult && isFinite(conversionResult.value)) {
       newInputValue = conversionResult.value;
     } else if (typeof currentInputValue === 'number' && isFinite(currentInputValue)) {
-      newInputValue = currentInputValue; // Fallback to current input if result is invalid
+      newInputValue = currentInputValue; 
     } else {
-      newInputValue = lastValidInputValue; // Or last valid input
+      newInputValue = lastValidInputValue; 
     }
-
+    
     setValue("value", newInputValue, { shouldValidate: true, shouldDirty: true });
     if (newInputValue !== undefined) {
       setLastValidInputValue(newInputValue);
@@ -516,9 +520,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setValue("fromUnit", currentToUnit, { shouldValidate: true });
     setValue("toUnit", currentFromUnit, { shouldValidate: true });
 
-    setIsSwapped((prev) => !prev); // Toggle animation state
+    setIsSwapped((prev) => !prev); 
 
-    // The useEffect listening to rhfValue, rhfFromUnit, rhfToUnit will trigger re-conversion
   }, [setValue, getValues, conversionResult, lastValidInputValue]);
 
 
@@ -654,285 +657,287 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
              <li><span className="font-semibold text-primary">View Result:</span> The converted value appears automatically.</li>
            </ol>
         </CardHeader>
-        <CardContent className={cn("pt-0 flex-grow flex flex-col justify-between")}>
+        <CardContent className="pt-0 flex-grow flex flex-col">
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
           </div>
           <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="flex flex-col space-y-4 flex-grow">
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <Label htmlFor="category-select">Measurement Category</Label>
-                    <Select
-                      onValueChange={(value) => field.onChange(value)}
-                      value={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger id="category-select" aria-label="Select measurement category">
-                           {field.value && unitData[field.value as UnitCategory] ? (
-                             <div className="flex items-center gap-2">
-                               <UnitIcon category={field.value as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
-                               {unitData[field.value as UnitCategory]?.name ?? 'Select Category'}
-                             </div>
-                           ) : (
-                             <SelectValue placeholder="Select a category" />
-                           )}
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent side="bottom" avoidCollisions={false} className="max-h-60 overflow-y-auto">
-                        {categoriesForDropdown.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                             <div className="flex items-center gap-2">
-                                <UnitIcon category={cat as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
-                                {unitData[cat as UnitCategory].name}
-                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <form onSubmit={handleFormSubmit} className="flex-grow flex flex-col">
+              <div className="space-y-6"> {/* Wrapper for all form content */}
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label htmlFor="category-select">Measurement Category</Label>
+                      <Select
+                        onValueChange={(value) => field.onChange(value)}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger id="category-select" aria-label="Select measurement category">
+                             {field.value && unitData[field.value as UnitCategory] ? (
+                               <div className="flex items-center gap-2">
+                                 <UnitIcon category={field.value as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
+                                 {unitData[field.value as UnitCategory]?.name ?? 'Select Category'}
+                               </div>
+                             ) : (
+                               <SelectValue placeholder="Select a category" />
+                             )}
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent side="bottom" avoidCollisions={false} className="max-h-60 overflow-y-auto">
+                          {categoriesForDropdown.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                               <div className="flex items-center gap-2">
+                                  <UnitIcon category={cat as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
+                                  {unitData[cat as UnitCategory].name}
+                               </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {rhfCategory && (
-                <div className="flex flex-col gap-4">
-                  {/* From Input Row */}
-                  <div className={cn("flex items-stretch w-full")}>
-                    <FormField
-                      control={form.control}
-                      name="value"
-                      render={({ field }) => (
-                        <FormItem className="flex-grow">
-                          <FormControl>
-                            <Input
-                              id="value-input"
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="Enter value"
-                              {...field}
-                              onChange={(e) => {
-                                  const rawValue = e.target.value;
-                                   if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) || /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)) {
-                                      if (/([eE])/.test(rawValue)) {
-                                          field.onChange(rawValue);
-                                      } else {
-                                          const parts = rawValue.split('.');
-                                          if (parts[0].replace('-', '').length <= 8 && (parts[1] === undefined || parts[1].length <= 7)) {
-                                              field.onChange(rawValue);
-                                          } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
-                                              field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
-                                          }
-                                      }
-                                  }
-                              }}
-                              value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
-                              disabled={!rhfFromUnit || !rhfToUnit}
-                              aria-required="true"
-                              className={cn("rounded-r-none border-r-0 focus:z-10 relative h-10 text-left w-full")}
-                            />
-                          </FormControl>
-                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
-                        <DialogTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-accent hover:text-foreground focus:z-10 shrink-0"
-                                aria-label="Open calculator"
-                            >
-                                <Calculator className="h-5 w-5" />
-                            </Button>
-                        </DialogTrigger>
-                         <DialogContent className="sm:max-w-xs p-0 border-0 shadow-lg"> {/* Changed p-0 and added border/shadow */}
-                            <DialogHeader className="sr-only">
-                                <DialogTitle>Calculator</DialogTitle>
-                            </DialogHeader>
-                           <SimpleCalculator onSendValue={handleCalculatorValueSent} />
-                        </DialogContent>
-                    </Dialog>
-                    <FormField
-                      control={form.control}
-                      name="fromUnit"
-                      render={({ field }) => (
-                        <FormItem className="flex-shrink-0">
-                          <Select
-                            onValueChange={(value) => field.onChange(value)}
-                            value={field.value}
-                            disabled={!rhfCategory}
-                          >
+                {rhfCategory && (
+                  <div className="flex flex-col gap-4">
+                    {/* From Input Row */}
+                    <div className={cn("flex items-stretch w-full")}>
+                      <FormField
+                        control={form.control}
+                        name="value"
+                        render={({ field }) => (
+                          <FormItem className="flex-grow">
                             <FormControl>
-                              <SelectTrigger
-                                className={cn("rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input")}
-                              >
-                                {(() => {
-                                  const selectedUnitSymbol = field.value;
-                                  const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
-                                  if (selectedUnit) {
-                                    return <span>({selectedUnit.symbol})</span>;
-                                  }
-                                  return <SelectValue placeholder="Unit" />;
-                                })()}
-                              </SelectTrigger>
+                              <Input
+                                id="value-input"
+                                type="text"
+                                inputMode="decimal"
+                                placeholder="Enter value"
+                                {...field}
+                                onChange={(e) => {
+                                    const rawValue = e.target.value;
+                                     if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) || /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)) {
+                                        if (/([eE])/.test(rawValue)) {
+                                            field.onChange(rawValue);
+                                        } else {
+                                            const parts = rawValue.split('.');
+                                            if (parts[0].replace('-', '').length <= 8 && (parts[1] === undefined || parts[1].length <= 7)) {
+                                                field.onChange(rawValue);
+                                            } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
+                                                field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
+                                            }
+                                        }
+                                    }
+                                }}
+                                value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
+                                disabled={!rhfFromUnit || !rhfToUnit}
+                                aria-required="true"
+                                className={cn("rounded-r-none border-r-0 focus:z-10 relative h-10 text-left w-full")}
+                              />
                             </FormControl>
-                            <SelectContent>
-                              {currentUnitsForCategory.map((unit) => (
-                                <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                  {unit.name} ({unit.symbol})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Middle Row - Swap and Favorite Buttons */}
-                    <div className="flex flex-row w-full gap-2 items-center">
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={handleSwapClick}
-                            disabled={!rhfFromUnit || !rhfToUnit}
-                            className={cn(
-                                "h-10 group hover:bg-primary flex-grow p-2 w-full"
-                            )}
-                            aria-label="Swap from and to units"
-                        >
-                            <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
-                        </Button>
-
-                        {onSaveFavoriteProp && (
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                onClick={handleSaveToFavoritesInternal}
-                                disabled={finalSaveDisabled || showPlaceholder}
-                                className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:bg-background focus-visible:ring-accent p-2"
-                                aria-label="Save conversion to favorites"
-                            >
-                                <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
-                            </Button>
+                             <FormMessage />
+                          </FormItem>
                         )}
+                      />
+                      <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
+                          <DialogTrigger asChild>
+                              <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-accent hover:text-foreground focus:z-10 shrink-0"
+                                  aria-label="Open calculator"
+                              >
+                                  <Calculator className="h-5 w-5" />
+                              </Button>
+                          </DialogTrigger>
+                           <DialogContent className="sm:max-w-xs p-0 border-0 shadow-lg">
+                              <DialogHeader className="sr-only">
+                                  <DialogTitle>Calculator</DialogTitle>
+                              </DialogHeader>
+                             <SimpleCalculator onSendValue={handleCalculatorValueSent} />
+                          </DialogContent>
+                      </Dialog>
+                      <FormField
+                        control={form.control}
+                        name="fromUnit"
+                        render={({ field }) => (
+                          <FormItem className="flex-shrink-0">
+                            <Select
+                              onValueChange={(value) => field.onChange(value)}
+                              value={field.value}
+                              disabled={!rhfCategory}
+                            >
+                              <FormControl>
+                                <SelectTrigger
+                                  className={cn("rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input")}
+                                >
+                                  {(() => {
+                                    const selectedUnitSymbol = field.value;
+                                    const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
+                                    if (selectedUnit) {
+                                      return <span>({selectedUnit.symbol})</span>;
+                                    }
+                                    return <SelectValue placeholder="Unit" />;
+                                  })()}
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto">
+                                {currentUnitsForCategory.map((unit) => (
+                                  <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
+                                    {unit.name} ({unit.symbol})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
-
-                  {/* To Result Row */}
-                  <div className={cn("flex items-stretch w-full")}>
-                    <Input
-                        readOnly
-                        value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
-                        className={cn(
-                          "rounded-l-md rounded-r-none border-r-0 flex-grow",
-                          "focus:z-10 relative h-10 text-left",
-                          showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
-                        )}
-                        aria-label="Conversion result"
-                      />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCopy}
-                      disabled={showPlaceholder}
-                      className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-accent hover:text-foreground focus:z-10 shrink-0"
-                      aria-label="Copy result to clipboard"
-                    >
-                      <Copy className="h-5 w-5" />
-                    </Button>
-                    <FormField
-                      control={form.control}
-                      name="toUnit"
-                      render={({ field }) => (
-                        <FormItem className="flex-shrink-0">
-                          <Select
-                            onValueChange={(value) => field.onChange(value)}
-                            value={field.value}
-                            disabled={!rhfCategory}
+                    {/* Middle Row - Swap and Favorite Buttons */}
+                      <div className="flex flex-row w-full gap-2 items-center">
+                          <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={handleSwapClick}
+                              disabled={!rhfFromUnit || !rhfToUnit}
+                              className={cn(
+                                  "h-10 group hover:bg-primary flex-grow p-2 w-full" 
+                              )}
+                              aria-label="Swap from and to units"
                           >
-                            <FormControl>
-                               <SelectTrigger className={cn(
-                                 "rounded-l-none rounded-r-md",
-                                 "w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input border-l-0"
-                                )}
-                               >
-                                {(() => {
-                                  const selectedUnitSymbol = field.value;
-                                  const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
-                                  if (selectedUnit) {
-                                    return <span>({selectedUnit.symbol})</span>;
-                                  }
-                                  return <SelectValue placeholder="Unit" />;
-                                })()}
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                               {currentUnitsForCategory.map((unit) => (
-                                <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                  {unit.name} ({unit.symbol})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-              )}
+                              <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                          </Button>
 
-              {/* Textual Conversion Result Display */}
-              {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                <div className="text-center py-2">
-                  <p className="bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md">
-                    {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} equals ${formattedResultString} ${rhfToUnit}`}
-                  </p>
-                </div>
-              )}
+                          {onSaveFavoriteProp && (
+                              <Button
+                                  type="button"
+                                  variant="ghost" 
+                                  onClick={handleSaveToFavoritesInternal}
+                                  disabled={finalSaveDisabled || showPlaceholder}
+                                  className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:bg-background focus-visible:ring-accent p-2"
+                                  aria-label="Save conversion to favorites"
+                              >
+                                  <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                              </Button>
+                          )}
+                      </div>
 
-              <fieldset className="pt-4">
-                 <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
-                 <RadioGroup
-                   value={numberFormat}
-                   onValueChange={(value: string) => {
-                       setNumberFormat(value as NumberFormat);
-                       handleActualFormatChange(value as NumberFormat, 'user_choice');
-                   }}
-                   className="flex flex-col sm:flex-row gap-4"
-                   aria-label="Choose number format for the result"
-                 >
-                   <div className="flex items-center space-x-2">
-                     <RadioGroupItem
-                       value="normal"
-                       id="format-normal"
-                       disabled={isNormalFormatDisabled}
+
+                    {/* To Result Row */}
+                    <div className={cn("flex items-stretch w-full")}>
+                      <Input
+                          readOnly
+                          value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
+                          className={cn(
+                            "rounded-l-md rounded-r-none border-r-0 flex-grow",
+                            "focus:z-10 relative h-10 text-left",
+                            showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
+                          )}
+                          aria-label="Conversion result"
+                        />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCopy}
+                        disabled={showPlaceholder}
+                        className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-accent hover:text-foreground focus:z-10 shrink-0"
+                        aria-label="Copy result to clipboard"
+                      >
+                        <Copy className="h-5 w-5" />
+                      </Button>
+                      <FormField
+                        control={form.control}
+                        name="toUnit"
+                        render={({ field }) => (
+                          <FormItem className="flex-shrink-0">
+                            <Select
+                              onValueChange={(value) => field.onChange(value)}
+                              value={field.value}
+                              disabled={!rhfCategory}
+                            >
+                              <FormControl>
+                                 <SelectTrigger className={cn(
+                                   "rounded-l-none rounded-r-md",
+                                   "w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input border-l-0"
+                                  )}
+                                 >
+                                  {(() => {
+                                    const selectedUnitSymbol = field.value;
+                                    const selectedUnit = currentUnitsForCategory.find(u => u.symbol === selectedUnitSymbol);
+                                    if (selectedUnit) {
+                                      return <span>({selectedUnit.symbol})</span>;
+                                    }
+                                    return <SelectValue placeholder="Unit" />;
+                                  })()}
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto">
+                                 {currentUnitsForCategory.map((unit) => (
+                                  <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
+                                    {unit.name} ({unit.symbol})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                     <Label
-                       htmlFor="format-normal"
-                       className={cn(
-                         "cursor-pointer text-sm",
-                          isNormalFormatDisabled && "text-muted-foreground opacity-70 cursor-not-allowed"
-                       )}
-                     >
-                       Normal (e.g., 1,234.56)
-                     </Label>
-                   </div>
-                   <div className="flex items-center space-x-2">
-                     <RadioGroupItem value="scientific" id="format-scientific" />
-                     <Label htmlFor="format-scientific" className="cursor-pointer text-sm">Scientific (e.g., 1.23E+6)</Label>
-                   </div>
-                 </RadioGroup>
-              </fieldset>
-              <div className="flex-grow"></div> {/* This will push the fieldset to the bottom if needed */}
+                    </div>
+                  </div>
+                )}
+                 {/* Textual Conversion Result Display */}
+                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
+                  <div className="text-center py-2">
+                    <p className="bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md">
+                      {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} equals ${formattedResultString} ${rhfToUnit}`}
+                    </p>
+                  </div>
+                )}
+
+
+                <fieldset className="pt-4">
+                   <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
+                   <RadioGroup
+                     value={numberFormat}
+                     onValueChange={(value: string) => {
+                         setNumberFormat(value as NumberFormat);
+                         handleActualFormatChange(value as NumberFormat, 'user_choice');
+                     }}
+                     className="flex flex-col sm:flex-row gap-4"
+                     aria-label="Choose number format for the result"
+                   >
+                     <div className="flex items-center space-x-2">
+                       <RadioGroupItem
+                         value="normal"
+                         id="format-normal"
+                         disabled={isNormalFormatDisabled}
+                        />
+                       <Label
+                         htmlFor="format-normal"
+                         className={cn(
+                           "cursor-pointer text-sm",
+                            isNormalFormatDisabled && "text-muted-foreground opacity-70 cursor-not-allowed"
+                         )}
+                       >
+                         Normal (e.g., 1,234.56)
+                       </Label>
+                     </div>
+                     <div className="flex items-center space-x-2">
+                       <RadioGroupItem value="scientific" id="format-scientific" />
+                       <Label htmlFor="format-scientific" className="cursor-pointer text-sm">Scientific (e.g., 1.23E+6)</Label>
+                     </div>
+                   </RadioGroup>
+                </fieldset>
+                </div> {/* End of space-y-6 wrapper */}
+              <div className="flex-grow"></div>
             </form>
           </Form>
         </CardContent>
@@ -941,3 +946,4 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
