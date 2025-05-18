@@ -5,7 +5,9 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { SendHorizonal } from 'lucide-react'; // Import SendHorizonal icon
+import { SendHorizonal, X } from 'lucide-react'; // Import SendHorizonal and X icons
+import { DialogClose } from '@/components/ui/dialog'; // Import DialogClose
+import { Separator } from '@/components/ui/separator'; // Import Separator
 
 interface SimpleCalculatorProps {
   onSendValue: (value: string) => void; // Callback to send value to parent
@@ -55,28 +57,26 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
         return operand1 * operand2;
       case '/':
         if (operand2 === 0) {
-            return NaN; 
+            return NaN;
         }
         return operand1 / operand2;
       default:
         return operand2;
     }
   };
-  
+
   const performOperation = (nextOperator: string) => {
     const inputValue = parseFloat(displayValue);
 
-    if (isNaN(inputValue) && displayValue !== 'Error') { 
-        clearDisplay(); 
+    if (isNaN(inputValue) && displayValue !== 'Error') {
+        clearDisplay();
         return;
     }
     if (displayValue === 'Error') {
-        // If display is "Error", only allow AC or digit input to reset
-        if (nextOperator !== 'AC') { // AC is handled by clearDisplay
+        if (nextOperator !== 'AC') {
              setFirstOperand(null);
              setOperator(null);
-             setWaitingForSecondOperand(true); // Prepare for new input if an operator is pressed
-             // but don't change displayValue from "Error" until a digit is pressed
+             setWaitingForSecondOperand(true);
              return;
         }
     }
@@ -90,12 +90,12 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
         setDisplayValue('Error');
         setFirstOperand(null);
         setOperator(null);
-        setWaitingForSecondOperand(true); // Allow new calculation after error
+        setWaitingForSecondOperand(true);
         return;
       }
-      const resultStr = String(parseFloat(result.toFixed(7))); 
+      const resultStr = String(parseFloat(result.toFixed(7)));
       setDisplayValue(resultStr);
-      setFirstOperand(parseFloat(resultStr)); 
+      setFirstOperand(parseFloat(resultStr));
     }
 
     setWaitingForSecondOperand(true);
@@ -113,29 +113,25 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
             setWaitingForSecondOperand(true);
             return;
         }
-        if (displayValue === 'Error') return; // Don't calculate if current display is Error
+        if (displayValue === 'Error') return;
 
       const result = calculate(firstOperand, inputValue, operator);
-      
+
       if (isNaN(result)) {
         setDisplayValue('Error');
       } else {
         const resultStr = String(parseFloat(result.toFixed(7)));
         setDisplayValue(resultStr);
       }
-      setFirstOperand(null); 
+      setFirstOperand(null);
       setOperator(null);
-      // setWaitingForSecondOperand to false to allow immediate new calculation or chaining result
-      setWaitingForSecondOperand(false); 
+      setWaitingForSecondOperand(false);
     }
   };
 
   const handleSendValue = () => {
     if (displayValue === 'Error' || isNaN(parseFloat(displayValue))) {
-      // Optionally, provide user feedback that "Error" cannot be sent
-      // Or simply do nothing if the value is not valid to send.
       console.warn("Calculator value is 'Error' or invalid, cannot send.");
-      // You might want to show a toast or alert to the user here.
       return;
     }
     onSendValue(displayValue);
@@ -156,26 +152,37 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue }) => {
     { label: '1', action: () => inputDigit('1') },
     { label: '2', action: () => inputDigit('2') },
     { label: '3', action: () => inputDigit('3') },
-    { label: '=', action: handleEquals, className: 'bg-primary hover:bg-primary/90 text-primary-foreground', ariaLabel: "Equals" }, // Removed row-span-2
-    { label: '0', action: () => inputDigit('0'), className: 'col-span-2' }, // Added col-span-2
+    { label: '=', action: handleEquals, className: 'bg-primary hover:bg-primary/90 text-primary-foreground', ariaLabel: "Equals" },
+    { label: '0', action: () => inputDigit('0'), className: 'col-span-2' },
     { label: '.', action: inputDecimal, ariaLabel: "Decimal" },
-    { 
-      label: <SendHorizonal className="h-5 w-5" />, 
-      action: handleSendValue, 
+    {
+      label: <SendHorizonal className="h-5 w-5" />,
+      action: handleSendValue,
       className: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground',
       ariaLabel: 'Send value to converter'
     },
   ];
 
   return (
-    <div className="w-full max-w-xs mx-auto p-4 bg-card rounded-lg shadow-xl border">
+    <div className="w-full max-w-xs mx-auto p-4 bg-card rounded-lg shadow-xl border relative">
+      <DialogClose asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-2 right-2 h-6 w-6 p-1 text-muted-foreground hover:bg-muted/50"
+          aria-label="Close calculator"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </DialogClose>
+      <Separator className="my-2 mt-8" /> {/* Line above input, with margin top for close button */}
       <Input
         type="text"
         value={displayValue}
         readOnly
         className="w-full h-16 text-3xl sm:text-4xl text-right pr-4 mb-4 bg-muted text-foreground rounded-md"
         aria-label="Calculator display"
-        tabIndex={-1} 
+        tabIndex={-1}
       />
       <div className="grid grid-cols-4 gap-2">
         {buttons.map((btn, index) => (
