@@ -164,7 +164,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1);
   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal');
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
-  const isMobile = useIsMobile(); // Still useful for minor UI tweaks if needed
+  const isMobile = useIsMobile(); 
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false); 
   const { toast } = useToast();
@@ -438,7 +438,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 
         Promise.resolve().then(() => {
             const currentVals = getValues(); 
-            const result = convertUnits({...currentVals, category: presetCategory }); 
+            // For presets, DO NOT change the input value. Use the existing one or default if empty.
+            const valueToUse = (currentVals.value === '' || currentVals.value === undefined || isNaN(Number(currentVals.value))) ? 1 : Number(currentVals.value);
+            const result = convertUnits({...currentVals, value: valueToUse, category: presetCategory }); 
             setConversionResult(result);
         });
     });
@@ -680,9 +682,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
               />
 
               {rhfCategory && (
-                // This main div will now always be flex-col
                 <div className={cn("w-full flex flex-col gap-2")}>
-                  {/* From Input Row (Value + Calculator + FromUnit) - Always w-full */}
+                  {/* From Input Row (Value + Calculator + FromUnit) */}
                   <div className={cn("flex items-stretch w-full")}>
                     <FormField
                       control={form.control}
@@ -734,7 +735,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-xs p-0 bg-transparent border-0 shadow-none">
-                           <DialogHeader className="sr-only"> {/* Visually hidden, for accessibility */}
+                           <DialogHeader className="sr-only">
                              <DialogTitle>Calculator</DialogTitle>
                            </DialogHeader>
                            <SimpleCalculator onSendValue={handleCalculatorValueSent} />
@@ -744,7 +745,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       control={form.control}
                       name="fromUnit"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex-shrink-0">
                           <Select
                             onValueChange={(value) => field.onChange(value)}
                             value={field.value}
@@ -752,7 +753,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           >
                             <FormControl>
                               <SelectTrigger 
-                                className={cn("rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input")}
+                                className={cn("rounded-l-none w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input")}
                               >
                                 {(() => {
                                   const selectedUnitSymbol = field.value;
@@ -778,15 +779,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     />
                   </div>
 
-                  {/* Middle Row (Swap + Favorite) - Always this structure */}
-                  <div className="flex items-stretch w-full gap-2">
+                  {/* Middle Row (Swap + Favorite) */}
+                  <div className={cn("flex items-stretch w-full gap-2")}>
                     <Button 
                       type="button"
                       variant="ghost"
                       onClick={handleSwapClick}
                       disabled={!rhfFromUnit || !rhfToUnit}
                       className={cn(
-                        "h-10 group hover:bg-primary flex-grow p-2", // Using mobile classes for consistency
+                        "h-10 group flex-grow p-2 hover:bg-primary",
                       )}
                       aria-label="Swap from and to units"
                     >
@@ -798,7 +799,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           variant="outline"
                           onClick={handleSaveToFavoritesInternal}
                           disabled={finalSaveDisabled || showPlaceholder}
-                          className="h-10 w-auto min-w-[80px] flex-shrink-0 group hover:border-accent hover:bg-background focus-visible:ring-accent p-2"
+                          className="h-10 w-10 sm:w-auto sm:min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:border-accent hover:bg-background focus-visible:ring-accent p-0 sm:p-2"
                           aria-label="Save conversion to favorites"
                       >
                           <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
@@ -806,20 +807,18 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     )}
                   </div>
                   
-                  {/* To Result Row (Result + Copy + ToUnit) - Always w-full */}
+                  {/* To Result Row (Result + Copy + ToUnit + Favorite Button) */}
                   <div className={cn("flex items-stretch w-full")}>
-                    <FormItem className="flex-grow">
-                      <Input
+                    <Input
                         readOnly
                         value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
                         className={cn(
-                          "rounded-l-md rounded-r-none border-r-0", 
-                          "focus:z-10 relative h-10 text-left w-full",
+                          "rounded-l-md rounded-r-none border-r-0 flex-grow", 
+                          "focus:z-10 relative h-10 text-left",
                           showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
                         )}
                         aria-label="Conversion result"
                       />
-                    </FormItem>
                     <Button 
                       type="button"
                       variant="outline"
@@ -834,7 +833,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       control={form.control}
                       name="toUnit"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="flex-shrink-0">
                           <Select
                             onValueChange={(value) => field.onChange(value)}
                             value={field.value}
@@ -842,8 +841,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           >
                             <FormControl>
                                <SelectTrigger className={cn(
-                                 "rounded-l-none rounded-r-md", // Always rounded-r-md as fav button is now separate
-                                 "w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input"
+                                 "rounded-l-none rounded-r-none", 
+                                 "w-auto min-w-[80px] md:min-w-[100px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input border-l-0 border-r-0"
                                 )}
                                >
                                 {(() => {
@@ -868,6 +867,18 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         </FormItem>
                       )}
                     />
+                     {onSaveFavoriteProp && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleSaveToFavoritesInternal}
+                            disabled={finalSaveDisabled || showPlaceholder}
+                            className="h-10 rounded-l-none rounded-r-md w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:border-accent hover:bg-background focus-visible:ring-accent p-2 border-l-0"
+                            aria-label="Save conversion to favorites"
+                        >
+                            <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                        </Button>
+                    )}
                   </div>
                 </div>
               )}
@@ -913,3 +924,4 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
