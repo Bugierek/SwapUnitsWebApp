@@ -10,6 +10,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import {
@@ -442,9 +443,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         const currentVal = getValues("value");
         const valToSet = (currentVal === '' || currentVal === undefined || isNaN(Number(currentVal))) ? lastValidInputValue : Number(currentVal);
         
-        if (String(valToSet) !== String(currentVal)) {
-          // Do not set value for presets
-        }
+        // Do not set value for presets
+        // if (String(valToSet) !== String(currentVal)) {
+        //  setValue("value", valToSet, { shouldValidate: true, shouldDirty: true });
+        // }
 
 
         Promise.resolve().then(() => {
@@ -508,18 +510,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
  const handleSwapClick = React.useCallback(() => {
     const currentFromUnit = getValues("fromUnit");
     const currentToUnit = getValues("toUnit");
-    const currentValue = getValues("value");
+    const currentFromValueString = String(getValues("value"));
     let newInputValue: number | undefined = undefined;
 
     if (conversionResult && isFinite(conversionResult.value)) {
         newInputValue = conversionResult.value;
+    } else if (currentFromValueString.trim() !== '' && !isNaN(Number(currentFromValueString))) {
+        newInputValue = Number(currentFromValueString);
     } else {
-        const currentInputString = String(currentValue);
-        if (currentInputString.trim() !== '' && !isNaN(Number(currentInputString))) {
-            newInputValue = Number(currentInputString);
-        } else {
-            newInputValue = lastValidInputValue;
-        }
+        newInputValue = lastValidInputValue;
     }
     
     setValue("value", newInputValue, { shouldValidate: true, shouldDirty: true });
@@ -710,7 +709,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
              <li><span className="font-semibold text-primary">View Result:</span> The converted value appears automatically.</li>
            </ol>
         </CardHeader>
-        <CardContent className="pt-0 flex-grow flex flex-col">
+        <CardContent className={cn("pt-0 flex-grow flex flex-col")}>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
           </div>
@@ -880,7 +879,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               variant="ghost" 
                               onClick={handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
-                              className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:bg-background focus-visible:ring-accent p-2"
+                              className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:border-accent hover:bg-background focus-visible:ring-accent p-2"
                               aria-label="Save conversion to favorites"
                             >
                               <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
@@ -962,7 +961,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                  {/* Textual Conversion Result Display */}
                  {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
                   <div className="relative text-center py-2">
-                    <div className="flex items-center justify-center bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md border border-blue-400 dark:border-blue-600">
+                    <div className="flex items-center justify-center bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md border border-blue-300 dark:border-blue-500">
                         <span className="flex-grow text-center">
                             {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
                         </span>
@@ -1014,7 +1013,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                      </div>
                    </RadioGroup>
                 </fieldset>
-                <div className="flex-grow"></div>
+                <div className="flex-grow"></div> 
                 </div> 
             </form>
           </Form>
@@ -1024,4 +1023,3 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 }));
 
 UnitConverter.displayName = 'UnitConverter';
-
