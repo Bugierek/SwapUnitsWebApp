@@ -309,9 +309,12 @@ export const getFilteredAndSortedPresets = (
         if (!isDuplicate) {
             uniqueNames.add(presetKey);
         }
-        return !isDuplicate;
-    });
-    
-    return finalPresets;
+    return !isDuplicate;
+  });
+  
+  return finalPresets;
 };
 
+export const getPresetsForCategory = (category: UnitCategory): Preset[] => {
+  return allPresets.filter((preset) => preset.category === category);
+};

@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,14 +24,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { unitData, getUnitsForCategoryAndMode } from '@/lib/unit-data';
-import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
+import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem, UnitData } from '@/types';
 import {
   ArrowRightLeft,
   FlaskConical,
   Copy,
   Star,
   Calculator,
-  X,
+  ArrowUpRight,
+  ChevronsUpDown,
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -38,9 +40,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useImperativeHandle, forwardRef } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
+import type { ConversionComboboxProps } from './combobox';
 import {
   Dialog,
   DialogContent,
@@ -51,7 +55,10 @@ import {
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
 import { Separator } from './ui/separator';
-
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { getCategorySlug } from '@/lib/category-info';
+import { convertUnitsDetailed } from '@/lib/conversion-math';
+import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -77,6 +84,10 @@ interface UnitConverterProps {
   }) => void;
   onSaveFavorite?: (favoriteData: Omit<FavoriteItem, 'id'>) => void;
   disableAddFavoriteButton?: boolean;
+  initialCategory?: UnitCategory;
+  initialFromUnit?: string;
+  initialToUnit?: string;
+  initialValue?: number;
 }
 
 export interface UnitConverterHandle {
@@ -162,26 +173,56 @@ const formatFromValue = (num: number | undefined): string => {
 };
 
 
-export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConverterProps>(function UnitConverterComponent({ className, onResultCopied, onSaveFavorite: onSaveFavoriteProp, disableAddFavoriteButton = false }, ref) {
-  const [selectedCategoryLocal, setSelectedCategoryLocal] = React.useState<UnitCategory | "">("");
-  const [conversionResult, setConversionResult] = React.useState<ConversionResult | null>(null);
-  const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(1);
+export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConverterProps>(function UnitConverterComponent(
+  {
+    className,
+    onResultCopied,
+    onSaveFavorite: onSaveFavoriteProp,
+    disableAddFavoriteButton = false,
+    initialCategory = 'Mass',
+    initialFromUnit,
+    initialToUnit,
+    initialValue = 1,
+  },
+  ref,
+) {
+  const defaultCategory = initialCategory as UnitCategory;
+  const defaultUnits = getUnitsForCategoryAndMode(defaultCategory);
+  const resolvedFromUnit = initialFromUnit ?? defaultUnits[0]?.symbol ?? '';
+  const resolvedToUnit = initialToUnit
+    ?? defaultUnits.find((unit) => unit.symbol !== resolvedFromUnit)?.symbol
+    ?? resolvedFromUnit;
+  const resolvedValue = Number.isFinite(initialValue) ? initialValue : 1;
+
+  const [selectedCategoryLocal, setSelectedCategoryLocal] = React.useState<UnitCategory | ''>(defaultCategory);
+  const [ComboboxComponent, setComboboxComponent] = React.useState<React.ComponentType<any> | null>(null);
+  const initialConversion = React.useMemo(() =>
+    convertUnitsDetailed({
+      category: defaultCategory,
+      fromUnit: resolvedFromUnit,
+      toUnit: resolvedToUnit,
+      value: resolvedValue,
+    }), [defaultCategory, resolvedFromUnit, resolvedToUnit, resolvedValue]);
+
+  const [conversionResult, setConversionResult] = React.useState<ConversionResult | null>(initialConversion);
+  const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(resolvedValue);
   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal');
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
   const isMobile = useIsMobile();
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
+  const [categorySearch, setCategorySearch] = React.useState('');
 
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: 'onChange',
     defaultValues: {
-      category: "Mass",
-      fromUnit: "kg",
-      toUnit: "g",
-      value: 1,
+      category: defaultCategory,
+      fromUnit: resolvedFromUnit,
+      toUnit: resolvedToUnit,
+      value: resolvedValue,
     },
   });
 
@@ -191,14 +232,172 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfToUnit = watch("toUnit");
   const rhfValue = watch("value");
 
+  React.useEffect(() => {
+    let mounted = true;
+    import('./combobox')
+      .then((mod) => {
+        if (mounted) {
+          setComboboxComponent(() => mod.ConversionCombobox);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setComboboxComponent(null);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [setComboboxComponent]);
+
   const categoriesForDropdown = React.useMemo(() => {
-    return (Object.keys(unitData) as UnitCategory[]);
-  }, []);
+    const allCategories = (Object.keys(unitData) as UnitCategory[]);
+    if (!categorySearch.trim()) return allCategories;
+    return allCategories.filter((cat) =>
+      unitData[cat].name.toLowerCase().includes(categorySearch.trim().toLowerCase()) ||
+      cat.toLowerCase().includes(categorySearch.trim().toLowerCase())
+    );
+  }, [categorySearch]);
 
   const currentUnitsForCategory = React.useMemo(() => {
     if (!rhfCategory) return [];
     return getUnitsForCategoryAndMode(rhfCategory);
   }, [rhfCategory]);
+
+  const conversionPairs = React.useMemo(
+    () =>
+      (Object.entries(unitData) as [UnitCategory, UnitData][]).flatMap(
+        ([category, data]) => {
+          const units = getUnitsForCategoryAndMode(category);
+          return units.flatMap((fromUnit) =>
+            units
+              .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
+              .map((toUnit) => {
+                const label = `${fromUnit.symbol} \u2192 ${toUnit.symbol}`;
+                const pairUrl = buildConversionPairUrl(
+                  category,
+                  fromUnit.symbol,
+                  toUnit.symbol,
+                );
+                const keywords = [
+                  category,
+                  data.name,
+                  fromUnit.name,
+                  fromUnit.symbol,
+                  toUnit.name,
+                  toUnit.symbol,
+                  label,
+                  `${fromUnit.name} to ${toUnit.name}`,
+                  `${fromUnit.symbol} to ${toUnit.symbol}`,
+                  `${fromUnit.name} -> ${toUnit.name}`,
+                  `${fromUnit.symbol} -> ${toUnit.symbol}`,
+                  `${fromUnit.name} → ${toUnit.name}`,
+                  `${fromUnit.symbol} → ${toUnit.symbol}`,
+                  `${fromUnit.name} ${toUnit.symbol}`,
+                  `${fromUnit.symbol} ${toUnit.name}`,
+                  `${fromUnit.symbol}${toUnit.symbol}`,
+                  `${fromUnit.name} ${toUnit.name}`,
+                ];
+                return {
+                  value: `${category}:${fromUnit.symbol}:${toUnit.symbol}`,
+                  category,
+                  categoryLabel: data.name,
+                  fromSymbol: fromUnit.symbol,
+                  toSymbol: toUnit.symbol,
+                  fromName: fromUnit.name,
+                  toName: toUnit.name,
+                  label,
+                  keywords,
+                  keywordsLower: keywords.map((keyword) => keyword.toLowerCase()),
+                  pairUrl,
+                };
+              }),
+          );
+        },
+      ),
+    [],
+  );
+
+  const selectedConversionPairValue = React.useMemo(() => {
+    if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return undefined;
+    }
+    return `${rhfCategory}:${rhfFromUnit}:${rhfToUnit}`;
+  }, [rhfCategory, rhfFromUnit, rhfToUnit]);
+
+  const convertUnits = React.useCallback((data: Partial<FormData>): ConversionResult | null => {
+    const { category, fromUnit, toUnit, value } = data;
+    if (
+      !category ||
+      !fromUnit ||
+      !toUnit ||
+      value === undefined ||
+      value === null ||
+      String(value).trim() === ''
+    ) {
+      return null;
+    }
+
+    const result = convertUnitsDetailed({
+      category: category as UnitCategory,
+      fromUnit,
+      toUnit,
+      value: Number(value),
+    });
+
+    return result;
+  }, []);
+
+  const handleParsedConversion = React.useCallback(
+    ({
+      category,
+      fromUnit,
+      toUnit,
+      value: parsedValue,
+    }: {
+      category: UnitCategory;
+      fromUnit: string;
+      toUnit: string;
+      value: number;
+    }) => {
+      setValue('category', category, { shouldValidate: true, shouldDirty: true });
+      setSelectedCategoryLocal(category);
+
+      Promise.resolve().then(() => {
+        setValue('fromUnit', fromUnit, { shouldValidate: true, shouldDirty: true });
+        setValue('toUnit', toUnit, { shouldValidate: true, shouldDirty: true });
+        setValue('value', parsedValue, { shouldValidate: true, shouldDirty: true });
+        setLastValidInputValue(parsedValue);
+
+        const conversion = convertUnits({
+          category,
+          fromUnit,
+          toUnit,
+          value: parsedValue,
+        });
+
+        setConversionResult(conversion);
+      });
+    },
+    [
+      convertUnits,
+      setValue,
+      setSelectedCategoryLocal,
+      setLastValidInputValue,
+      setConversionResult,
+    ],
+  );
+
+  const handleParseError = React.useCallback(
+    (message: string) => {
+      toast({
+        title: 'Could not parse that conversion',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+    [toast],
+  );
 
 
   const handleActualFormatChange = React.useCallback((
@@ -215,63 +414,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         else if (actualFormat === 'scientific') setNumberFormat('scientific');
     }
   }, [numberFormat]);
-
-  const convertUnits = React.useCallback((data: Partial<FormData>): ConversionResult | null => {
-    const { category, fromUnit, toUnit, value } = data;
-    const numericValue = Number(value);
-
-    if (!category || !fromUnit || !toUnit || value === undefined || value === null || !isFinite(numericValue) || String(value).trim() === '') {
-        return null;
-    }
-
-    const currentCategory = category as UnitCategory;
-    const currentUnits = getUnitsForCategoryAndMode(currentCategory);
-    const fromUnitData = currentUnits.find((u) => u.symbol === fromUnit);
-    const toUnitData = currentUnits.find((u) => u.symbol === toUnit);
-
-    if (!fromUnitData || !toUnitData) {
-      return null;
-    }
-    let resultValue: number;
-
-    if (currentCategory === "Temperature") {
-      let tempInCelsius: number;
-      if (fromUnitData.symbol === "°C") {
-        tempInCelsius = numericValue;
-      } else if (fromUnitData.symbol === "°F") {
-        tempInCelsius = (numericValue - 32) * (5 / 9);
-      } else { // Kelvin
-        tempInCelsius = numericValue - 273.15;
-      }
-
-      if (toUnitData.symbol === "°C") {
-        resultValue = tempInCelsius;
-      } else if (toUnitData.symbol === "°F") {
-        resultValue = tempInCelsius * (9 / 5) + 32;
-      } else { // Kelvin
-        resultValue = tempInCelsius + 273.15;
-      }
-    } else if (currentCategory === "Fuel Economy") {
-        let valueInBaseUnit: number;
-        if (fromUnitData.unitType === 'inverse_consumption') {
-            if (numericValue === 0) return { value: Infinity, unit: toUnitData.symbol };
-            valueInBaseUnit = fromUnitData.factor / numericValue;
-        } else {
-            valueInBaseUnit = numericValue * fromUnitData.factor;
-        }
-
-        if (toUnitData.unitType === 'inverse_consumption') {
-            if (valueInBaseUnit === 0) return { value: Infinity, unit: toUnitData.symbol };
-            resultValue = toUnitData.factor / valueInBaseUnit;
-        } else {
-            resultValue = valueInBaseUnit / toUnitData.factor;
-        }
-    } else {
-      const valueInBaseUnit = numericValue * fromUnitData.factor;
-      resultValue = valueInBaseUnit / toUnitData.factor;
-    }
-    return isFinite(resultValue) ? { value: resultValue, unit: toUnitData.symbol } : null;
-  }, []);
 
 
  React.useEffect(() => {
@@ -457,7 +599,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     });
   }, [setValue, getValues, convertUnits, lastValidInputValue]);
 
-
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
     const { category, fromUnit, toUnit, fromValue } = item;
 
@@ -553,19 +694,19 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const numericFromValue = Number(currentRawFormValue);
 
     const textToCopy = showPlaceholder || !conversionResult ? '' : `${formattedResultString} ${rhfToUnit}`;
-    if (!textToCopy || !navigator.clipboard) return;
+    if (!textToCopy) return;
 
-    try {
-        await navigator.clipboard.writeText(textToCopy);
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
         toast({
             title: "Copied!",
             description: `Result "${textToCopy}" copied to clipboard.`,
             variant: "confirmation",
             duration: 1500,
         });
-         if (
+        if (
             onResultCopied &&
-            rhfCategory && rhfCategory !== "" &&
+            rhfCategory &&
             conversionResult &&
             isFinite(numericFromValue) &&
             String(currentRawFormValue).trim() !== '' && String(currentRawFormValue).trim() !== '-'
@@ -578,11 +719,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 toUnit: rhfToUnit,
             });
         }
-    } catch (err) {
-        console.error('Failed to copy text: ', err);
+    } else {
         toast({
             title: "Copy Failed",
-            description: "Could not copy result to clipboard.",
+            description: "Clipboard access is blocked. Please copy the text manually.",
             variant: "destructive",
         });
     }
@@ -596,10 +736,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         ? '' 
         : `${formatFromValue(numericFromValue)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
     
-    if (!textToCopy || !navigator.clipboard) return;
+    if (!textToCopy) return;
 
-    try {
-        await navigator.clipboard.writeText(textToCopy);
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
         toast({
             title: "Copied!",
             description: `Conversion "${textToCopy}" copied to clipboard.`,
@@ -608,7 +748,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         });
         if (
             onResultCopied &&
-            rhfCategory && rhfCategory !== "" &&
+            rhfCategory &&
             conversionResult &&
             isFinite(numericFromValue) &&
             String(currentRawFormValue).trim() !== '' && String(currentRawFormValue).trim() !== '-'
@@ -621,11 +761,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 toUnit: rhfToUnit,
             });
         }
-    } catch (err) {
-        console.error('Failed to copy textual result: ', err);
+    } else {
         toast({
             title: "Copy Failed",
-            description: "Could not copy conversion to clipboard.",
+            description: "Clipboard access is blocked. Please copy the text manually.",
             variant: "destructive",
         });
     }
@@ -633,7 +772,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
 
   const handleSaveToFavoritesInternal = React.useCallback(() => {
-    if (!rhfCategory || rhfCategory === "" || !rhfFromUnit || !rhfToUnit) {
+    if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
       toast({
         title: "Cannot Save Favorite",
         description: "Please select a category and both units before saving.",
@@ -671,7 +810,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue))} ${rhfFromUnit}` : 'Enter a value and select units to convert')
     : `${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
 
-  const baseSaveDisabled = !rhfCategory || rhfCategory === "" || !rhfFromUnit || !rhfToUnit;
+  const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
   const finalSaveDisabled = baseSaveDisabled || disableAddFavoriteButton;
 
   const handleCalculatorValueSent = (valueFromCalculator: string) => {
@@ -686,48 +825,94 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setIsCalculatorOpen(false); 
   };
 
-
   return (
-     <Card className={cn("shadow-lg h-full flex flex-col", className)} aria-labelledby="unit-converter-title">
-        <CardHeader className="relative pb-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <CardTitle id="unit-converter-title" className="text-2xl font-bold text-primary flex items-center gap-2" as="h2">
-              <FlaskConical
-                className="h-6 w-6"
-                aria-hidden="true"
-              />
-               Swap Units Converter
-            </CardTitle>
+     <Card
+        id="converter"
+        className={cn(
+          "relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
+          className
+        )}
+        aria-labelledby="unit-converter-title"
+      >
+        <CardHeader className="border-b border-border/60 px-5 py-5">
+          <div className="flex items-center gap-3 text-xl font-semibold text-foreground" id="unit-converter-title">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <FlaskConical className="h-5 w-5" aria-hidden="true" />
+            </span>
+            SwapUnits Converter
           </div>
-          <br className={cn(isMobile && "hidden")} />
-           <p className={cn("text-sm text-muted-foreground mb-2 space-y-1")}>
-             Quickly convert between units.
-           </p>
-           <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
-             <li><span className="font-semibold text-primary">Select Category:</span> Choose the type of measurement (e.g., Length, Mass).</li>
-             <li><span className="font-semibold text-primary">Choose Units &amp; Input Value:</span> Pick units, then enter value.</li>
-             <li><span className="font-semibold text-primary">View Result:</span> The converted value appears automatically.</li>
-           </ol>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Enter a value, choose your units, and copy the result instantly. History and favorites stay in sync automatically.
+          </p>
         </CardHeader>
-        <CardContent className={cn("pt-0 flex-grow flex flex-col")}>
+        <CardContent className={cn("flex flex-grow flex-col px-5 py-5")}>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
           </div>
           <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="flex-grow flex flex-col">
-              <div className="space-y-6 flex-grow flex flex-col"> 
+            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-6">
+              <div className="flex flex-1 flex-col gap-6">
                 <FormField
                   control={form.control}
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="category-select">Measurement Category</Label>
+                      <Label htmlFor="conversion-search" className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                        Conversion finder
+                      </Label>
+                      <div className="relative mb-3">
+                        {ComboboxComponent ? (
+                          <ComboboxComponent
+                            items={conversionPairs}
+                            value={selectedConversionPairValue}
+                            onChange={(nextValue: string) => {
+                              const [category, from, to] = nextValue.split(':');
+                              if (category && from && to) {
+                                setValue('category', category as UnitCategory);
+                                setValue('fromUnit', from);
+                                setValue('toUnit', to);
+                                setCategorySearch('');
+                              }
+                            }}
+                            placeholder={'Type a phrase like "100 kg in g" to get a conversion'}
+                            inputId="conversion-search"
+                            onParsedConversion={handleParsedConversion}
+                            onParseError={handleParseError}
+                          />
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled
+                            className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
+                            aria-busy="true"
+                          >
+                            Loading conversions…
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
+                          </Button>
+                        )}
+                      </div>
+                      <Label htmlFor="category-select" className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                        Measurement Category
+                      </Label>
                       <Select
-                        onValueChange={(value) => field.onChange(value)}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setCategorySearch('');
+                        }}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setCategorySearch('');
+                          }
+                        }}
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger id="category-select" aria-label="Select measurement category">
+                          <SelectTrigger
+                            id="category-select"
+                            aria-label="Select measurement category"
+                            className="h-11 rounded-xl border border-border/60 bg-white px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60"
+                          >
                              {field.value && unitData[field.value as UnitCategory] ? (
                                <div className="flex items-center gap-2">
                                  <UnitIcon category={field.value as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
@@ -738,17 +923,51 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                              )}
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent side="bottom" avoidCollisions={false} className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible">
-                          {categoriesForDropdown.map((cat) => (
-                            <SelectItem key={cat} value={cat}>
-                               <div className="flex items-center gap-2">
-                                  <UnitIcon category={cat as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
-                                  {unitData[cat as UnitCategory].name}
-                               </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <SelectContent side="bottom" avoidCollisions={false} className="max-h-72 overflow-hidden p-0">
+                          <div className="border-b border-border/60 bg-white px-3 pb-2 pt-3">
+                            <Input
+                              id="category-filter"
+                              type="text"
+                              value={categorySearch}
+                              onChange={(event) => setCategorySearch(event.target.value)}
+                              placeholder="Filter measurement types..."
+                              className="h-9 rounded-lg border border-border/50 bg-white px-3 text-sm"
+                              aria-label="Filter measurement categories"
+                            />
+                          </div>
+                          <ScrollArea className="max-h-60">
+                            <div className="py-1">
+                              {categoriesForDropdown.length === 0 ? (
+                                <p className="px-3 py-2 text-xs text-muted-foreground">No matching categories.</p>
+                              ) : (
+                                categoriesForDropdown.map((cat) => {
+                                  const slug = getCategorySlug(cat as UnitCategory);
+                                  return (
+                                    <SelectItem key={cat} value={cat}>
+                                      <div className="flex w-full items-center justify-between gap-3">
+                                        <span className="flex items-center gap-2">
+                                          <UnitIcon category={cat as UnitCategory} className="h-4 w-4" aria-hidden="true" />
+                                          {unitData[cat as UnitCategory].name}
+                                        </span>
+                                        <Link
+                                          href={`/measurements/${slug}`}
+                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                                          aria-label={`Open ${unitData[cat as UnitCategory].name} reference page`}
+                                          onClick={(event) => event.stopPropagation()}
+                                          onMouseDown={(event) => event.stopPropagation()}
+                                          onPointerDown={(event) => event.stopPropagation()}
+                                        >
+                                          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
+                                        </Link>
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })
+                              )}
+                           </div>
+                         </ScrollArea>
+                       </SelectContent>
+                     </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -757,7 +976,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
                     {/* From Input Row */}
-                    <div className={cn("flex items-stretch w-full")}>
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
                       <FormField
                         control={form.control}
                         name="value"
@@ -785,10 +1004,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                         }
                                     }
                                 }}
-                                value={(field.value === '' || field.value === '-') ? field.value : (isNaN(Number(field.value)) ? '' : String(field.value))}
+                                value={field.value === undefined ? '' : String(field.value)}
                                 disabled={!rhfFromUnit || !rhfToUnit}
                                 aria-required="true"
-                                className={cn("rounded-r-none border-r-0 focus:z-10 relative h-10 text-left w-full")}
+                                className={cn(
+                                  "h-11 w-full rounded-xl border border-border/60 bg-white px-3 text-base font-medium transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                )}
                               />
                             </FormControl>
                              <FormMessage />
@@ -801,13 +1022,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                   type="button"
                                   variant="outline"
                                   size="icon"
-                                  className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-accent hover:text-accent-foreground focus:z-10 shrink-0"
+                                  className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-white text-foreground transition hover:border-primary/60 hover:text-primary"
                                   aria-label="Open calculator"
                               >
                                   <Calculator className="h-5 w-5" />
                               </Button>
                           </DialogTrigger>
-                           <DialogContent className="sm:max-w-xs p-0 border-0 shadow-lg">
+                           <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
                              <DialogHeader className="sr-only"> 
                                 <DialogTitle>Calculator</DialogTitle>
                              </DialogHeader>
@@ -826,7 +1047,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             >
                               <FormControl>
                                 <SelectTrigger
-                                  className={cn("rounded-l-none w-auto min-w-[80px] md:min-w-[180px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input")}
+                                  className={cn(
+                                    "h-11 min-w-[110px] rounded-xl border border-border/60 bg-white px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
+                                  )}
                                 >
                                   {field.value && currentUnitsForCategory.find(u => u.symbol === field.value) ? (
                                     <>
@@ -859,44 +1082,42 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     </div>
 
                    {/* Middle Row - Swap and Favorite Buttons */}
-                   <div className="flex flex-row w-full gap-2 items-stretch">
+                   <div className="flex w-full flex-col gap-3 md:flex-row">
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             onClick={handleSwapClick}
                             disabled={!rhfFromUnit || !rhfToUnit}
-                            className={cn(
-                                "h-10 group hover:bg-primary flex-grow p-2 w-full" 
-                            )}
+                            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
                             aria-label="Swap from and to units"
                         >
-                            <ArrowRightLeft className={cn("h-5 w-5 text-primary group-hover:text-primary-foreground", isSwapped && "transform rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                            <ArrowRightLeft className={cn("h-4 w-4 text-primary transition-transform", isSwapped && "rotate-180 scale-x-[-1]")} aria-hidden="true" />
+                            <span className="hidden md:inline">Swap units</span>
                         </Button>
 
-                        {onSaveFavoriteProp && (
-                           <Button
+                       {onSaveFavoriteProp && (
+                          <Button
                               type="button"
-                              variant="ghost" 
+                              variant="outline" 
                               onClick={handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
-                              className="h-10 w-auto min-w-[80px] md:min-w-[100px] flex-shrink-0 group hover:border-accent hover:bg-background focus-visible:ring-accent p-2"
+                              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 md:flex-none md:px-5"
                               aria-label="Save conversion to favorites"
                             >
-                              <Star className={cn("h-5 w-5", (!finalSaveDisabled && !showPlaceholder) ? "text-accent group-hover:fill-accent" : "text-muted-foreground/50")} />
+                              <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
                             </Button>
                         )}
                     </div>
 
 
                     {/* To Result Row */}
-                    <div className={cn("flex items-stretch w-full")}>
+                    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
                       <Input
                           readOnly
-                          value={showPlaceholder ? (rhfValue === '' || rhfValue === '-' ? '-' : '...') : formattedResultString}
+                          value={showPlaceholder ? '-' : formattedResultString}
                           className={cn(
-                            "rounded-l-md rounded-r-none border-r-0 flex-grow",
-                            "focus:z-10 relative h-10 text-left w-full",
-                            showPlaceholder ? "text-muted-foreground" : "text-purple-600 dark:text-purple-400 font-semibold"
+                            "h-11 w-full rounded-xl border border-border/60 bg-secondary/60 px-3 text-base font-semibold text-foreground",
+                            showPlaceholder && 'text-muted-foreground'
                           )}
                           aria-label="Conversion result"
                         />
@@ -905,7 +1126,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         variant="outline"
                         onClick={handleCopy}
                         disabled={showPlaceholder}
-                        className="p-2 h-10 w-10 rounded-none border-l-0 border-r-0 hover:bg-accent hover:text-accent-foreground focus:z-10 shrink-0"
+                        className="h-11 w-11 shrink-0 rounded-xl border border-border/60 bg-white text-foreground transition hover:border-primary/60 hover:text-primary disabled:bg-muted"
                         aria-label="Copy result to clipboard"
                       >
                         <Copy className="h-5 w-5" />
@@ -922,8 +1143,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             >
                               <FormControl>
                                  <SelectTrigger className={cn(
-                                   "rounded-l-none rounded-r-md",
-                                   "w-auto min-w-[80px] md:min-w-[180px] h-10 text-left focus:z-10 focus:outline-none focus:ring-0 focus:ring-offset-0 focus:border-input border-l-0"
+                                   "h-11 min-w-[110px] rounded-xl border border-border/60 bg-white px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
                                   )}
                                  >
                                   {field.value && currentUnitsForCategory.find(u => u.symbol === field.value) ? (
@@ -960,17 +1180,17 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 
                  {/* Textual Conversion Result Display */}
                  {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                  <div className="relative text-center py-2">
-                    <div className="flex items-center justify-center bg-sky-100 dark:bg-sky-700 text-purple-600 dark:text-purple-400 font-semibold text-lg p-3 rounded-md border border-blue-300 dark:border-blue-500">
-                        <span className="flex-grow text-center">
+                 <div className="relative">
+                    <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary">
+                        <span className="flex-1 text-left">
                             {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
                         </span>
                         <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
                             onClick={handleCopyTextualResult}
-                            className="ml-2 h-7 w-7 p-1 text-foreground/80 hover:bg-purple-600 dark:hover:bg-purple-700 hover:text-white shrink-0"
+                            className="h-8 w-8 shrink-0 rounded-lg border-none bg-white text-primary transition hover:bg-white/80"
                             aria-label="Copy textual result to clipboard"
                         >
                             <Copy className="h-4 w-4" />
@@ -980,18 +1200,19 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 )}
 
 
-                <fieldset className="pt-4">
-                   <Label className="mb-2 block font-medium text-sm">Result Formatting</Label>
+                <fieldset className="pt-1">
+                   <Label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</Label>
+                   <div className="rounded-xl border border-border/60 bg-white px-3 py-3">
                    <RadioGroup
                      value={numberFormat}
                      onValueChange={(value: string) => {
                          setNumberFormat(value as NumberFormat);
                          handleActualFormatChange(value as NumberFormat, 'user_choice');
                      }}
-                     className="flex flex-col sm:flex-row gap-4"
+                     className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
                      aria-label="Choose number format for the result"
                    >
-                     <div className="flex items-center space-x-2">
+                     <div className="flex items-center gap-2">
                        <RadioGroupItem
                          value="normal"
                          id="format-normal"
@@ -1000,20 +1221,20 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                        <Label
                          htmlFor="format-normal"
                          className={cn(
-                           "cursor-pointer text-sm",
-                            isNormalFormatDisabled && "text-muted-foreground opacity-70 cursor-not-allowed"
+                           "cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition",
+                            isNormalFormatDisabled && "text-muted-foreground cursor-not-allowed"
                          )}
                        >
                          Normal (e.g., 1,234.56)
                        </Label>
                      </div>
-                     <div className="flex items-center space-x-2">
+                     <div className="flex items-center gap-2">
                        <RadioGroupItem value="scientific" id="format-scientific" />
-                       <Label htmlFor="format-scientific" className="cursor-pointer text-sm">Scientific (e.g., 1.23E+6)</Label>
+                       <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">Scientific (e.g., 1.23E+6)</Label>
                      </div>
                    </RadioGroup>
+                   </div>
                 </fieldset>
-                <div className="flex-grow"></div> 
                 </div> 
             </form>
           </Form>
