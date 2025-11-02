@@ -98,6 +98,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Milliliter', symbol: 'mL', factor: 0.001, mode: 'all' },
             { name: 'Cubic Meter', symbol: 'm³', factor: 1000, mode: 'all' }, // 1 m³ = 1000 L
             { name: 'Cubic Centimeter', symbol: 'cm³', factor: 0.001, mode: 'all' }, // Same as Milliliter
+            { name: 'Cubic Millimeter', symbol: 'mm³', factor: 0.000001, mode: 'all' },
             { name: 'Gallon (US)', symbol: 'gal', factor: 3.78541, mode: 'all' }, // US Gallon to L
             { name: 'Cubic Foot', symbol: 'ft³', factor: 28.3168, mode: 'all' }, // Cubic Foot to L
         ].sort((a,b) => a.factor - b.factor),
@@ -222,10 +223,10 @@ export const allPresets: Preset[] = [
 ];
 
 
-const categoryOrder: UnitCategory[] = [
-  'Length', 'Mass', 'Temperature', 'Time', 'Bitcoin',
-  'Pressure', 'Area', 'Volume', 'Energy', 'Speed',
-  'Fuel Economy', 'Data Storage', 'Data Transfer Rate',
+export const categoryDisplayOrder: UnitCategory[] = [
+  'Length', 'Mass', 'Temperature', 'Time', 'Pressure',
+  'Area', 'Volume', 'Energy', 'Speed', 'Fuel Economy',
+  'Data Storage', 'Data Transfer Rate', 'Bitcoin',
   // Removed: 'Ethereum', 'EM Frequency', 'Sound Frequency',
 ];
 
@@ -268,8 +269,8 @@ export const getFilteredAndSortedPresets = (
 
 
     const sortedValidPresets = [...validPresetsForMode].sort((a, b) => {
-        const indexA = categoryOrder.indexOf(a.category);
-        const indexB = categoryOrder.indexOf(b.category);
+        const indexA = categoryDisplayOrder.indexOf(a.category);
+        const indexB = categoryDisplayOrder.indexOf(b.category);
 
         if (indexA !== indexB) {
             if (indexA === -1) return 1; 

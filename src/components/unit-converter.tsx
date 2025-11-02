@@ -21,9 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import * as SelectPrimitive from '@radix-ui/react-select';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { unitData, getUnitsForCategoryAndMode } from '@/lib/unit-data';
+import { unitData, getUnitsForCategoryAndMode, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem, UnitData } from '@/types';
 import {
   ArrowRightLeft,
@@ -59,6 +60,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
+import { useRouter } from 'next/navigation';
+import { getAliasesForUnit } from '@/lib/conversion-query-parser';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -94,6 +97,32 @@ export interface UnitConverterHandle {
   handlePresetSelect: (preset: Preset | FavoriteItem) => void;
   applyHistorySelect: (item: ConversionHistoryItem) => void;
 }
+
+const CATEGORY_SEARCH_KEYWORDS: Partial<Record<UnitCategory, string[]>> = {
+  Length: ['distance', 'height', 'width', 'depth', 'span'],
+  Mass: ['weight', 'heaviness'],
+  Temperature: ['heat', 'cold', 'climate', 'weather'],
+  Time: ['duration', 'interval', 'schedule'],
+  Pressure: ['barometric', 'atm', 'compression'],
+  Area: ['surface', 'sq', 'square'],
+  Volume: ['capacity', 'cubic', 'liters', 'gallons'],
+  Energy: ['power', 'joules', 'calories'],
+  Speed: ['velocity', 'pace', 'rate'],
+  'Fuel Economy': ['fuel', 'mpg', 'efficiency', 'consumption', 'ev'],
+  'Data Storage': ['storage', 'memory', 'drive', 'disk', 'files'],
+  'Data Transfer Rate': ['bandwidth', 'network', 'internet', 'upload', 'download'],
+  Bitcoin: ['crypto', 'cryptocurrency', 'btc', 'satoshi'],
+};
+
+const CATEGORY_TILE_TITLES: Partial<Record<UnitCategory, string>> = {
+  'Fuel Economy': 'Fuel efficiency',
+  'Data Transfer Rate': 'Bandwidth',
+};
+
+const CATEGORY_TILE_SECONDARY_LIMIT: Partial<Record<UnitCategory, number>> = {
+  'Fuel Economy': 2,
+  'Data Transfer Rate': 2,
+};
 
 const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     formattedString: string;
@@ -186,6 +215,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   },
   ref,
 ) {
+  const router = useRouter();
   const defaultCategory = initialCategory as UnitCategory;
   const defaultUnits = getUnitsForCategoryAndMode(defaultCategory);
   const resolvedFromUnit = initialFromUnit ?? defaultUnits[0]?.symbol ?? '';
@@ -213,6 +243,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
   const [categorySearch, setCategorySearch] = React.useState('');
+  const skipNextCategorySelectRef = React.useRef(false);
 
 
   const form = useForm<FormData>({
@@ -251,12 +282,24 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [setComboboxComponent]);
 
   const categoriesForDropdown = React.useMemo(() => {
-    const allCategories = (Object.keys(unitData) as UnitCategory[]);
-    if (!categorySearch.trim()) return allCategories;
-    return allCategories.filter((cat) =>
-      unitData[cat].name.toLowerCase().includes(categorySearch.trim().toLowerCase()) ||
-      cat.toLowerCase().includes(categorySearch.trim().toLowerCase())
-    );
+    const allCategories = categoryDisplayOrder.filter((category) => unitData[category]);
+    const query = categorySearch.trim().toLowerCase();
+    if (!query) return allCategories;
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return allCategories;
+
+    return allCategories.filter((category) => {
+      const baseTokens = [
+        unitData[category].name.toLowerCase(),
+        category.toLowerCase(),
+        ...(CATEGORY_SEARCH_KEYWORDS[category]?.map((keyword) => keyword.toLowerCase()) ?? []),
+      ];
+
+      return tokens.every((token) =>
+        baseTokens.some((candidate) => candidate.includes(token) || token.includes(candidate)),
+      );
+    });
   }, [categorySearch]);
 
   const currentUnitsForCategory = React.useMemo(() => {
@@ -279,7 +322,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                   fromUnit.symbol,
                   toUnit.symbol,
                 );
-                const keywords = [
+                const keywordSet = new Set<string>([
                   category,
                   data.name,
                   fromUnit.name,
@@ -297,7 +340,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                   `${fromUnit.symbol} ${toUnit.name}`,
                   `${fromUnit.symbol}${toUnit.symbol}`,
                   `${fromUnit.name} ${toUnit.name}`,
-                ];
+                ]);
+
+                getAliasesForUnit(fromUnit).forEach((alias) => keywordSet.add(alias));
+                getAliasesForUnit(toUnit).forEach((alias) => keywordSet.add(alias));
+
+                const keywords = Array.from(keywordSet);
                 return {
                   value: `${category}:${fromUnit.symbol}:${toUnit.symbol}`,
                   category,
@@ -897,6 +945,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       </Label>
                       <Select
                         onValueChange={(value) => {
+                          skipNextCategorySelectRef.current = false;
                           field.onChange(value);
                           setCategorySearch('');
                         }}
@@ -941,26 +990,77 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                 <p className="px-3 py-2 text-xs text-muted-foreground">No matching categories.</p>
                               ) : (
                                 categoriesForDropdown.map((cat) => {
-                                  const slug = getCategorySlug(cat as UnitCategory);
+                                  const categoryKey = cat as UnitCategory;
+                                  const slug = getCategorySlug(categoryKey);
+                                  const secondaryLimit = CATEGORY_TILE_SECONDARY_LIMIT[categoryKey] ?? 3;
+                                  const topUnits = getUnitsForCategoryAndMode(categoryKey)
+                                    .slice(0, secondaryLimit)
+                                    .map((unit) => unit.symbol)
+                                    .join(', ');
                                   return (
-                                    <SelectItem key={cat} value={cat}>
-                                      <div className="flex w-full items-center justify-between gap-3">
-                                        <span className="flex items-center gap-2">
-                                          <UnitIcon category={cat as UnitCategory} className="h-4 w-4" aria-hidden="true" />
-                                          {unitData[cat as UnitCategory].name}
-                                        </span>
-                                        <Link
-                                          href={`/measurements/${slug}`}
-                                          className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-                                          aria-label={`Open ${unitData[cat as UnitCategory].name} reference page`}
-                                          onClick={(event) => event.stopPropagation()}
-                                          onMouseDown={(event) => event.stopPropagation()}
-                                          onPointerDown={(event) => event.stopPropagation()}
+                                    <SelectPrimitive.Item
+                                      key={cat}
+                                      value={cat}
+                                      asChild
+                                      aria-label={unitData[categoryKey].name}
+                                      onSelect={(event) => {
+                                        if (skipNextCategorySelectRef.current) {
+                                          skipNextCategorySelectRef.current = false;
+                                          event.preventDefault();
+                                        }
+                                      }}
+                                    >
+                                      <div className="relative flex h-[76px] w-full cursor-pointer flex-col gap-1 overflow-hidden rounded-xl border border-border/50 bg-white px-3 py-1.5 text-sm font-medium shadow-sm transition duration-150 ease-out hover:border-primary/40 data-[highlighted=true]:border-primary/60 data-[highlighted=true]:bg-primary/5 data-[state=checked=true]:border-primary/60 data-[state=checked=true]:bg-primary/10 sm:h-[110px] sm:gap-3 sm:px-4 sm:py-3">
+                                        <div className="flex items-center gap-1 text-left sm:items-start sm:gap-2">
+                                          <UnitIcon category={categoryKey} className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                                          <SelectPrimitive.ItemText asChild>
+                                            <span className="block truncate font-semibold text-foreground">
+                                              {CATEGORY_TILE_TITLES[categoryKey] ?? unitData[categoryKey].name}
+                                            </span>
+                                          </SelectPrimitive.ItemText>
+                                        </div>
+                                        {topUnits && (
+                                          <span className="line-clamp-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground leading-tight sm:mt-4 sm:leading-normal">
+                                            {topUnits}
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                                          aria-label={`Open ${unitData[categoryKey].name} reference page`}
+                                          onPointerDown={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            skipNextCategorySelectRef.current = true;
+                                          }}
+                                          onMouseDown={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            skipNextCategorySelectRef.current = true;
+                                          }}
+                                          onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                              event.preventDefault();
+                                              event.stopPropagation();
+                                              skipNextCategorySelectRef.current = true;
+                                              router.push(`/measurements/${slug}`);
+                                            }
+                                          }}
+                                          onClick={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            skipNextCategorySelectRef.current = true;
+                                            router.push(`/measurements/${slug}`);
+                                          }}
+                                          onPointerUp={(event) => {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                          }}
                                         >
                                           <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                                        </Link>
+                                        </button>
                                       </div>
-                                    </SelectItem>
+                                    </SelectPrimitive.Item>
                                   );
                                 })
                               )}

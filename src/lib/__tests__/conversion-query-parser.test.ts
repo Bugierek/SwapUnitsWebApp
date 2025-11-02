@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest';
+import { parseConversionQuery } from '../conversion-query-parser';
+
+describe('parseConversionQuery', () => {
+  const successCases = [
+    ['100 kg in g', { value: 100, fromUnit: 'kg', toUnit: 'g', category: 'Mass' }],
+    ['250 us to ms', { value: 250, fromUnit: 'µs', toUnit: 'ms', category: 'Time' }],
+    ['0.003 um in mm', { value: 0.003, fromUnit: 'µm', toUnit: 'mm', category: 'Length' }],
+    ['5 mm2 to m2', { value: 5, fromUnit: 'mm²', toUnit: 'm²', category: 'Area' }],
+    ['12 cm^3 in m^3', { value: 12, fromUnit: 'cm³', toUnit: 'm³', category: 'Volume' }],
+    ['750 mm3 to mL', { value: 750, fromUnit: 'mm³', toUnit: 'mL', category: 'Volume' }],
+    ['22 in to nm', { value: 22, fromUnit: 'in', toUnit: 'nm', category: 'Length' }],
+    ['1.5e3 g to kg', { value: 1.5e3, fromUnit: 'g', toUnit: 'kg', category: 'Mass' }],
+    ['10deg C in deg F', { value: 10, fromUnit: '°C', toUnit: '°F', category: 'Temperature' }],
+  ] as const;
+
+  successCases.forEach(([query, expected]) => {
+    it(`parses "${query}" correctly`, () => {
+      const result = parseConversionQuery(query);
+      expect(result).toMatchObject({ ok: true, ...expected });
+    });
+  });
+
+  it('falls back to ASCII micro prefixes', () => {
+    const result = parseConversionQuery('5 us in ms');
+    expect(result).toMatchObject({ ok: true, fromUnit: 'µs', toUnit: 'ms' });
+  });
+
+  it('accepts textual squared notation', () => {
+    const result = parseConversionQuery('3 square meter to m2');
+    expect(result).toMatchObject({ ok: true, fromUnit: 'm²', toUnit: 'm²' });
+  });
+});

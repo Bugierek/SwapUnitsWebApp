@@ -41,19 +41,35 @@ export interface ConversionComboboxProps {
   onParseError?: (message: string) => void;
 }
 
-const CONNECTOR_REGEX = /\b(to|into|in|->|=>|→)\b/i;
-const CONNECTOR_TOKEN_REGEX = /\b(to|into|in|->|=>|→)\b/gi;
-const LETTER_REGEX = /[a-zA-Z°µ]/;
+const CONNECTOR_REGEX = /\b(to|into|in)\b/i;
+const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;
+const LETTER_REGEX = /[a-zA-Z°µμ]/;
 const INITIAL_VISIBLE = 200;
 const LOAD_INCREMENT = 120;
-const CONNECTOR_TERMS = new Set(['to', 'in', 'into', '->', '=>', '→']);
+const CONNECTOR_TERMS = new Set(['to', 'in', 'into']);
 
 function normalizeInput(value: string): string {
-  return value
-    .replace(/(\d)(?=[A-Za-z°µ])/g, '$1 ')
-    .replace(/([A-Za-z°µ])(?=\d)/g, '$1 ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const withArrowsNormalized = value.replace(/(->|=>|→)/gi, ' to ');
+  const withConnectorsSpaced = withArrowsNormalized.replace(/(to|into|in)(?=$|[^a-zA-Z°µμ])/gi, ' $1 ');
+
+  const withSpacing = withConnectorsSpaced
+    .replace(/(\d)(?=[A-Za-z°µµ])/g, (match, digit: string, offset: number, original: string) => {
+      const next = original[offset + 1];
+      const rest = original.slice(offset + 1);
+      if (/^[eE][+-]?\d/.test(rest)) {
+        return digit;
+      }
+      return `${digit} `;
+    })
+    .replace(/([A-Za-z°µµ])(?=\d)/g, (match, letter: string, offset: number, original: string) => {
+      const rest = original.slice(offset + 1);
+      if ((letter === 'e' || letter === 'E') && /^[+-]?\d/.test(rest)) {
+        return letter;
+      }
+      return `${letter} `;
+    });
+
+  return withSpacing.replace(/\s+/g, ' ').trim();
 }
 
 export function ConversionCombobox({
