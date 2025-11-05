@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import * as SelectPrimitive from '@radix-ui/react-select';
+import { MeasurementCategoryDropdown, MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { unitData, getUnitsForCategoryAndMode, categoryDisplayOrder } from '@/lib/unit-data';
@@ -32,7 +32,6 @@ import {
   Copy,
   Star,
   Calculator,
-  ArrowUpRight,
   ChevronsUpDown,
 } from 'lucide-react';
 
@@ -56,11 +55,9 @@ import {
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
 import { Separator } from './ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
-import { useRouter } from 'next/navigation';
 import { getAliasesForUnit } from '@/lib/conversion-query-parser';
 
 const formSchema = z.object({
@@ -215,7 +212,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   },
   ref,
 ) {
-  const router = useRouter();
   const defaultCategory = initialCategory as UnitCategory;
   const defaultUnits = getUnitsForCategoryAndMode(defaultCategory);
   const resolvedFromUnit = initialFromUnit ?? defaultUnits[0]?.symbol ?? '';
@@ -242,10 +238,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
-  const [categorySearch, setCategorySearch] = React.useState('');
-  const skipNextCategorySelectRef = React.useRef(false);
-
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     mode: 'onChange',
@@ -281,26 +273,39 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     };
   }, [setComboboxComponent]);
 
-  const categoriesForDropdown = React.useMemo(() => {
-    const allCategories = categoryDisplayOrder.filter((category) => unitData[category]);
-    const query = categorySearch.trim().toLowerCase();
-    if (!query) return allCategories;
-
-    const tokens = query.split(/\s+/).filter(Boolean);
-    if (tokens.length === 0) return allCategories;
-
-    return allCategories.filter((category) => {
-      const baseTokens = [
-        unitData[category].name.toLowerCase(),
-        category.toLowerCase(),
-        ...(CATEGORY_SEARCH_KEYWORDS[category]?.map((keyword) => keyword.toLowerCase()) ?? []),
-      ];
-
-      return tokens.every((token) =>
-        baseTokens.some((candidate) => candidate.includes(token) || token.includes(candidate)),
-      );
-    });
-  }, [categorySearch]);
+  const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
+    return categoryDisplayOrder
+      .filter((category) => unitData[category])
+      .map((category) => {
+        const slug = getCategorySlug(category);
+        const units = getUnitsForCategoryAndMode(category);
+        const secondaryLimit = CATEGORY_TILE_SECONDARY_LIMIT[category] ?? 3;
+        const topUnits = units
+          .slice(0, secondaryLimit)
+          .map((unit) => unit.symbol)
+          .join(', ');
+        const keywords = new Set<string>();
+        keywords.add(unitData[category].name.toLowerCase());
+        keywords.add(category.toLowerCase());
+        (CATEGORY_SEARCH_KEYWORDS[category] ?? []).forEach((keyword) =>
+          keywords.add(keyword.toLowerCase()),
+        );
+        units.forEach((unit) => {
+          keywords.add(unit.symbol.toLowerCase());
+          keywords.add(unit.name.toLowerCase());
+          if (unit.unitType) {
+            keywords.add(unit.unitType.replace(/_/g, ' ').toLowerCase());
+          }
+        });
+        return {
+          value: category,
+          title: CATEGORY_TILE_TITLES[category] ?? unitData[category].name,
+          slug,
+          topUnits,
+          keywords: Array.from(keywords),
+        };
+      });
+  }, []);
 
   const currentUnitsForCategory = React.useMemo(() => {
     if (!rhfCategory) return [];
@@ -396,6 +401,145 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     return result;
   }, []);
 
+  const applyCategoryDefaults = React.useCallback(
+    (category: UnitCategory, { forceDefaults }: { forceDefaults: boolean }) => {
+      const availableUnits = getUnitsForCategoryAndMode(category);
+      if (availableUnits.length === 0) {
+        setSelectedCategoryLocal(category);
+        setValue('category', category, { shouldValidate: true });
+        return;
+      }
+
+      const currentValues = getValues();
+      let newFromUnitSymbol =
+        typeof currentValues.fromUnit === 'string' ? currentValues.fromUnit : '';
+      let newToUnitSymbol =
+        typeof currentValues.toUnit === 'string' ? currentValues.toUnit : '';
+
+      const fromValid = availableUnits.some((unit) => unit.symbol === newFromUnitSymbol);
+      const toValid = availableUnits.some((unit) => unit.symbol === newToUnitSymbol);
+
+      if (forceDefaults || !fromValid || !toValid) {
+        switch (category) {
+          case 'Length':
+            newFromUnitSymbol = 'm';
+            newToUnitSymbol = 'ft';
+            break;
+          case 'Mass':
+            newFromUnitSymbol = 'kg';
+            newToUnitSymbol = 'g';
+            break;
+          case 'Temperature':
+            newFromUnitSymbol = '°C';
+            newToUnitSymbol = '°F';
+            break;
+          case 'Time':
+            newFromUnitSymbol = 's';
+            newToUnitSymbol = 'ms';
+            break;
+          case 'Pressure':
+            newFromUnitSymbol = 'Pa';
+            newToUnitSymbol = 'atm';
+            break;
+          case 'Area':
+            newFromUnitSymbol = 'm²';
+            newToUnitSymbol = 'ft²';
+            break;
+          case 'Volume':
+            newFromUnitSymbol = 'L';
+            newToUnitSymbol = 'mL';
+            break;
+          case 'Energy':
+            newFromUnitSymbol = 'J';
+            newToUnitSymbol = 'kJ';
+            break;
+          case 'Speed':
+            newFromUnitSymbol = 'm/s';
+            newToUnitSymbol = 'km/h';
+            break;
+          case 'Fuel Economy':
+            newFromUnitSymbol = 'km/L';
+            newToUnitSymbol = 'MPG (US)';
+            break;
+          case 'Data Storage':
+            newFromUnitSymbol = 'GB';
+            newToUnitSymbol = 'MB';
+            break;
+          case 'Data Transfer Rate':
+            newFromUnitSymbol = 'Mbps';
+            newToUnitSymbol = 'MB/s';
+            break;
+          case 'Bitcoin':
+            newFromUnitSymbol = 'BTC';
+            newToUnitSymbol = 'sat';
+            break;
+          default: {
+            newFromUnitSymbol = availableUnits[0]?.symbol || '';
+            const alternateUnit = availableUnits.find(
+              (unit) => unit.symbol !== newFromUnitSymbol,
+            );
+            newToUnitSymbol = alternateUnit?.symbol || availableUnits[1]?.symbol || newFromUnitSymbol;
+            break;
+          }
+        }
+      }
+
+      if (!availableUnits.some((unit) => unit.symbol === newFromUnitSymbol)) {
+        newFromUnitSymbol = availableUnits[0]?.symbol || '';
+      }
+
+      if (
+        !availableUnits.some((unit) => unit.symbol === newToUnitSymbol) ||
+        newFromUnitSymbol === newToUnitSymbol
+      ) {
+        const fallbackUnit = availableUnits.find(
+          (unit) => unit.symbol !== newFromUnitSymbol,
+        );
+        newToUnitSymbol = fallbackUnit?.symbol || availableUnits[1]?.symbol || newFromUnitSymbol;
+      }
+
+      const currentValueRaw = currentValues.value;
+      const numericValue =
+        typeof currentValueRaw === 'number'
+          ? currentValueRaw
+          : Number(currentValueRaw);
+      const shouldResetValue =
+        forceDefaults ||
+        !Number.isFinite(numericValue) ||
+        String(currentValueRaw ?? '').trim() === '' ||
+        String(currentValueRaw ?? '').trim() === '-';
+
+      const finalValue = shouldResetValue ? 1 : numericValue;
+
+      setSelectedCategoryLocal(category);
+      setValue('category', category, { shouldDirty: true, shouldValidate: true });
+      setValue('fromUnit', newFromUnitSymbol, { shouldDirty: true, shouldValidate: true });
+      setValue('toUnit', newToUnitSymbol, { shouldDirty: true, shouldValidate: true });
+      setValue('value', finalValue, { shouldDirty: true, shouldValidate: true });
+      setLastValidInputValue(finalValue);
+      setNumberFormat('normal');
+      setIsNormalFormatDisabled(false);
+
+      const conversion = convertUnits({
+        category,
+        fromUnit: newFromUnitSymbol,
+        toUnit: newToUnitSymbol,
+        value: finalValue,
+      });
+
+      setConversionResult(conversion);
+    },
+    [
+      convertUnits,
+      getValues,
+      setConversionResult,
+      setIsNormalFormatDisabled,
+      setLastValidInputValue,
+      setNumberFormat,
+      setValue,
+    ],
+  );
+
   const handleParsedConversion = React.useCallback(
     ({
       category,
@@ -464,85 +608,55 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [numberFormat]);
 
 
- React.useEffect(() => {
+  React.useEffect(() => {
     const categoryToProcess = rhfCategory as UnitCategory;
     if (!categoryToProcess) return;
 
-    const categoryChangedSystemOrUser = categoryToProcess !== selectedCategoryLocal;
+    const availableUnits = getUnitsForCategoryAndMode(categoryToProcess);
+    if (availableUnits.length === 0) return;
 
-    if (categoryChangedSystemOrUser) {
-        setSelectedCategoryLocal(categoryToProcess);
-
-        const availableUnits = getUnitsForCategoryAndMode(categoryToProcess);
-        if (availableUnits.length === 0) {
-            return;
-        }
-
-        let newFromUnitSymbol = rhfFromUnit;
-        let newToUnitSymbol = rhfToUnit;
-
-        const fromUnitStillValidInNewContext = availableUnits.some(u => u.symbol === newFromUnitSymbol);
-        const toUnitStillValidInNewContext = availableUnits.some(u => u.symbol === newToUnitSymbol);
-
-        if (categoryToProcess !== selectedCategoryLocal || !fromUnitStillValidInNewContext || !toUnitStillValidInNewContext) {
-            switch (categoryToProcess) {
-                case 'Length': newFromUnitSymbol = 'm'; newToUnitSymbol = 'ft'; break;
-                case 'Mass': newFromUnitSymbol = 'kg'; newToUnitSymbol = 'g'; break;
-                case 'Temperature': newFromUnitSymbol = '°C'; newToUnitSymbol = '°F'; break;
-                case 'Time': newFromUnitSymbol = 's'; newToUnitSymbol = 'ms'; break;
-                case 'Pressure': newFromUnitSymbol = 'Pa'; newToUnitSymbol = 'atm'; break;
-                case 'Area': newFromUnitSymbol = 'm²'; newToUnitSymbol = 'ft²'; break;
-                case 'Volume': newFromUnitSymbol = 'L'; newToUnitSymbol = 'mL'; break;
-                case 'Energy': newFromUnitSymbol = 'J'; newToUnitSymbol = 'kJ'; break;
-                case 'Speed': newFromUnitSymbol = 'm/s'; newToUnitSymbol = 'km/h'; break;
-                case 'Fuel Economy': newFromUnitSymbol = 'km/L'; newToUnitSymbol = 'MPG (US)'; break;
-                case 'Data Storage': newFromUnitSymbol = 'GB'; newToUnitSymbol = 'MB'; break;
-                case 'Data Transfer Rate': newFromUnitSymbol = 'Mbps'; newToUnitSymbol = 'MB/s'; break;
-                case 'Bitcoin': newFromUnitSymbol = 'BTC'; newToUnitSymbol = 'sat'; break;
-                default:
-                    newFromUnitSymbol = availableUnits[0]?.symbol || "";
-                    newToUnitSymbol = availableUnits.length > 1 ? availableUnits[1]?.symbol : (availableUnits[0]?.symbol || "");
-                    if (newFromUnitSymbol === newToUnitSymbol && availableUnits.length > 1) {
-                         newToUnitSymbol = availableUnits[1]?.symbol || newFromUnitSymbol;
-                    } else if (newFromUnitSymbol === newToUnitSymbol && availableUnits.length === 1) {
-                        newToUnitSymbol = newFromUnitSymbol;
-                    }
-            }
-            if (!availableUnits.some(u => u.symbol === newFromUnitSymbol)) {
-                newFromUnitSymbol = availableUnits[0]?.symbol || "";
-            }
-            if (!availableUnits.some(u => u.symbol === newToUnitSymbol) || newFromUnitSymbol === newToUnitSymbol) {
-                newToUnitSymbol = availableUnits.find(u => u.symbol !== newFromUnitSymbol)?.symbol || (availableUnits[0]?.symbol || "");
-                 if (newFromUnitSymbol === newToUnitSymbol && availableUnits.length > 1) {
-                    newToUnitSymbol = availableUnits[1]?.symbol || newFromUnitSymbol;
-                }
-            }
-
-            setValue("fromUnit", newFromUnitSymbol, { shouldValidate: true, shouldDirty: true });
-            setValue("toUnit", newToUnitSymbol, { shouldValidate: true, shouldDirty: true });
-        }
-
-        const formValues = getValues();
-        if (formValues.fromUnit === newFromUnitSymbol && formValues.toUnit === newToUnitSymbol) {
-            const currentVal = formValues.value;
-            const valToSet = (currentVal === '' || currentVal === undefined || isNaN(Number(currentVal))) ? 1 : Number(currentVal);
-            setValue("value", valToSet, { shouldValidate: true, shouldDirty: true });
-            setLastValidInputValue(valToSet);
-            setNumberFormat('normal');
-            setIsNormalFormatDisabled(false);
-        }
-
-
-        Promise.resolve().then(() => {
-            const currentVals = getValues();
-            const valToConvert = (typeof currentVals.value === 'string' && (isNaN(parseFloat(currentVals.value)) || currentVals.value.trim() === '')) || currentVals.value === undefined ? 1 : Number(currentVals.value);
-
-            const result = convertUnits({ ...currentVals, value: valToConvert, category: categoryToProcess });
-            setConversionResult(result);
-        });
+    if (categoryToProcess !== selectedCategoryLocal) {
+      applyCategoryDefaults(categoryToProcess, { forceDefaults: true });
+      return;
     }
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [rhfCategory, setValue, getValues, convertUnits]);
+
+    const currentValues = getValues();
+    const currentFrom =
+      typeof currentValues.fromUnit === 'string' ? currentValues.fromUnit : '';
+    const currentTo =
+      typeof currentValues.toUnit === 'string' ? currentValues.toUnit : '';
+    const fromValid = availableUnits.some((unit) => unit.symbol === currentFrom);
+    const toValid = availableUnits.some((unit) => unit.symbol === currentTo);
+
+    if (!fromValid || !toValid) {
+      applyCategoryDefaults(categoryToProcess, { forceDefaults: true });
+      return;
+    }
+
+    const numericValue =
+      typeof currentValues.value === 'number'
+        ? currentValues.value
+        : Number(currentValues.value);
+
+    if (Number.isFinite(numericValue)) {
+      const conversion = convertUnits({
+        category: categoryToProcess,
+        fromUnit: currentFrom,
+        toUnit: currentTo,
+        value: numericValue,
+      });
+      setConversionResult(conversion);
+      setLastValidInputValue(numericValue);
+    }
+  }, [
+    applyCategoryDefaults,
+    convertUnits,
+    getValues,
+    rhfCategory,
+    selectedCategoryLocal,
+    setConversionResult,
+    setLastValidInputValue,
+  ]);
 
 
   React.useEffect(() => {
@@ -919,7 +1033,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                 setValue('category', category as UnitCategory);
                                 setValue('fromUnit', from);
                                 setValue('toUnit', to);
-                                setCategorySearch('');
                               }
                             }}
                             placeholder={'Type a phrase like "100 kg in g" to get a conversion'}
@@ -943,131 +1056,18 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       <Label htmlFor="category-select" className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
                         Measurement Category
                       </Label>
-                      <Select
-                        onValueChange={(value) => {
-                          skipNextCategorySelectRef.current = false;
-                          field.onChange(value);
-                          setCategorySearch('');
-                        }}
-                        onOpenChange={(open) => {
-                          if (!open) {
-                            setCategorySearch('');
-                          }
-                        }}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger
-                            id="category-select"
-                            aria-label="Select measurement category"
-                            className="h-11 rounded-xl border border-border/60 bg-white px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60"
-                          >
-                             {field.value && unitData[field.value as UnitCategory] ? (
-                               <div className="flex items-center gap-2">
-                                 <UnitIcon category={field.value as UnitCategory} className="h-4 w-4" aria-hidden="true"/>
-                                 {unitData[field.value as UnitCategory]?.name ?? 'Select Category'}
-                               </div>
-                             ) : (
-                               <SelectValue placeholder="Select a category" />
-                             )}
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent side="bottom" avoidCollisions={false} className="max-h-72 overflow-hidden p-0">
-                          <div className="border-b border-border/60 bg-white px-3 pb-2 pt-3">
-                            <Input
-                              id="category-filter"
-                              type="text"
-                              value={categorySearch}
-                              onChange={(event) => setCategorySearch(event.target.value)}
-                              placeholder="Filter measurement types..."
-                              className="h-9 rounded-lg border border-border/50 bg-white px-3 text-sm"
-                              aria-label="Filter measurement categories"
-                            />
-                          </div>
-                          <ScrollArea className="max-h-60">
-                            <div className="py-1">
-                              {categoriesForDropdown.length === 0 ? (
-                                <p className="px-3 py-2 text-xs text-muted-foreground">No matching categories.</p>
-                              ) : (
-                                categoriesForDropdown.map((cat) => {
-                                  const categoryKey = cat as UnitCategory;
-                                  const slug = getCategorySlug(categoryKey);
-                                  const secondaryLimit = CATEGORY_TILE_SECONDARY_LIMIT[categoryKey] ?? 3;
-                                  const topUnits = getUnitsForCategoryAndMode(categoryKey)
-                                    .slice(0, secondaryLimit)
-                                    .map((unit) => unit.symbol)
-                                    .join(', ');
-                                  return (
-                                    <SelectPrimitive.Item
-                                      key={cat}
-                                      value={cat}
-                                      asChild
-                                      aria-label={unitData[categoryKey].name}
-                                      onSelect={(event) => {
-                                        if (skipNextCategorySelectRef.current) {
-                                          skipNextCategorySelectRef.current = false;
-                                          event.preventDefault();
-                                        }
-                                      }}
-                                    >
-                                      <div className="relative flex h-[76px] w-full cursor-pointer flex-col gap-1 overflow-hidden rounded-xl border border-border/50 bg-white px-3 py-1.5 text-sm font-medium shadow-sm transition duration-150 ease-out hover:border-primary/40 data-[highlighted=true]:border-primary/60 data-[highlighted=true]:bg-primary/5 data-[state=checked=true]:border-primary/60 data-[state=checked=true]:bg-primary/10 sm:h-[110px] sm:gap-3 sm:px-4 sm:py-3">
-                                        <div className="flex items-center gap-1 text-left sm:items-start sm:gap-2">
-                                          <UnitIcon category={categoryKey} className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                                          <SelectPrimitive.ItemText asChild>
-                                            <span className="block truncate font-semibold text-foreground">
-                                              {CATEGORY_TILE_TITLES[categoryKey] ?? unitData[categoryKey].name}
-                                            </span>
-                                          </SelectPrimitive.ItemText>
-                                        </div>
-                                        {topUnits && (
-                                          <span className="line-clamp-2 text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground leading-tight sm:mt-4 sm:leading-normal">
-                                            {topUnits}
-                                          </span>
-                                        )}
-                                        <button
-                                          type="button"
-                                          className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
-                                          aria-label={`Open ${unitData[categoryKey].name} reference page`}
-                                          onPointerDown={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            skipNextCategorySelectRef.current = true;
-                                          }}
-                                          onMouseDown={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            skipNextCategorySelectRef.current = true;
-                                          }}
-                                          onKeyDown={(event) => {
-                                            if (event.key === 'Enter' || event.key === ' ') {
-                                              event.preventDefault();
-                                              event.stopPropagation();
-                                              skipNextCategorySelectRef.current = true;
-                                              router.push(`/measurements/${slug}`);
-                                            }
-                                          }}
-                                          onClick={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                            skipNextCategorySelectRef.current = true;
-                                            router.push(`/measurements/${slug}`);
-                                          }}
-                                          onPointerUp={(event) => {
-                                            event.preventDefault();
-                                            event.stopPropagation();
-                                          }}
-                                        >
-                                          <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
-                                        </button>
-                                      </div>
-                                    </SelectPrimitive.Item>
-                                  );
-                                })
-                              )}
-                           </div>
-                         </ScrollArea>
-                       </SelectContent>
-                     </Select>
+                      <FormControl>
+                        <MeasurementCategoryDropdown
+                          options={categoryOptions}
+                          value={(field.value as UnitCategory) ?? ''}
+                          onSelect={(nextCategory) => {
+                            field.onChange(nextCategory);
+                            applyCategoryDefaults(nextCategory, { forceDefaults: true });
+                          }}
+                          placeholder="Select a category"
+                          triggerClassName="h-11"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

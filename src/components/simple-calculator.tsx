@@ -48,6 +48,21 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     setWaitingForSecondOperand(false);
   };
 
+  const handleBackspace = React.useCallback(() => {
+    setDisplayValue((prev) => {
+      if (waitingForSecondOperand) {
+        return prev;
+      }
+      if (prev === 'Error') {
+        return '0';
+      }
+      if (prev.length <= 1) {
+        return '0';
+      }
+      return prev.slice(0, -1);
+    });
+  }, [waitingForSecondOperand]);
+
   const calculate = (operand1: number, operand2: number, currentOperator: string): number => {
     switch (currentOperator) {
       case '+':
@@ -104,40 +119,108 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   };
 
 
-  const handleEquals = () => {
+  const handleEquals = React.useCallback((): string | null => {
     if (operator && firstOperand !== null) {
       const inputValue = parseFloat(displayValue);
-       if (isNaN(inputValue) && displayValue !== 'Error') {
-            setDisplayValue('Error');
-            setFirstOperand(null);
-            setOperator(null);
-            setWaitingForSecondOperand(true);
-            return;
-        }
-        if (displayValue === 'Error') return;
+      if (isNaN(inputValue) && displayValue !== 'Error') {
+        setDisplayValue('Error');
+        setFirstOperand(null);
+        setOperator(null);
+        setWaitingForSecondOperand(true);
+        return null;
+      }
+      if (displayValue === 'Error') return null;
 
       const result = calculate(firstOperand, inputValue, operator);
 
       if (isNaN(result)) {
         setDisplayValue('Error');
-      } else {
-        const resultStr = String(parseFloat(result.toFixed(7)));
-        setDisplayValue(resultStr);
+        setFirstOperand(null);
+        setOperator(null);
+        setWaitingForSecondOperand(true);
+        return null;
       }
+
+      const resultStr = String(parseFloat(result.toFixed(7)));
+      setDisplayValue(resultStr);
       setFirstOperand(null);
       setOperator(null);
       setWaitingForSecondOperand(false);
+      return resultStr;
     }
-  };
 
-  const handleSendValue = () => {
-    if (displayValue === 'Error' || isNaN(parseFloat(displayValue))) {
+    if (displayValue === 'Error') {
+      return null;
+    }
+
+    return displayValue;
+  }, [displayValue, firstOperand, operator]);
+
+  const handleSendValue = (valueOverride?: string) => {
+    const valueToEmit = valueOverride ?? displayValue;
+    if (valueToEmit === 'Error' || isNaN(parseFloat(valueToEmit))) {
       console.warn("Calculator value is 'Error' or invalid, cannot send.");
       return;
     }
-    onSendValue(displayValue);
+    onSendValue(valueToEmit);
     if (onClose) onClose(); // Call onClose if provided
   };
+
+  const handleKeyboardInput = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement | HTMLDivElement>) => {
+      const key = event.key;
+
+      if (/^[0-9]$/.test(key)) {
+        event.preventDefault();
+        inputDigit(key);
+        return;
+      }
+
+      if (key === '.' || key === ',') {
+        event.preventDefault();
+        inputDecimal();
+        return;
+      }
+
+      if (key === '+' || key === '-' || key === '*' || key === '/' || key === 'x' || key === 'X') {
+        event.preventDefault();
+        const op = key === 'x' || key === 'X' ? '*' : key;
+        performOperation(op);
+        return;
+      }
+
+      if (key === 'Enter' || key === '=' || key === 'NumpadEnter') {
+        event.preventDefault();
+        const result = handleEquals();
+        const valueToSend = result ?? displayValue;
+        setTimeout(() => handleSendValue(valueToSend), 0);
+        return;
+      }
+
+      if (key === 'Backspace' || key === 'Delete') {
+        event.preventDefault();
+        handleBackspace();
+        return;
+      }
+
+      if (key === 'Escape') {
+        event.preventDefault();
+        if (onClose) onClose();
+        return;
+      }
+    },
+    [
+      handleBackspace,
+      handleEquals,
+      handleEquals,
+      handleEquals,
+      handleSendValue,
+      inputDecimal,
+      inputDigit,
+      onClose,
+      performOperation,
+    ],
+  );
 
   const buttons = [
     { label: 'AC', action: clearDisplay, className: 'col-span-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground', ariaLabel: "All Clear" },
@@ -154,7 +237,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     { label: '1', action: () => inputDigit('1') },
     { label: '2', action: () => inputDigit('2') },
     { label: '3', action: () => inputDigit('3') },
-    { label: '=', action: handleEquals, className: 'bg-primary hover:bg-primary/90 text-primary-foreground', ariaLabel: "Equals" },
+    { label: '=', action: () => { handleEquals(); }, className: 'bg-primary hover:bg-primary/90 text-primary-foreground', ariaLabel: "Equals" },
     { label: '0', action: () => inputDigit('0'), className: 'col-span-2' },
     { label: '.', action: inputDecimal, ariaLabel: "Decimal" },
     {
@@ -166,9 +249,14 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   ];
 
   return (
-    <div className="w-full max-w-xs mx-auto p-4 bg-card rounded-lg shadow-xl border relative">
+    <div
+      className="relative mx-auto w-full max-w-xs rounded-xl border border-border/60 bg-card/95 px-5 pb-5 pt-7 shadow-xl"
+      onKeyDown={handleKeyboardInput}
+      tabIndex={-1}
+      aria-label="Calculator dialog"
+    >
       {/* Removed DialogClose and X icon button from here */}
-      <Separator className="my-2" /> {/* Adjusted margin since close button is gone */}
+      <Separator className="mb-3 mt-1" /> {/* Slightly increased spacing so divider clears close button */}
       <Input
         type="text"
         value={displayValue}
@@ -176,8 +264,9 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
         className="w-full h-16 text-3xl sm:text-4xl text-right pr-4 mb-4 bg-muted text-foreground rounded-md"
         aria-label="Calculator display"
         tabIndex={-1}
+        autoFocus
       />
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2" role="group" aria-label="Calculator keypad">
         {buttons.map((btn, index) => (
           <Button
             key={typeof btn.label === 'string' ? btn.label : btn.ariaLabel || `calc-btn-${index}`}
