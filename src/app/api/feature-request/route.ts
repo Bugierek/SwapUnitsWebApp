@@ -1,7 +1,8 @@
+
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend('re_ZL838oju_FZu9u5ocKKxKCtytVDM5cbSm');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
@@ -10,10 +11,10 @@ export async function POST(request: Request) {
     // In development, use the resend.dev domain for testing
     const fromEmail = process.env.NODE_ENV === 'development' 
       ? 'onboarding@resend.dev'
-      : 'notifications@swapunits.com';
+      : 'notifications@unitswap.xyz';
 
     const data = await resend.emails.send({
-      from: `SwapUnits <${fromEmail}>`,
+      from: `UnitSwap <${fromEmail}>`,
       to: ['swapunits@gmail.com'], // Using default test recipient
       subject: `New Conversion Pair Request: ${fromUnit} to ${toUnit}`,
       html: `
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
           </head>
           <body>
             <div class="header">
-              <h1 class="logo">SwapUnits</h1>
+              <h1 class="logo">UnitSwap</h1>
               <div class="timestamp">
                 Received on ${new Date().toLocaleString('en-US', { 
                   weekday: 'long',
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
               ` : ''}
             </div>
             <div class="footer">
-              This conversion pair request was submitted via SwapUnits.com
+              This conversion pair request was submitted via unitswap.xyz
             </div>
           </body>
         </html>

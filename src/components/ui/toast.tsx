@@ -27,19 +27,19 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  // Base styles: Remove padding here as it's handled conditionally in toaster.tsx for structured toasts.
-  // Keep border and other base styles.
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  // Base styles: Removed flex properties. The container is now a simple block element.
+  // Layout is handled entirely within toaster.tsx, allowing for custom structures.
+  "group pointer-events-auto relative w-full overflow-hidden rounded-md border shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground", // Padding applied in toaster for this variant
+        default: "border bg-background text-foreground", // Padding is applied in toaster.tsx
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground", // Padding applied in toaster for this variant
-        success: // Orange border, background handled in toaster
-          "success group border-accent", // Background/padding handled in toaster
-        confirmation: // Green border, background handled in toaster
-          "confirmation group border-secondary", // Background/padding handled in toaster
+          "destructive group border-destructive bg-destructive text-destructive-foreground", // Padding is applied in toaster.tsx
+        success: // Orange border, background is handled in toaster.tsx
+          "success group border-accent",
+        confirmation: // Green border, background is handled in toaster.tsx
+          "confirmation group border-secondary",
       },
     },
     defaultVariants: {
@@ -56,11 +56,11 @@ const Toast = React.forwardRef<
   return (
     <ToastPrimitives.Root
       ref={ref}
-      // Apply variant classes, padding removed from base
+      // Apply variant classes
       className={cn(toastVariants({ variant }), className)}
       {...props}
     >
-        {/* Render children passed from Toaster */}
+        {/* Render children passed from Toaster, which now controls the entire inner layout */}
         {children}
     </ToastPrimitives.Root>
   )
