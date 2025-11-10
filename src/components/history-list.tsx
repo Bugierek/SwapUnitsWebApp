@@ -95,7 +95,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                 size="sm"
                                 onClick={() => setIsClearDialogOpen(true)}
                                 aria-label="Clear history"
-                                className="h-7 rounded-full border-border/60 bg-white px-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                                className="h-7 rounded-full border-border/60 bg-[hsl(var(--control-background))] px-2.5 text-[0.6rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
                             >
                                 Clear
                             </Button>
@@ -109,7 +109,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                         </DialogDescription>
                                     </DialogHeader>
                                     <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                        <Button variant="outline" size="sm" onClick={() => setIsClearDialogOpen(false)} className="rounded-lg border-border/60 bg-white">Cancel</Button>
+                                        <Button variant="outline" size="sm" onClick={() => setIsClearDialogOpen(false)} className="rounded-lg border-border/60 bg-[hsl(var(--control-background))]">Cancel</Button>
                                         <Button variant="destructive" size="sm" onClick={() => { setIsClearDialogOpen(false); onClearHistory?.(); }} className="rounded-lg">Yes, clear</Button>
                                     </DialogFooter>
                                     <DialogClose />
@@ -126,7 +126,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                         <Progress value={50} className="h-1.5 w-full rounded-full bg-secondary" aria-label="Loading progress" />
                     </div>
                 ) : items.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-white px-4 py-8 text-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-8 text-center">
                         <p className="text-sm font-semibold text-foreground">Nothing here yet</p>
                         <p className="text-xs text-muted-foreground">Copy a result to add it to your history.</p>
                     </div>

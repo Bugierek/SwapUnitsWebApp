@@ -1,10 +1,12 @@
 
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { Inter } from "next/font/google"; // Using Inter font
 import "./globals.css";
 import { cn } from "@/lib/utils"; // Import cn utility
 import { GoogleAnalytics } from "@/components/google-analytics"; // Import GoogleAnalytics
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Use Inter font - known for readability
 const inter = Inter({
@@ -56,6 +58,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0b1221' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+  ],
   // Set favicon and PWA icons to the SwapUnits refresh logo
   icons: {
     icon: [
@@ -76,22 +83,79 @@ export const viewport = {
   maximumScale: 1,
 };
 
+const LIGHT_BG = '#f8fafc';
+const DARK_BG = '#050714';
+
+const themeInitScript = `
+(function () {
+  try {
+    var storageKey = 'swapunits-theme';
+    var storedPreference = window.localStorage.getItem(storageKey) || document.documentElement.dataset.themePreference || 'system';
+    var mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    var isDark = storedPreference === 'dark' || (storedPreference !== 'light' && mediaQuery.matches);
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.dataset.themePreference = storedPreference;
+    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+  } catch (error) {
+    console.warn('[swapunits] theme init failed', error);
+  }
+})();
+`;
+
+const backgroundStyle = `
+  html {
+    background-color: ${LIGHT_BG};
+    color: #020617;
+  }
+  body {
+    background-color: inherit;
+    color: inherit;
+  }
+  html[data-theme-preference="dark"] {
+    background-color: ${DARK_BG};
+    color: #e2e8f0;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme-preference="light"]) {
+      background-color: ${DARK_BG};
+      color: #e2e8f0;
+    }
+  }
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialPreference = cookies().get('swapunits-theme')?.value ?? 'system';
+  const initialClass = initialPreference === 'dark' ? 'dark' : '';
+
   return (
-    <html lang="en" className="scroll-smooth">{/* Add scroll-smooth - Removed whitespace after tag */}
+    <html
+      lang="en"
+      className={cn("scroll-smooth", initialClass)}
+      data-theme-preference={initialPreference}
+      suppressHydrationWarning
+    >
+      <head>
+        <style id="swapunits-theme-base" dangerouslySetInnerHTML={{ __html: backgroundStyle }} />
+        <script
+          id="swapunits-theme-init"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
+      </head>
       <body
         className={cn(
           `${inter.variable} antialiased font-sans`, // Apply Inter font
           "min-h-screen bg-background flex flex-col" // Ensure body takes full height and uses flex column
           )}
       >
-        <GoogleAnalytics />
-        <Toaster />
-        {children}
+        <ThemeProvider>
+          <GoogleAnalytics />
+          <Toaster />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookmarkButton } from '@/components/bookmark-button';
 import { UnitIcon } from '@/components/unit-icon';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 type SiteTopbarProps = {
   handleLogoClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
@@ -309,6 +310,7 @@ export function SiteTopbar({
             <p className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">Built for accuracy</p>
             <p className="text-sm font-medium text-foreground">History & favorites stay local</p>
           </div>
+          <ThemeToggle />
           <BookmarkButton />
         </div>
       </div>

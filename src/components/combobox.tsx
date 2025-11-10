@@ -349,7 +349,7 @@ export function ConversionCombobox({
           setOpen(true);
         }}
         onKeyDown={handleKeyDown}
-        className="h-11 w-full rounded-xl border border-border/60 bg-white px-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+        className="h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
         aria-autocomplete="list"
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -358,7 +358,7 @@ export function ConversionCombobox({
       />
 
       {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/60 bg-white shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-xl">
           {visibleItems.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground">No conversion found.</p>
           ) : (
