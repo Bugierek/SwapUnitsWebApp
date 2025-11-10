@@ -73,7 +73,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                                             size="sm"
                                                             onClick={() => setIsClearFavoritesDialogOpen(true)}
                                                             aria-label="Clear all favorites"
-                                                            className="h-8 rounded-full border-border/60 bg-white px-3 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                                                            className="h-8 rounded-full border-border/60 bg-[hsl(var(--control-background))] px-3 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
                                                     >
                                                             Clear All
                                                     </Button>
@@ -87,7 +87,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                                                 </DialogDescription>
                                                             </DialogHeader>
                                                             <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                                                <Button variant="outline" size="sm" onClick={() => setIsClearFavoritesDialogOpen(false)} className="rounded-lg border-border/60 bg-white">Cancel</Button>
+                                                                <Button variant="outline" size="sm" onClick={() => setIsClearFavoritesDialogOpen(false)} className="rounded-lg border-border/60 bg-[hsl(var(--control-background))]">Cancel</Button>
                                                                 <Button variant="destructive" size="sm" onClick={() => { setIsClearFavoritesDialogOpen(false); onClearAllFavorites?.(); }} className="rounded-lg">Yes, clear</Button>
                                                             </DialogFooter>
                                                             <DialogClose />
@@ -104,7 +104,7 @@ export const PresetList = React.memo(function PresetListComponent({
                         <Progress value={50} className="h-1.5 w-full rounded-full bg-secondary" aria-label="Loading progress" />
                     </div>
                 ): favorites.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-white px-4 py-8 text-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-8 text-center">
                         <p className="text-sm font-semibold text-foreground">No favorites yet</p>
                         <p className="text-xs text-muted-foreground">Save a conversion from the main panel to build your list.</p>
                     </div>
@@ -160,7 +160,7 @@ export const PresetList = React.memo(function PresetListComponent({
             </CardHeader>
             <CardContent className="flex-grow px-5 pb-6 pt-5"> 
                  {visibleCommonPresets.length === 0 && !isLoadingFavorites ? (
-                     <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-white px-4 py-8 text-center">
+                     <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-8 text-center">
                         <p className="text-sm font-semibold text-foreground">No suggestions yet</p>
                         <p className="text-xs text-muted-foreground">Add favorites to refine this list.</p>
                     </div>
@@ -188,7 +188,7 @@ export const PresetList = React.memo(function PresetListComponent({
                             );})}
                         </ul>
                         {hiddenCommonCount > 0 && (
-                            <p className="rounded-lg bg-white px-3 py-2 text-center text-[0.7rem] font-medium text-muted-foreground shadow-sm">
+                            <p className="rounded-lg bg-[hsl(var(--control-background))] px-3 py-2 text-center text-[0.7rem] font-medium text-muted-foreground shadow-sm">
                                 {hiddenCommonCount} more suggestions available once you clear space or use favorites.
                             </p>
                         )}
