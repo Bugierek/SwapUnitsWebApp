@@ -58,13 +58,13 @@ export function Footer() {
               Your history, favorites, and formatting preferences stay local to your device so you can focus on results—not settings.
             </p>
             <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-              <span className="rounded-full bg-white/60 px-3 py-1 text-foreground/80">No sign-up</span>
-              <span className="rounded-full bg-white/60 px-3 py-1 text-foreground/80">14+ categories</span>
-              <span className="rounded-full bg-white/60 px-3 py-1 text-foreground/80">Offline ready</span>
+              <span className="rounded-full bg-[hsl(var(--control-background))]/70 px-3 py-1 text-foreground">No sign-up</span>
+              <span className="rounded-full bg-[hsl(var(--control-background))]/70 px-3 py-1 text-foreground">14+ categories</span>
+              <span className="rounded-full bg-[hsl(var(--control-background))]/70 px-3 py-1 text-foreground">Offline ready</span>
             </div>
           </div>
 
-          <div className="flex w-full max-w-xs flex-col items-center gap-2 rounded-3xl border border-border/70 bg-white/80 px-6 py-5 text-center text-sm font-medium text-foreground shadow-[0_14px_45px_-35px_rgba(79,70,229,0.55)]">
+          <div className="flex w-full max-w-xs flex-col items-center gap-2 rounded-3xl border border-border/70 bg-[hsl(var(--control-background))] px-6 py-5 text-center text-sm font-medium text-foreground shadow-[0_14px_45px_-35px_rgba(79,70,229,0.55)]">
             <span className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Sessions tracked</span>
             <span className="text-2xl font-semibold text-foreground">
               {visitCount !== null ? visitCount.toLocaleString() : '—'}

@@ -101,7 +101,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
           ref={mergedTriggerRef}
           type="button"
           className={cn(
-            'flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-white px-3 py-2.5 text-left text-sm font-medium text-foreground transition hover:border-primary/50 focus:outline-none focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20',
+            'flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-2.5 text-left text-sm font-medium text-foreground transition hover:border-primary/50 focus:outline-none focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20',
             triggerClassNameProp,
             triggerClassName,
           )}
@@ -126,16 +126,16 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
         sideOffset={6}
         avoidCollisions={false}
         style={{ width: popoverWidth, maxHeight }}
-        className="z-50 w-[min(360px,90vw)] max-h-[360px] overflow-hidden rounded-2xl border border-border/60 bg-white p-0 shadow-xl"
+        className="z-50 w-[min(360px,90vw)] max-h-[360px] overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] p-0 shadow-xl"
       >
         <div className="flex h-full flex-col">
           <div className="flex-1 overflow-hidden">
-            <div className="sticky top-0 z-10 border-b border-border/60 bg-white px-3 pb-2 pt-3">
+            <div className="sticky top-0 z-10 border-b border-border/60 bg-[hsl(var(--control-background))] px-3 pb-2 pt-3">
               <Input
                 placeholder="Filter measurement types..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                className="h-9 rounded-lg border border-border/50 bg-white px-3 text-sm"
+                className="h-9 rounded-lg border border-border/50 bg-[hsl(var(--control-background))] px-3 text-sm"
                 autoFocus
               />
             </div>
@@ -150,7 +150,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                       <div
                         key={option.value}
                         className={cn(
-                          'relative flex h-[82px] w-full flex-col gap-1 overflow-hidden rounded-xl border border-border/50 bg-white px-3 py-2 text-sm font-medium text-foreground shadow-sm transition duration-150 ease-out hover:border-primary/40 hover:bg-primary/5 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 sm:h-[110px] sm:gap-3 sm:px-4 sm:py-3',
+                          'relative flex h-[82px] w-full flex-col gap-1 overflow-hidden rounded-xl border border-border/50 bg-[hsl(var(--control-background))] px-3 py-2 text-sm font-medium text-foreground shadow-sm transition duration-150 ease-out hover:border-primary/40 hover:bg-primary/5 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 sm:h-[110px] sm:gap-3 sm:px-4 sm:py-3',
                           isSelected && 'border-primary/60 bg-primary/5',
                         )}
                       >

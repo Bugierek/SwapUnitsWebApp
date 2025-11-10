@@ -1108,7 +1108,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                 disabled={!rhfFromUnit || !rhfToUnit}
                                 aria-required="true"
                                 className={cn(
-                                  "h-11 w-full rounded-xl border border-border/60 bg-white px-3 text-base font-medium transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                  "h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-base font-medium transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                 )}
                               />
                             </FormControl>
@@ -1122,7 +1122,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                   type="button"
                                   variant="outline"
                                   size="icon"
-                                  className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-white text-foreground transition hover:border-primary/60 hover:text-primary"
+                                  className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary"
                                   aria-label="Open calculator"
                               >
                                   <Calculator className="h-5 w-5" />
@@ -1148,7 +1148,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               <FormControl>
                                 <SelectTrigger
                                   className={cn(
-                                    "h-11 min-w-[110px] rounded-xl border border-border/60 bg-white px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
+                                    "h-11 min-w-[110px] rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
                                   )}
                                 >
                                   {field.value && currentUnitsForCategory.find(u => u.symbol === field.value) ? (
@@ -1188,7 +1188,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             variant="outline"
                             onClick={handleSwapClick}
                             disabled={!rhfFromUnit || !rhfToUnit}
-                            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
+                            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
                             aria-label="Swap from and to units"
                         >
                             <ArrowRightLeft className={cn("h-4 w-4 text-primary transition-transform", isSwapped && "rotate-180 scale-x-[-1]")} aria-hidden="true" />
@@ -1201,7 +1201,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               variant="outline" 
                               onClick={handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
-                              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-white text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 md:flex-none md:px-5"
+                              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 md:flex-none md:px-5"
                               aria-label="Save conversion to favorites"
                             >
                               <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
@@ -1226,7 +1226,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         variant="outline"
                         onClick={handleCopy}
                         disabled={showPlaceholder}
-                        className="h-11 w-11 shrink-0 rounded-xl border border-border/60 bg-white text-foreground transition hover:border-primary/60 hover:text-primary disabled:bg-muted"
+                        className="h-11 w-11 shrink-0 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary disabled:bg-muted"
                         aria-label="Copy result to clipboard"
                       >
                         <Copy className="h-5 w-5" />
@@ -1242,8 +1242,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               disabled={!rhfCategory}
                             >
                               <FormControl>
-                                 <SelectTrigger className={cn(
-                                   "h-11 min-w-[110px] rounded-xl border border-border/60 bg-white px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
+                                <SelectTrigger className={cn(
+                                   "h-11 min-w-[110px] rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
                                   )}
                                  >
                                   {field.value && currentUnitsForCategory.find(u => u.symbol === field.value) ? (
@@ -1290,7 +1290,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             variant="outline"
                             size="icon"
                             onClick={handleCopyTextualResult}
-                            className="h-8 w-8 shrink-0 rounded-lg border-none bg-white text-primary transition hover:bg-white/80"
+                            className="h-8 w-8 shrink-0 rounded-lg border-none bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
                             aria-label="Copy textual result to clipboard"
                         >
                             <Copy className="h-4 w-4" />
@@ -1302,7 +1302,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
                 <fieldset className="pt-1">
                    <Label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</Label>
-                   <div className="rounded-xl border border-border/60 bg-white px-3 py-3">
+                   <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3">
                    <RadioGroup
                      value={numberFormat}
                      onValueChange={(value: string) => {
