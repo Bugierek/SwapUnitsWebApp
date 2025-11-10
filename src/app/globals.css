@@ -40,6 +40,44 @@
     --sidebar-ring: 245 75% 55%;
     --control-background: 222 30% 98%;
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme-preference="light"]) {
+      color-scheme: dark;
+      --background: 225 35% 10%;
+      --foreground: 220 25% 92%;
+      --card: 225 35% 13%;
+      --card-foreground: 220 25% 92%;
+      --popover: 225 35% 12%;
+      --popover-foreground: 220 25% 92%;
+      --primary: 245 75% 65%;
+      --primary-foreground: 220 35% 12%;
+      --secondary: 225 25% 18%;
+      --secondary-foreground: 220 25% 90%;
+      --muted: 225 20% 20%;
+      --muted-foreground: 220 15% 70%;
+      --accent: 200 80% 28%;
+      --accent-foreground: 220 25% 92%;
+      --destructive: 358 65% 58%;
+      --destructive-foreground: 220 25% 98%;
+      --border: 225 20% 26%;
+      --input: 225 20% 26%;
+      --ring: 245 75% 65%;
+      --chart-1: 245 75% 65%;
+      --chart-2: 200 80% 55%;
+      --chart-3: 32 90% 60%;
+      --chart-4: 155 65% 45%;
+      --chart-5: 12 80% 60%;
+      --radius: 1rem;
+      --sidebar-background: 225 30% 16%;
+      --sidebar-foreground: 220 25% 90%;
+      --sidebar-primary: 245 75% 65%;
+      --sidebar-primary-foreground: 225 30% 12%;
+      --sidebar-accent: 200 80% 28%;
+      --sidebar-accent-foreground: 220 25% 92%;
+      --sidebar-border: 225 20% 26%;
+      --sidebar-ring: 245 75% 65%;
+    }
+  }
   .dark {
     color-scheme: dark;
     --background: 225 35% 10%;

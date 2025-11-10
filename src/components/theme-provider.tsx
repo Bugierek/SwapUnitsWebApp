@@ -36,6 +36,7 @@ const applyThemeClass = (preference: ThemePreference, mediaQuery: MediaQueryList
   const isDark = preference === 'dark' || (preference === 'system' && mediaQuery.matches);
   document.documentElement.classList.toggle('dark', isDark);
   document.documentElement.dataset.themePreference = preference;
+  document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
   return isDark ? 'dark' : 'light';
 };
 
@@ -76,6 +77,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(STORAGE_KEY, nextPreference);
+        document.cookie = `${STORAGE_KEY}=${nextPreference}; path=/; max-age=31536000`;
       } catch (error) {
         console.warn('[swapunits] Unable to save theme preference to storage.', error);
       }
