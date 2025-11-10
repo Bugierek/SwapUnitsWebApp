@@ -1,10 +1,12 @@
 
 import type { Metadata } from "next";
 import { Inter } from "next/font/google"; // Using Inter font
+import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils"; // Import cn utility
 import { GoogleAnalytics } from "@/components/google-analytics"; // Import GoogleAnalytics
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Use Inter font - known for readability
 const inter = Inter({
@@ -56,6 +58,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0b1221' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+  ],
   // Set favicon and PWA icons to the SwapUnits refresh logo
   icons: {
     icon: [
@@ -82,16 +89,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">{/* Add scroll-smooth - Removed whitespace after tag */}
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>{/* Add scroll-smooth - Removed whitespace after tag */}
       <body
         className={cn(
           `${inter.variable} antialiased font-sans`, // Apply Inter font
           "min-h-screen bg-background flex flex-col" // Ensure body takes full height and uses flex column
           )}
       >
-        <GoogleAnalytics />
-        <Toaster />
-        {children}
+        <Script
+          id="swapunits-theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+(function () {
+  try {
+    var storageKey = 'swapunits-theme';
+    var storedPreference = window.localStorage.getItem(storageKey);
+    var mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    var isDark = storedPreference === 'dark' || (storedPreference !== 'light' && mediaQuery.matches);
+    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.dataset.themePreference = storedPreference || 'system';
+  } catch (error) {}
+})();
+`,
+          }}
+        />
+        <ThemeProvider>
+          <GoogleAnalytics />
+          <Toaster />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

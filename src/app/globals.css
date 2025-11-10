@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 222 36% 96%;
     --foreground: 225 36% 14%;
     --card: 0 0% 100%;
@@ -37,8 +38,10 @@
     --sidebar-accent-foreground: 224 35% 20%;
     --sidebar-border: 220 21% 86%;
     --sidebar-ring: 245 75% 55%;
+    --control-background: 222 30% 98%;
   }
   .dark {
+    color-scheme: dark;
     --background: 225 35% 10%;
     --foreground: 220 25% 92%;
     --card: 225 35% 13%;
@@ -72,6 +75,7 @@
     --sidebar-accent-foreground: 220 25% 92%;
     --sidebar-border: 225 20% 26%;
     --sidebar-ring: 245 75% 65%;
+    --control-background: 225 28% 18%;
   }
 }
 
