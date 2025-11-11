@@ -33,6 +33,8 @@ import {
   Star,
   Calculator,
   ChevronsUpDown,
+  ArrowUpRight,
+  Check,
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -255,6 +257,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfFromUnit = watch("fromUnit");
   const rhfToUnit = watch("toUnit");
   const rhfValue = watch("value");
+  const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
+  const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
+  const currentConversionPairUrl = React.useMemo(() => {
+    if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return null;
+    }
+    return buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
+  }, [rhfCategory, rhfFromUnit, rhfToUnit]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -853,6 +863,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   };
 
   const showPlaceholder = rhfValue === undefined || rhfFromUnit === '' || !conversionResult || String(rhfValue).trim() === '' || String(rhfValue) === '-';
+  React.useEffect(() => {
+    if (!showPlaceholder) return;
+    if (textCopyState !== 'idle') {
+      setTextCopyState('idle');
+    }
+    if (resultCopyState !== 'idle') {
+      setResultCopyState('idle');
+    }
+  }, [showPlaceholder, textCopyState, resultCopyState]);
 
   const { formattedString: formattedResultString, actualFormatUsed, scientificReason } = React.useMemo(() => {
     return showPlaceholder || !conversionResult ? { formattedString: '-', actualFormatUsed: numberFormat, scientificReason: null } : formatNumber(conversionResult.value, numberFormat);
@@ -861,6 +880,24 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   React.useEffect(() => {
       handleActualFormatChange(actualFormatUsed, scientificReason);
   }, [actualFormatUsed, scientificReason, handleActualFormatChange]);
+
+  React.useEffect(() => {
+    if (resultCopyState === 'success') {
+      setResultCopyState('idle');
+    }
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue]);
+
+  React.useEffect(() => {
+    if (textCopyState === 'success') {
+      setTextCopyState('idle');
+    }
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
+
+  React.useEffect(() => {
+    if (textCopyState === 'success') {
+      setTextCopyState('idle');
+    }
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
 
   const handleCopy = React.useCallback(async () => {
@@ -872,12 +909,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
-        toast({
-            title: "Copied!",
-            description: `Result "${textToCopy}" copied to clipboard.`,
-            variant: "confirmation",
-            duration: 1500,
-        });
+        setResultCopyState('success');
         if (
             onResultCopied &&
             rhfCategory &&
@@ -914,12 +946,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
-        toast({
-            title: "Copied!",
-            description: `Conversion "${textToCopy}" copied to clipboard.`,
-            variant: "confirmation",
-            duration: 1500,
-        });
+        setTextCopyState('success');
         if (
             onResultCopied &&
             rhfCategory &&
@@ -1073,8 +1100,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           options={categoryOptions}
                           value={(field.value as UnitCategory) ?? ''}
                           onSelect={(nextCategory) => {
-                            field.onChange(nextCategory);
-                            applyCategoryDefaults(nextCategory, { forceDefaults: true });
+                            if (typeof nextCategory !== 'string') {
+                              return;
+                            }
+                            const normalizedCategory = nextCategory as UnitCategory;
+                            field.onChange(normalizedCategory);
+                            applyCategoryDefaults(normalizedCategory, { forceDefaults: true });
                           }}
                           placeholder="Select a category"
                           triggerClassName="h-11"
@@ -1241,7 +1272,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         className="h-11 w-11 shrink-0 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary disabled:bg-muted"
                         aria-label="Copy result to clipboard"
                       >
-                        <Copy className="h-5 w-5" />
+                        {resultCopyState === 'success' ? (
+                          <Check className="h-5 w-5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-5 w-5" />
+                        )}
                       </Button>
                       <FormField
                         control={form.control}
@@ -1292,24 +1327,37 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 
                  {/* Textual Conversion Result Display */}
                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                <div className="relative">
-                   <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary">
-                       <span className="flex-1 text-left">
-                           {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
-                       </span>
-                       <Button
-                           type="button"
-                           variant="outline"
-                           size="icon"
-                           onClick={handleCopyTextualResult}
-                           className="h-8 w-8 shrink-0 rounded-lg border-none bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                           aria-label="Copy textual result to clipboard"
-                       >
-                           <Copy className="h-4 w-4" />
-                       </Button>
-                   </div>
-                 </div>
-               )}
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary sm:gap-3">
+                      <div className="flex flex-1 items-center gap-2 text-left">
+                        <span className="truncate">
+                          {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCopyTextualResult}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                          aria-label="Copy textual result to clipboard"
+                        >
+                          {textCopyState === 'success' ? (
+                            <Check className="h-4 w-4 text-emerald-500" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                      {currentConversionPairUrl && (
+                        <Link
+                          href={currentConversionPairUrl}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                          aria-label="Open detailed conversion page"
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {conversionSources.length > 0 && (
                   <details className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
