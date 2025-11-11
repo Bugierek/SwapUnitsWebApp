@@ -47,6 +47,8 @@ export function useFavorites() {
         fav => fav.category === newItem.category && fav.fromUnit === newItem.fromUnit && fav.toUnit === newItem.toUnit
       );
       if (isDuplicate) {
+        // Optionally, provide feedback that the favorite already exists
+        console.log("Favorite already exists.");
         return prevFavorites;
       }
 

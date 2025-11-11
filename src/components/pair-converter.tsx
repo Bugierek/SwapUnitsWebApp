@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from 'react';
-import { ArrowLeftRight, Copy, Check } from 'lucide-react';
+import { ArrowLeftRight, Copy } from 'lucide-react';
 
 import type { UnitCategory } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,6 @@ export function PairConverter({
 }: PairConverterProps) {
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
-  const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
 
   const activeFrom = isSwapped ? toUnit : fromUnit;
   const activeTo = isSwapped ? fromUnit : toUnit;
@@ -88,7 +87,12 @@ export function PairConverter({
     const formatted = formatResult(result);
     try {
       await navigator.clipboard.writeText(`${formatted} ${activeTo.symbol}`);
-      setCopyState('success');
+      toast({
+        variant: "confirmation",
+        title: "Copied to clipboard",
+        description: `${formatted} ${activeTo.symbol}`,
+        duration: 2000, // Show for 2 seconds
+      });
     } catch (error) {
       console.error('Failed to copy conversion result:', error);
       toast({
@@ -98,12 +102,6 @@ export function PairConverter({
       });
     }
   }, [parsedInput, result, activeTo.symbol, toast]);
-
-  React.useEffect(() => {
-    if (copyState === 'success') {
-      setCopyState('idle');
-    }
-  }, [parsedInput, activeFrom.symbol, activeTo.symbol]);
 
   const generalFormula = React.useMemo(() => {
     // Temperature conversions
@@ -261,11 +259,7 @@ export function PairConverter({
               disabled={parsedInput === null}
               aria-label="Copy converted result"
             >
-              {copyState === 'success' ? (
-                <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-              ) : (
-                <Copy className="h-4 w-4" aria-hidden="true" />
-              )}
+              <Copy className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </div>

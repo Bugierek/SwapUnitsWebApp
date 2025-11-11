@@ -62,6 +62,17 @@ const decimalFormatter = (value: number): string => {
 const isRatioConvertible = (category: UnitCategory): boolean =>
   ratioFriendlyCategories.includes(category);
 
+const getUnitAvailabilityLabel = (unit: Unit): string => {
+  switch (unit.mode) {
+    case 'advanced':
+      return 'Advanced';
+    case 'basic':
+      return 'Basic';
+    default:
+      return 'All';
+  }
+};
+
 const convertValue = (
   category: UnitCategory,
   value: number,
@@ -217,6 +228,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
               <TableHead>Unit</TableHead>
               <TableHead>Symbol</TableHead>
               <TableHead>1 unit in {baseUnit?.symbol ?? baseUnit?.name ?? 'base'}</TableHead>
+              <TableHead>Availability</TableHead>
               <TableHead>Notes</TableHead>
             </TableRow>
           </TableHeader>
@@ -225,6 +237,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
               const relative = baseUnit
                 ? unit.factor / (baseUnit.factor || 1)
                 : unit.factor;
+              const availability = getUnitAvailabilityLabel(unit);
               const isBase = unit.symbol === baseUnit?.symbol;
               return (
                 <TableRow key={unit.symbol}>
@@ -242,6 +255,11 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                     ) : (
                       'See formulas below'
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="rounded-full border-border/60 px-2 py-1 text-xs font-semibold tracking-[0.2em]">
+                      {availability}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {unit.unitType ? unit.unitType.replace(/_/g, ' ') : '—'}

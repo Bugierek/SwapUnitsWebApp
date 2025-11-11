@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import type { Preset, FavoriteItem } from '@/types'; 
 import { List, Star, X } from 'lucide-react'; // Added Star and X icons
 import { UnitIcon } from './unit-icon';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
 import {
@@ -40,24 +39,17 @@ export const PresetList = React.memo(function PresetListComponent({
     className,
     isLoadingFavorites 
 }: PresetListProps) {
-    const isMobile = useIsMobile();
     const [isClearFavoritesDialogOpen, setIsClearFavoritesDialogOpen] = React.useState(false);
     const maxCommonVisible = React.useMemo(() => Math.max(0, 10 - favorites.length), [favorites.length]);
     const visibleCommonPresets = React.useMemo(() => presetsToDisplay.slice(0, maxCommonVisible), [presetsToDisplay, maxCommonVisible]);
     const hiddenCommonCount = Math.max(0, presetsToDisplay.length - visibleCommonPresets.length);
     // Removed: const displayPresets = getFilteredAndSortedPresets(); 
 
-    const LABEL_CHAR_LIMIT = 36;
-    const formatFavoriteLabel = React.useCallback((fav: FavoriteItem) => {
-        if (isMobile) {
-            return `${fav.fromUnit} → ${fav.toUnit}`;
-        }
-        const trimmed = fav.name?.trim() ?? '';
-        if (trimmed.length > 0 && trimmed.length <= LABEL_CHAR_LIMIT) {
-            return trimmed;
-        }
-        return `${fav.fromUnit} → ${fav.toUnit}`;
-    }, [isMobile]);
+    const LABEL_CHAR_LIMIT = 30;
+    const formatFavoriteLabel = (fav: FavoriteItem) => {
+        const trimmed = fav.name.trim();
+        return trimmed.length <= LABEL_CHAR_LIMIT ? trimmed : `${fav.fromUnit} → ${fav.toUnit}`;
+    };
     const formatPresetLabel = (preset: Preset) => {
         const trimmed = preset.name.trim();
         return trimmed.length <= LABEL_CHAR_LIMIT ? trimmed : `${preset.fromUnit} → ${preset.toUnit}`;
