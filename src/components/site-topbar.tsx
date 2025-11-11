@@ -20,6 +20,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookmarkButton } from '@/components/bookmark-button';
 import { UnitIcon } from '@/components/unit-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { unitData } from '@/lib/unit-data';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type SiteTopbarProps = {
   handleLogoClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
@@ -55,16 +57,29 @@ export function SiteTopbar({
   onPresetSelect,
 }: SiteTopbarProps) {
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
-  const LABEL_CHAR_LIMIT = 30;
+  const LABEL_CHAR_LIMIT = 36;
+
+  const isMobile = useIsMobile();
+
+  const getUnitName = React.useCallback((category: UnitCategory, symbol: string) => {
+    const units = unitData[category]?.units ?? [];
+    return units.find((unit) => unit.symbol === symbol)?.name ?? symbol;
+  }, []);
 
   const formatFavoriteLabel = React.useCallback(
     (fav: FavoriteItem) => {
-      const trimmed = fav.name?.trim() ?? '';
-      return trimmed.length > 0 && trimmed.length <= LABEL_CHAR_LIMIT
-        ? trimmed
-        : `${fav.fromUnit} → ${fav.toUnit}`;
+      if (isMobile) {
+        return `${fav.fromUnit} → ${fav.toUnit}`;
+      }
+      const fromName = getUnitName(fav.category, fav.fromUnit);
+      const toName = getUnitName(fav.category, fav.toUnit);
+      const fullLabel = `${fromName} to ${toName}`;
+      if (fullLabel.length > LABEL_CHAR_LIMIT) {
+        return `${fav.fromUnit} → ${fav.toUnit}`;
+      }
+      return fullLabel;
     },
-    [],
+    [getUnitName, isMobile],
   );
 
   const formatPresetLabel = React.useCallback(

@@ -11,11 +11,11 @@ export type ConversionSource = {
 
 const NIST_GUIDE_SOURCE: ConversionSource = {
   id: 'nist-guide-si',
-  title: 'NIST Guide for the Use of the International System of Units (SI), SP 811',
+  title: 'The International System of Units (SI) — NIST Special Publication 330',
   organization: 'National Institute of Standards and Technology (NIST)',
-  url: 'https://www.nist.gov/pml/nist-guide-si',
+  url: 'https://www.nist.gov/pml/special-publication-330',
   summary:
-    'Tables 5-11 tabulate the authoritative relationships between SI base units and inch-pound units (meter/foot, kilogram/pound, kelvin/degree Fahrenheit, pascal/psi, liter/gallon, etc.), which SwapUnits uses for every metric-to-imperial conversion.',
+    'The SI Brochure (SP 330) is the definitive English edition of the BIPM SI tables. NIST’s edition lists the official constants and conversion factors tying inch-pound units to SI, which SwapUnits applies for length, mass, temperature, pressure, volume, and related conversions.',
 };
 
 const EPA_FUEL_ECONOMY_GUIDE: ConversionSource = {
@@ -94,4 +94,3 @@ export function getConversionSources(
     });
   });
 }
-

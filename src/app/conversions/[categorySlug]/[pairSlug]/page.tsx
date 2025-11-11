@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/table';
 import { getCategoryInfoBySlug } from '@/lib/category-info';
 import { listAllConversionPairs, parseConversionPairSlug, buildConversionPairUrl } from '@/lib/conversion-pairs';
-import { unitData, getUnitsForCategoryAndMode, getPresetsForCategory } from '@/lib/unit-data';
+import { unitData, getUnitsForCategory, getPresetsForCategory } from '@/lib/unit-data';
 import { convertNumericValue } from '@/lib/conversion-math';
 import { SiteTopbar } from '@/components/site-topbar';
 import type { UnitCategory } from '@/types';
@@ -260,7 +260,7 @@ export default async function ConversionPairPage({ params }: PageProps) {
     .filter((row): row is { input: number; output: number } => row !== null)
     .slice(0, 10);
 
-  const otherUnits = getUnitsForCategoryAndMode(categoryInfo.category).filter(
+  const otherUnits = getUnitsForCategory(categoryInfo.category).filter(
     (unit) => unit.symbol !== fromSymbol && unit.symbol !== toSymbol,
   );
 
