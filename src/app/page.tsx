@@ -143,9 +143,20 @@ export default function Home() {
     }
   };
 
-  const handleSaveFavorite = React.useCallback((favoriteData: Omit<FavoriteItem, 'id'>) => {
-    addFavorite(favoriteData);
-  }, [addFavorite]);
+  const handleToggleFavorite = React.useCallback((favoriteData: Omit<FavoriteItem, 'id'>) => {
+    const existing = favorites.find(
+      (fav) =>
+        fav.category === favoriteData.category &&
+        fav.fromUnit === favoriteData.fromUnit &&
+        fav.toUnit === favoriteData.toUnit,
+    );
+
+    if (existing) {
+      removeFavorite(existing.id);
+    } else {
+      addFavorite(favoriteData);
+    }
+  }, [addFavorite, removeFavorite, favorites]);
 
   const handleLogoClick = React.useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -260,7 +271,8 @@ export default function Home() {
                 ref={unitConverterRef}
                 className="min-h-[560px] lg:h-full"
                 onResultCopied={handleResultCopied}
-                onSaveFavorite={handleSaveFavorite}
+                onToggleFavorite={handleToggleFavorite}
+          favorites={favorites}
                 disableAddFavoriteButton={disableAddFavoriteButton}
               />
               <PresetList

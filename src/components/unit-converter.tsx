@@ -91,6 +91,8 @@ interface UnitConverterProps {
   initialFromUnit?: string;
   initialToUnit?: string;
   initialValue?: number;
+  favorites?: FavoriteItem[];
+  onToggleFavorite?: (favoriteData: Omit<FavoriteItem, 'id'>) => void;
 }
 
 export interface UnitConverterHandle {
@@ -212,6 +214,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     initialFromUnit,
     initialToUnit,
     initialValue = 1,
+    favorites = [],
+    onToggleFavorite,
   },
   ref,
 ) {
@@ -256,6 +260,26 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfCategory = watch("category") as UnitCategory | "";
   const rhfFromUnit = watch("fromUnit");
   const rhfToUnit = watch("toUnit");
+  const hasToggleFavorites = typeof onToggleFavorite === 'function';
+  const getUnitDisplayName = React.useCallback(
+    (category: UnitCategory | "", symbol: string) => {
+      if (!category) return symbol;
+      const units = unitData[category]?.units ?? [];
+      return units.find((unit) => unit.symbol === symbol)?.name ?? symbol;
+    },
+    [],
+  );
+  const activeFavorite = React.useMemo(() => {
+    if (!hasToggleFavorites || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return undefined;
+    }
+    return favorites.find(
+      (fav) =>
+        fav.category === rhfCategory &&
+        fav.fromUnit === rhfFromUnit &&
+        fav.toUnit === rhfToUnit,
+    );
+  }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
   const rhfValue = watch("value");
   const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
   const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
@@ -1007,12 +1031,34 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
   }, [rhfCategory, rhfFromUnit, rhfToUnit, onSaveFavoriteProp, toast]);
 
+  const handleToggleFavoriteInternal = React.useCallback(() => {
+    if (!onToggleFavorite || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      handleSaveToFavoritesInternal();
+      return;
+    }
+
+    const fromName = getUnitDisplayName(rhfCategory, rhfFromUnit);
+    const toName = getUnitDisplayName(rhfCategory, rhfToUnit);
+
+    onToggleFavorite({
+      category: rhfCategory as UnitCategory,
+      fromUnit: rhfFromUnit,
+      toUnit: rhfToUnit,
+      name: `${fromName} to ${toName}`,
+    });
+  }, [onToggleFavorite, rhfCategory, rhfFromUnit, rhfToUnit, handleSaveToFavoritesInternal, getUnitDisplayName]);
+
   const screenReaderText = showPlaceholder
     ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue))} ${rhfFromUnit}` : 'Enter a value and select units to convert')
     : `${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
 
   const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
-  const finalSaveDisabled = baseSaveDisabled || disableAddFavoriteButton;
+  const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
+  const favoriteButtonLabel = hasToggleFavorites
+    ? activeFavorite
+      ? 'Remove from favorites'
+      : 'Save conversion to favorites'
+    : 'Save conversion to favorites';
 
   const handleCalculatorValueSent = (valueFromCalculator: string) => {
     const numericValue = parseFloat(valueFromCalculator);
@@ -1238,16 +1284,16 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             <span className="hidden md:inline">Swap units</span>
                         </Button>
 
-                       {onSaveFavoriteProp && (
+                       {(onSaveFavoriteProp || hasToggleFavorites) && (
                           <Button
                               type="button"
                               variant="outline" 
-                              onClick={handleSaveToFavoritesInternal}
+                              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
                               className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 md:flex-none md:px-5"
-                              aria-label="Save conversion to favorites"
+                              aria-label={favoriteButtonLabel}
                             >
-                              <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
+                              <Star className={cn("h-4 w-4", activeFavorite ? "fill-primary text-primary" : (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
                             </Button>
                         )}
                     </div>
