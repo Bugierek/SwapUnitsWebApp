@@ -59,6 +59,7 @@ import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { getAliasesForUnit } from '@/lib/conversion-query-parser';
+import { getConversionSources } from '@/lib/conversion-sources';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -366,10 +367,21 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 };
               }),
           );
-        },
-      ),
+      },
+    ),
     [],
   );
+
+  const conversionSources = React.useMemo(() => {
+    if (!rhfCategory) {
+      return [];
+    }
+    return getConversionSources(
+      rhfCategory as UnitCategory,
+      rhfFromUnit || undefined,
+      rhfToUnit || undefined,
+    );
+  }, [rhfCategory, rhfFromUnit, rhfToUnit]);
 
   const selectedConversionPairValue = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
@@ -1279,26 +1291,55 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 )}
                 
                  {/* Textual Conversion Result Display */}
-                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                 <div className="relative">
-                    <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary">
-                        <span className="flex-1 text-left">
-                            {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
-                        </span>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handleCopyTextualResult}
-                            className="h-8 w-8 shrink-0 rounded-lg border-none bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                            aria-label="Copy textual result to clipboard"
-                        >
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                    </div>
-                  </div>
-                )}
+                {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
+                <div className="relative">
+                   <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary">
+                       <span className="flex-1 text-left">
+                           {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+                       </span>
+                       <Button
+                           type="button"
+                           variant="outline"
+                           size="icon"
+                           onClick={handleCopyTextualResult}
+                           className="h-8 w-8 shrink-0 rounded-lg border-none bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                           aria-label="Copy textual result to clipboard"
+                       >
+                           <Copy className="h-4 w-4" />
+                       </Button>
+                   </div>
+                 </div>
+               )}
 
+                {conversionSources.length > 0 && (
+                  <details className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
+                    <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold text-foreground">
+                      Conversion sources
+                      <span className="text-xs font-normal text-muted-foreground">
+                        Tap or click to view references
+                      </span>
+                    </summary>
+                    <ul className="mt-3 space-y-3">
+                      {conversionSources.map((source) => (
+                        <li key={source.id} className="leading-relaxed">
+                          <p className="text-sm font-semibold text-foreground">{source.title}</p>
+                          <p className="mt-1">
+                            <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+                            {source.summary}{' '}
+                            <a
+                              href={source.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="font-semibold text-primary underline-offset-2 hover:underline"
+                            >
+                              View source
+                            </a>
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
 
                 <fieldset className="pt-1">
                    <Label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</Label>
