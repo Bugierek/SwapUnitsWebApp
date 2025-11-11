@@ -15,7 +15,7 @@ import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem, ConverterMode 
 // Data Transfer Rate: Bits per second (bps)
 // Bitcoin: Bitcoin (BTC)
 
-const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // 1L of gasoline energy equivalent in kWh
+const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // DOE AFDC gasoline energy equivalent (kWh/L)
 
 export const unitData: Record<UnitCategory, UnitData> = {
   Length: {
@@ -27,7 +27,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Millimeter', symbol: 'mm', factor: 0.001, mode: 'all' },
       { name: 'Micrometer', symbol: 'µm', factor: 1e-6, mode: 'advanced' },
       { name: 'Nanometer', symbol: 'nm', factor: 1e-9, mode: 'advanced' },
-      { name: 'Mile', symbol: 'mi', factor: 1609.34, mode: 'all' },
+      { name: 'Mile', symbol: 'mi', factor: 1609.344, mode: 'all' },
       { name: 'Foot', symbol: 'ft', factor: 0.3048, mode: 'all' },
       { name: 'Inch', symbol: 'in', factor: 0.0254, mode: 'all' },
     ].sort((a,b) => a.factor - b.factor),
@@ -39,8 +39,8 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Gram', symbol: 'g', factor: 0.001, mode: 'all' },
       { name: 'Milligram', symbol: 'mg', factor: 0.000001, mode: 'all' },
       { name: 'Metric Ton', symbol: 't', factor: 1000, mode: 'all' },
-      { name: 'Pound', symbol: 'lb', factor: 0.453592, mode: 'all' },
-      { name: 'Ounce', symbol: 'oz', factor: 0.0283495, mode: 'all' },
+      { name: 'Pound', symbol: 'lb', factor: 0.45359237, mode: 'all' },
+      { name: 'Ounce', symbol: 'oz', factor: 0.028349523125, mode: 'all' },
     ].sort((a,b) => a.factor - b.factor),
   },
   Temperature: {
@@ -73,7 +73,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Kilopascal', symbol: 'kPa', factor: 1000, mode: 'all' },
       { name: 'Bar', symbol: 'bar', factor: 100000, mode: 'all' },
       { name: 'Atmosphere', symbol: 'atm', factor: 101325, mode: 'all' },
-      { name: 'Pound per square inch', symbol: 'psi', factor: 6894.76, mode: 'all' },
+      { name: 'Pound per square inch', symbol: 'psi', factor: 6894.757293168, mode: 'all' },
     ].sort((a,b) => a.factor - b.factor),
   },
   Area: {
@@ -85,10 +85,10 @@ export const unitData: Record<UnitCategory, UnitData> = {
         { name: 'Square Millimeter', symbol: 'mm²', factor: 1e-6, mode: 'all' },
         { name: 'Square Mile', symbol: 'mi²', factor: 2589988.110336, mode: 'all' },
         { name: 'Square Yard', symbol: 'yd²', factor: 0.83612736, mode: 'all' },
-        { name: 'Square Foot', symbol: 'ft²', factor: 0.092903, mode: 'all' },
+        { name: 'Square Foot', symbol: 'ft²', factor: 0.09290304, mode: 'all' },
         { name: 'Square Inch', symbol: 'in²', factor: 0.00064516, mode: 'all' },
         { name: 'Hectare', symbol: 'ha', factor: 10000, mode: 'all' },
-        { name: 'Acre', symbol: 'acre', factor: 4046.86, mode: 'all' },
+        { name: 'Acre', symbol: 'acre', factor: 4046.8564224, mode: 'all' },
     ].sort((a,b) => a.factor - b.factor),
    },
     Volume: { 
@@ -99,8 +99,8 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Cubic Meter', symbol: 'm³', factor: 1000, mode: 'all' }, // 1 m³ = 1000 L
             { name: 'Cubic Centimeter', symbol: 'cm³', factor: 0.001, mode: 'all' }, // Same as Milliliter
             { name: 'Cubic Millimeter', symbol: 'mm³', factor: 0.000001, mode: 'all' },
-            { name: 'Gallon (US)', symbol: 'gal', factor: 3.78541, mode: 'all' }, // US Gallon to L
-            { name: 'Cubic Foot', symbol: 'ft³', factor: 28.3168, mode: 'all' }, // Cubic Foot to L
+            { name: 'Gallon (US)', symbol: 'gal', factor: 3.785411784, mode: 'all' }, // US Gallon to L
+            { name: 'Cubic Foot', symbol: 'ft³', factor: 28.316846592, mode: 'all' }, // Cubic Foot to L
         ].sort((a,b) => a.factor - b.factor),
     },
     Energy: {
@@ -111,7 +111,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Calorie', symbol: 'cal', factor: 4.184, mode: 'all' },
             { name: 'Kilocalorie (food)', symbol: 'kcal', factor: 4184, mode: 'all' },
             { name: 'Kilowatt Hour', symbol: 'kWh', factor: 3.6e6, mode: 'all' },
-            { name: 'British Thermal Unit', symbol: 'BTU', factor: 1055.06, mode: 'all' },
+            { name: 'British Thermal Unit', symbol: 'BTU', factor: 1055.05585262, mode: 'all' },
         ].sort((a,b) => a.factor - b.factor),
     },
     Speed: {
@@ -127,12 +127,12 @@ export const unitData: Record<UnitCategory, UnitData> = {
         units: [
             { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1, mode: 'all', unitType: 'direct_efficiency' },
             { name: 'Liter per 100 km', symbol: 'L/100km', factor: 100, mode: 'all', unitType: 'inverse_consumption' },
-            { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425144, mode: 'all', unitType: 'direct_efficiency' },
-            { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.354006, mode: 'all', unitType: 'direct_efficiency' },
+            { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425143707430272, mode: 'all', unitType: 'direct_efficiency' },
+            { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.3540061899346471, mode: 'all', unitType: 'direct_efficiency' },
             { name: 'Kilometer per kWh', symbol: 'km/kWh', factor: LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'direct_efficiency' }, 
-            { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.60934 * LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'direct_efficiency' }, 
+            { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.609344 * LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'direct_efficiency' }, 
             { name: 'kWh per 100 km', symbol: 'kWh/100km', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'inverse_consumption' }, 
-            { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: (100 * LITER_GASOLINE_KWH_EQUIVALENCE) / 1.60934 , mode: 'all', unitType: 'inverse_consumption' }, 
+            { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: (100 * LITER_GASOLINE_KWH_EQUIVALENCE) / 1.609344 , mode: 'all', unitType: 'inverse_consumption' }, 
         ].sort((a, b) => {
             const getUnitRank = (unit: Unit) => {
                 const preferredOrderICE = ['km/L', 'L/100km', 'MPG (US)', 'MPG (UK)'];
