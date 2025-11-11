@@ -24,7 +24,7 @@ import {
 import { MeasurementCategoryDropdown, MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { unitData, getUnitsForCategoryAndMode, categoryDisplayOrder } from '@/lib/unit-data';
+import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem, UnitData } from '@/types';
 import {
   ArrowRightLeft,
@@ -214,7 +214,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   ref,
 ) {
   const defaultCategory = initialCategory as UnitCategory;
-  const defaultUnits = getUnitsForCategoryAndMode(defaultCategory);
+  const defaultUnits = getUnitsForCategory(defaultCategory);
   const resolvedFromUnit = initialFromUnit ?? defaultUnits[0]?.symbol ?? '';
   const resolvedToUnit = initialToUnit
     ?? defaultUnits.find((unit) => unit.symbol !== resolvedFromUnit)?.symbol
@@ -279,7 +279,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       .filter((category) => unitData[category])
       .map((category) => {
         const slug = getCategorySlug(category);
-        const units = getUnitsForCategoryAndMode(category);
+        const units = getUnitsForCategory(category);
         const secondaryLimit = CATEGORY_TILE_SECONDARY_LIMIT[category] ?? 3;
         const topUnits = units
           .slice(0, secondaryLimit)
@@ -310,14 +310,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const currentUnitsForCategory = React.useMemo(() => {
     if (!rhfCategory) return [];
-    return getUnitsForCategoryAndMode(rhfCategory);
+    return getUnitsForCategory(rhfCategory);
   }, [rhfCategory]);
 
   const conversionPairs = React.useMemo(
     () =>
       (Object.entries(unitData) as [UnitCategory, UnitData][]).flatMap(
         ([category, data]) => {
-          const units = getUnitsForCategoryAndMode(category);
+          const units = getUnitsForCategory(category);
           return units.flatMap((fromUnit) =>
             units
               .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
@@ -415,7 +415,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const applyCategoryDefaults = React.useCallback(
     (category: UnitCategory, { forceDefaults }: { forceDefaults: boolean }) => {
-      const availableUnits = getUnitsForCategoryAndMode(category);
+      const availableUnits = getUnitsForCategory(category);
       if (availableUnits.length === 0) {
         setSelectedCategoryLocal(category);
         setValue('category', category, { shouldValidate: true });
@@ -624,7 +624,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const categoryToProcess = rhfCategory as UnitCategory;
     if (!categoryToProcess) return;
 
-    const availableUnits = getUnitsForCategoryAndMode(categoryToProcess);
+    const availableUnits = getUnitsForCategory(categoryToProcess);
     if (availableUnits.length === 0) return;
 
     if (categoryToProcess !== selectedCategoryLocal) {
@@ -699,7 +699,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
         setSelectedCategoryLocal(initialCategory);
 
-        const initialAvailableUnits = getUnitsForCategoryAndMode(initialCategory);
+        const initialAvailableUnits = getUnitsForCategory(initialCategory);
         let initialFrom = initialFormData.fromUnit;
         let initialTo = initialFormData.toUnit;
 
@@ -742,7 +742,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
 
     Promise.resolve().then(() => {
-        const availableUnits = getUnitsForCategoryAndMode(presetCategory);
+        const availableUnits = getUnitsForCategory(presetCategory);
         const fromUnitValid = availableUnits.some(u => u.symbol === preset.fromUnit);
         const toUnitValid = availableUnits.some(u => u.symbol === preset.toUnit);
 
@@ -779,7 +779,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setValue("category", category, { shouldValidate: true, shouldDirty: true });
 
     Promise.resolve().then(() => {
-        const availableUnits = getUnitsForCategoryAndMode(category);
+        const availableUnits = getUnitsForCategory(category);
         const fromUnitValid = availableUnits.some(u => u.symbol === fromUnit);
         const toUnitValid = availableUnits.some(u => u.symbol === toUnit);
 
@@ -957,7 +957,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
 
     if (onSaveFavoriteProp) {
-      const currentCategoryUnits = getUnitsForCategoryAndMode(rhfCategory);
+      const currentCategoryUnits = getUnitsForCategory(rhfCategory);
       const fromUnitDetails = currentCategoryUnits.find(u => u.symbol === rhfFromUnit);
       const toUnitDetails = currentCategoryUnits.find(u => u.symbol === rhfToUnit);
 

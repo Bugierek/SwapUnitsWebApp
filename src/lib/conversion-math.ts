@@ -1,4 +1,4 @@
-import { getUnitsForCategoryAndMode } from '@/lib/unit-data';
+import { getUnitsForCategory } from '@/lib/unit-data';
 import type { UnitCategory } from '@/types';
 
 export function convertNumericValue(
@@ -11,7 +11,7 @@ export function convertNumericValue(
     return null;
   }
 
-  const currentUnits = getUnitsForCategoryAndMode(category);
+  const currentUnits = getUnitsForCategory(category);
   const fromUnitData = currentUnits.find((unit) => unit.symbol === fromUnitSymbol);
   const toUnitData = currentUnits.find((unit) => unit.symbol === toUnitSymbol);
 

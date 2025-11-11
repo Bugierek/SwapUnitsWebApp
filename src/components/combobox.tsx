@@ -50,7 +50,10 @@ const CONNECTOR_TERMS = new Set(['to', 'in', 'into']);
 
 function normalizeInput(value: string): string {
   const withArrowsNormalized = value.replace(/(->|=>|→)/gi, ' to ');
-  const withConnectorsSpaced = withArrowsNormalized.replace(/(to|into|in)(?=$|[^a-zA-Z°µμ])/gi, ' $1 ');
+  const withConnectorsSpaced = withArrowsNormalized.replace(
+    /(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi,
+    '$1 $2 ',
+  );
 
   const withSpacing = withConnectorsSpaced
     .replace(/(\d)(?=[A-Za-z°µµ])/g, (match, digit: string, offset: number, original: string) => {
