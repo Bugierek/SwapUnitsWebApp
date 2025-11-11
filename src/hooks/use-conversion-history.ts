@@ -43,19 +43,6 @@ export function useConversionHistory() {
     };
 
     setHistory(prevHistory => {
-      if (prevHistory.length > 0) {
-        const lastItem = prevHistory[0];
-        const isDuplicate =
-          lastItem.category === newItem.category &&
-          lastItem.fromUnit === newItem.fromUnit &&
-          lastItem.toUnit === newItem.toUnit &&
-          lastItem.fromValue === newItem.fromValue &&
-          lastItem.toValue === newItem.toValue;
-        if (isDuplicate) {
-          return prevHistory;
-        }
-      }
-
       const updatedHistory = [newItem, ...prevHistory].slice(0, MAX_HISTORY_ITEMS);
       if (typeof window !== 'undefined') {
         try {

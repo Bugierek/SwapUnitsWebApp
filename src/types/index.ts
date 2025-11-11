@@ -3,6 +3,7 @@ export type Unit = {
   name: string;
   symbol: string;
   factor: number; // Factor to convert from this unit to the base unit of the category
+  mode?: 'basic' | 'all' | 'advanced';
   unitType?: 'frequency' | 'wavelength' | 'direct_efficiency' | 'inverse_consumption';
 };
 
@@ -58,3 +59,7 @@ export type ConversionHistoryItem = {
   toUnit: string;
   timestamp: number;
 };
+
+export type ConverterMode = 'basic' | 'advanced';
+
+

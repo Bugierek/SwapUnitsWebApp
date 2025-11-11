@@ -1,6 +1,6 @@
 'use client';
 
-import { unitData } from '@/lib/unit-data';
+import { unitData, getUnitsForCategoryAndMode } from '@/lib/unit-data';
 import type { UnitCategory, Unit, UnitData } from '@/types';
 
 type AliasEntry = {
@@ -76,7 +76,6 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
   mm: ['millimeter', 'millimeters', 'millimetre', 'millimetres'],
   L: ['liter', 'liters', 'litre', 'litres'],
   mL: ['milliliter', 'milliliters', 'millilitre', 'millilitres'],
-  min: ['minute', 'minutes', 'mins'],
   '°C': ['celsius', 'centigrade', 'c', 'deg c', 'degc', 'c deg', 'c-degree'],
   '°F': ['fahrenheit', 'f', 'deg f', 'degf', 'f deg', 'f-degree'],
   'm/s': ['meter per second', 'meters per second', 'metre per second', 'metres per second'],
@@ -94,7 +93,6 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
   'cm\u00B3': ['cubic centimeter', 'cubic centimeters', 'cubic centimetre', 'cubic centimetres', 'cm3'],
   'mm\u00B3': ['cubic millimeter', 'cubic millimeters', 'cubic millimetre', 'cubic millimetres', 'mm3'],
   'ft\u00B3': ['cubic foot', 'cubic feet', 'ft3', 'cu ft'],
-  t: ['metric ton', 'metric tons', 'tonne', 'tonnes', 'ton', 'tons'],
 };
 
 const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
@@ -205,7 +203,7 @@ function normalizeQuery(query: string): string {
     .replace(/=>|->|=/g, ' to ')
     .toLowerCase();
 
-  result = result.replace(/(^|[^a-z°µμ])(to|into|in)(?=$|[^a-z°µμ])/g, '$1 $2 ');
+  result = result.replace(/(to|into|in)(?=$|[^a-z°µμ])/g, ' $1 ');
 
   result = result
     .replace(/(\d)(?=[a-z°µμ])/g, (match, digit: string, offset: number, original: string) => {

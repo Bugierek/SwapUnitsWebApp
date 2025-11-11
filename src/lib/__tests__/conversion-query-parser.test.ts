@@ -12,10 +12,6 @@ describe('parseConversionQuery', () => {
     ['22 in to nm', { value: 22, fromUnit: 'in', toUnit: 'nm', category: 'Length' }],
     ['1.5e3 g to kg', { value: 1.5e3, fromUnit: 'g', toUnit: 'kg', category: 'Mass' }],
     ['10deg C in deg F', { value: 10, fromUnit: '°C', toUnit: '°F', category: 'Temperature' }],
-    ['1 year to min', { value: 1, fromUnit: 'a', toUnit: 'min', category: 'Time' }],
-    ['1 minute in s', { value: 1, fromUnit: 'min', toUnit: 's', category: 'Time' }],
-    ['2 mins into hours', { value: 2, fromUnit: 'min', toUnit: 'h', category: 'Time' }],
-    ['0.5 ton to kg', { value: 0.5, fromUnit: 't', toUnit: 'kg', category: 'Mass' }],
   ] as const;
 
   successCases.forEach(([query, expected]) => {
