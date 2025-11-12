@@ -57,7 +57,6 @@ function normalizeInput(value: string): string {
 
   const withSpacing = withConnectorsSpaced
     .replace(/(\d)(?=[A-Za-z°µµ])/g, (match, digit: string, offset: number, original: string) => {
-      const next = original[offset + 1];
       const rest = original.slice(offset + 1);
       if (/^[eE][+-]?\d/.test(rest)) {
         return digit;
@@ -219,6 +218,46 @@ export function ConversionCombobox({
       return prev;
     });
   }, [open, visibleItems.length]);
+
+  const shouldAttemptParsing = React.useCallback(
+    (query: string) => {
+      if (!query) return false;
+      const sanitized = query.replace(CONNECTOR_TOKEN_REGEX, ' ');
+      if (!LETTER_REGEX.test(sanitized)) return false;
+      return CONNECTOR_REGEX.test(query);
+    },
+    [],
+  );
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (!shouldAttemptParsing(normalizedSearch)) {
+      return;
+    }
+
+    const parsed = parseConversionQuery(normalizedSearch);
+    if (!parsed.ok) {
+      return;
+    }
+
+    const matchIndex = baseItems.findIndex(
+      (item) =>
+        item.category === parsed.category &&
+        item.fromSymbol === parsed.fromUnit &&
+        item.toSymbol === parsed.toUnit,
+    );
+
+    if (matchIndex === -1) {
+      return;
+    }
+
+    if (matchIndex >= visibleCount) {
+      setVisibleCount((prev) => Math.min(Math.max(prev, matchIndex + 1), baseItems.length));
+      return;
+    }
+
+    setHighlightedIndex((prev) => (prev === matchIndex ? prev : matchIndex));
+  }, [baseItems, normalizedSearch, open, shouldAttemptParsing, visibleCount]);
 
   React.useEffect(() => {
     if (!open || highlightedIndex < 0) return;
