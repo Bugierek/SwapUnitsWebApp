@@ -1,4 +1,4 @@
-import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem, ConverterMode } from '@/types';
+import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types';
 
 // Base units:
 // Length: Meter (m)
@@ -15,174 +15,179 @@ import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem, ConverterMode 
 // Data Transfer Rate: Bits per second (bps)
 // Bitcoin: Bitcoin (BTC)
 
-const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // 1L of gasoline energy equivalent in kWh
+const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // DOE AFDC gasoline energy equivalent (kWh/L)
+
+const fuelEconomyUnits: Unit[] = [
+  { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1, unitType: 'direct_efficiency' },
+  { name: 'Liter per 100 km', symbol: 'L/100km', factor: 100, unitType: 'inverse_consumption' },
+  { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425143707430272, unitType: 'direct_efficiency' },
+  { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.3540061899346471, unitType: 'direct_efficiency' },
+  { name: 'Kilometer per kWh', symbol: 'km/kWh', factor: LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
+  { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.609344 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
+  { name: 'kWh per 100 km', symbol: 'kWh/100km', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'inverse_consumption' }, 
+  { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: (100 * LITER_GASOLINE_KWH_EQUIVALENCE) / 1.609344 , unitType: 'inverse_consumption' }, 
+];
+
+fuelEconomyUnits.sort((a, b) => {
+  const preferredOrderICE = ['km/L', 'L/100km', 'MPG (US)', 'MPG (UK)'];
+  const preferredOrderEV = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi'];
+
+  const getUnitRank = (unit: Unit) => {
+    let rank = 100;
+    let index = -1;
+
+    if (preferredOrderICE.includes(unit.symbol)) {
+      index = preferredOrderICE.indexOf(unit.symbol);
+      if (index !== -1) rank = index;
+    } else if (preferredOrderEV.includes(unit.symbol)) {
+      index = preferredOrderEV.indexOf(unit.symbol);
+      if (index !== -1) rank = index + preferredOrderICE.length;
+    }
+    return rank;
+  };
+
+  const rankA = getUnitRank(a);
+  const rankB = getUnitRank(b);
+  if (rankA !== rankB) return rankA - rankB;
+  return a.name.localeCompare(b.name);
+});
 
 export const unitData: Record<UnitCategory, UnitData> = {
   Length: {
     name: 'Length',
     units: [
-      { name: 'Meter', symbol: 'm', factor: 1, mode: 'all' },
-      { name: 'Kilometer', symbol: 'km', factor: 1000, mode: 'all' },
-      { name: 'Centimeter', symbol: 'cm', factor: 0.01, mode: 'all' },
-      { name: 'Millimeter', symbol: 'mm', factor: 0.001, mode: 'all' },
-      { name: 'Micrometer', symbol: 'µm', factor: 1e-6, mode: 'advanced' },
-      { name: 'Nanometer', symbol: 'nm', factor: 1e-9, mode: 'advanced' },
-      { name: 'Mile', symbol: 'mi', factor: 1609.34, mode: 'all' },
-      { name: 'Foot', symbol: 'ft', factor: 0.3048, mode: 'all' },
-      { name: 'Inch', symbol: 'in', factor: 0.0254, mode: 'all' },
+      { name: 'Meter', symbol: 'm', factor: 1 },
+      { name: 'Kilometer', symbol: 'km', factor: 1000 },
+      { name: 'Centimeter', symbol: 'cm', factor: 0.01 },
+      { name: 'Millimeter', symbol: 'mm', factor: 0.001 },
+      { name: 'Micrometer', symbol: 'µm', factor: 1e-6 },
+      { name: 'Nanometer', symbol: 'nm', factor: 1e-9 },
+      { name: 'Mile', symbol: 'mi', factor: 1609.344 },
+      { name: 'Foot', symbol: 'ft', factor: 0.3048 },
+      { name: 'Inch', symbol: 'in', factor: 0.0254 },
     ].sort((a,b) => a.factor - b.factor),
   },
   Mass: {
     name: 'Mass',
     units: [
-      { name: 'Kilogram', symbol: 'kg', factor: 1, mode: 'all' },
-      { name: 'Gram', symbol: 'g', factor: 0.001, mode: 'all' },
-      { name: 'Milligram', symbol: 'mg', factor: 0.000001, mode: 'all' },
-      { name: 'Metric Ton', symbol: 't', factor: 1000, mode: 'all' },
-      { name: 'Pound', symbol: 'lb', factor: 0.453592, mode: 'all' },
-      { name: 'Ounce', symbol: 'oz', factor: 0.0283495, mode: 'all' },
+      { name: 'Kilogram', symbol: 'kg', factor: 1 },
+      { name: 'Gram', symbol: 'g', factor: 0.001 },
+      { name: 'Milligram', symbol: 'mg', factor: 0.000001 },
+      { name: 'Metric Ton', symbol: 't', factor: 1000 },
+      { name: 'Pound', symbol: 'lb', factor: 0.45359237 },
+      { name: 'Ounce', symbol: 'oz', factor: 0.028349523125 },
     ].sort((a,b) => a.factor - b.factor),
   },
   Temperature: {
     name: 'Temperature',
     units: [
-      { name: 'Celsius', symbol: '°C', factor: 1, mode: 'all' }, 
-      { name: 'Fahrenheit', symbol: '°F', factor: 1, mode: 'all' }, 
-      { name: 'Kelvin', symbol: 'K', factor: 1, mode: 'all' }, 
+      { name: 'Celsius', symbol: '°C', factor: 1 }, 
+      { name: 'Fahrenheit', symbol: '°F', factor: 1 }, 
+      { name: 'Kelvin', symbol: 'K', factor: 1 }, 
     ],
   },
   Time: {
     name: 'Time',
     units: [
-      { name: 'Femtosecond', symbol: 'fs', factor: 1e-15, mode: 'advanced' },
-      { name: 'Picosecond', symbol: 'ps', factor: 1e-12, mode: 'advanced' },
-      { name: 'Nanosecond', symbol: 'ns', factor: 1e-9, mode: 'advanced' },
-      { name: 'Microsecond', symbol: 'µs', factor: 1e-6, mode: 'advanced' },
-      { name: 'Millisecond', symbol: 'ms', factor: 0.001, mode: 'all' },
-      { name: 'Second', symbol: 's', factor: 1, mode: 'all' },
-      { name: 'Minute', symbol: 'min', factor: 60, mode: 'all' },
-      { name: 'Hour', symbol: 'hr', factor: 3600, mode: 'all' },
-      { name: 'Day', symbol: 'day', factor: 86400, mode: 'all' },
-      { name: 'Year', symbol: 'yr', factor: 31557600, mode: 'all' }, 
+      { name: 'Femtosecond', symbol: 'fs', factor: 1e-15 },
+      { name: 'Picosecond', symbol: 'ps', factor: 1e-12 },
+      { name: 'Nanosecond', symbol: 'ns', factor: 1e-9 },
+      { name: 'Microsecond', symbol: 'µs', factor: 1e-6 },
+      { name: 'Millisecond', symbol: 'ms', factor: 0.001 },
+      { name: 'Second', symbol: 's', factor: 1 },
+      { name: 'Minute', symbol: 'min', factor: 60 },
+      { name: 'Hour', symbol: 'h', factor: 3600 },
+      { name: 'Day', symbol: 'd', factor: 86400 },
+      { name: 'Year', symbol: 'a', factor: 31557600 }, 
     ].sort((a, b) => a.factor - b.factor),
   },
    Pressure: {
     name: 'Pressure',
     units: [
-      { name: 'Pascal', symbol: 'Pa', factor: 1, mode: 'all' },
-      { name: 'Kilopascal', symbol: 'kPa', factor: 1000, mode: 'all' },
-      { name: 'Bar', symbol: 'bar', factor: 100000, mode: 'all' },
-      { name: 'Atmosphere', symbol: 'atm', factor: 101325, mode: 'all' },
-      { name: 'Pound per square inch', symbol: 'psi', factor: 6894.76, mode: 'all' },
+      { name: 'Pascal', symbol: 'Pa', factor: 1 },
+      { name: 'Kilopascal', symbol: 'kPa', factor: 1000 },
+      { name: 'Bar', symbol: 'bar', factor: 100000 },
+      { name: 'Atmosphere', symbol: 'atm', factor: 101325 },
+      { name: 'Pound per square inch', symbol: 'psi', factor: 6894.757293168 },
     ].sort((a,b) => a.factor - b.factor),
   },
   Area: {
     name: 'Area',
     units: [
-        { name: 'Square Meter', symbol: 'm²', factor: 1, mode: 'all' },
-        { name: 'Square Kilometer', symbol: 'km²', factor: 1e6, mode: 'all' },
-        { name: 'Square Centimeter', symbol: 'cm²', factor: 0.0001, mode: 'all' },
-        { name: 'Square Millimeter', symbol: 'mm²', factor: 1e-6, mode: 'all' },
-        { name: 'Square Mile', symbol: 'mi²', factor: 2589988.110336, mode: 'all' },
-        { name: 'Square Yard', symbol: 'yd²', factor: 0.83612736, mode: 'all' },
-        { name: 'Square Foot', symbol: 'ft²', factor: 0.092903, mode: 'all' },
-        { name: 'Square Inch', symbol: 'in²', factor: 0.00064516, mode: 'all' },
-        { name: 'Hectare', symbol: 'ha', factor: 10000, mode: 'all' },
-        { name: 'Acre', symbol: 'acre', factor: 4046.86, mode: 'all' },
+        { name: 'Square Meter', symbol: 'm²', factor: 1 },
+        { name: 'Square Kilometer', symbol: 'km²', factor: 1e6 },
+        { name: 'Square Centimeter', symbol: 'cm²', factor: 0.0001 },
+        { name: 'Square Millimeter', symbol: 'mm²', factor: 1e-6 },
+        { name: 'Square Mile', symbol: 'mi²', factor: 2589988.110336 },
+        { name: 'Square Yard', symbol: 'yd²', factor: 0.83612736 },
+        { name: 'Square Foot', symbol: 'ft²', factor: 0.09290304 },
+        { name: 'Square Inch', symbol: 'in²', factor: 0.00064516 },
+        { name: 'Hectare', symbol: 'ha', factor: 10000 },
+        { name: 'Acre', symbol: 'acre', factor: 4046.8564224 },
     ].sort((a,b) => a.factor - b.factor),
    },
     Volume: { 
         name: 'Volume',
         units: [ // Base unit is Liter (L)
-            { name: 'Liter', symbol: 'L', factor: 1, mode: 'all' },
-            { name: 'Milliliter', symbol: 'mL', factor: 0.001, mode: 'all' },
-            { name: 'Cubic Meter', symbol: 'm³', factor: 1000, mode: 'all' }, // 1 m³ = 1000 L
-            { name: 'Cubic Centimeter', symbol: 'cm³', factor: 0.001, mode: 'all' }, // Same as Milliliter
-            { name: 'Cubic Millimeter', symbol: 'mm³', factor: 0.000001, mode: 'all' },
-            { name: 'Gallon (US)', symbol: 'gal', factor: 3.78541, mode: 'all' }, // US Gallon to L
-            { name: 'Cubic Foot', symbol: 'ft³', factor: 28.3168, mode: 'all' }, // Cubic Foot to L
+            { name: 'Liter', symbol: 'L', factor: 1 },
+            { name: 'Milliliter', symbol: 'mL', factor: 0.001 },
+            { name: 'Cubic Meter', symbol: 'm³', factor: 1000 }, // 1 m³ = 1000 L
+            { name: 'Cubic Centimeter', symbol: 'cm³', factor: 0.001 }, // Same as Milliliter
+            { name: 'Cubic Millimeter', symbol: 'mm³', factor: 0.000001 },
+            { name: 'Gallon (US)', symbol: 'gal', factor: 3.785411784 }, // US Gallon to L
+            { name: 'Cubic Foot', symbol: 'ft³', factor: 28.316846592 }, // Cubic Foot to L
         ].sort((a,b) => a.factor - b.factor),
     },
     Energy: {
         name: 'Energy',
         units: [
-            { name: 'Joule', symbol: 'J', factor: 1, mode: 'all' },
-            { name: 'Kilojoule', symbol: 'kJ', factor: 1000, mode: 'all' },
-            { name: 'Calorie', symbol: 'cal', factor: 4.184, mode: 'all' },
-            { name: 'Kilocalorie (food)', symbol: 'kcal', factor: 4184, mode: 'all' },
-            { name: 'Kilowatt Hour', symbol: 'kWh', factor: 3.6e6, mode: 'all' },
-            { name: 'British Thermal Unit', symbol: 'BTU', factor: 1055.06, mode: 'all' },
+            { name: 'Joule', symbol: 'J', factor: 1 },
+            { name: 'Kilojoule', symbol: 'kJ', factor: 1000 },
+            { name: 'Calorie', symbol: 'cal', factor: 4.184 },
+            { name: 'Kilocalorie (food)', symbol: 'kcal', factor: 4184 },
+            { name: 'Kilowatt Hour', symbol: 'kWh', factor: 3.6e6 },
+            { name: 'British Thermal Unit', symbol: 'BTU', factor: 1055.05585262 },
         ].sort((a,b) => a.factor - b.factor),
     },
     Speed: {
         name: 'Speed',
         units: [
-            { name: 'Meter per second', symbol: 'm/s', factor: 1, mode: 'all' },
-            { name: 'Kilometer per hour', symbol: 'km/h', factor: 1 / 3.6, mode: 'all' },
-            { name: 'Mile per hour', symbol: 'mph', factor: 0.44704, mode: 'all' },
+            { name: 'Meter per second', symbol: 'm/s', factor: 1 },
+            { name: 'Kilometer per hour', symbol: 'km/h', factor: 1 / 3.6 },
+            { name: 'Mile per hour', symbol: 'mph', factor: 0.44704 },
         ].sort((a,b) => a.factor - b.factor),
     },
     'Fuel Economy': { 
         name: 'Fuel Economy',
-        units: [
-            { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1, mode: 'all', unitType: 'direct_efficiency' },
-            { name: 'Liter per 100 km', symbol: 'L/100km', factor: 100, mode: 'all', unitType: 'inverse_consumption' },
-            { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425144, mode: 'all', unitType: 'direct_efficiency' },
-            { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.354006, mode: 'all', unitType: 'direct_efficiency' },
-            { name: 'Kilometer per kWh', symbol: 'km/kWh', factor: LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'direct_efficiency' }, 
-            { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.60934 * LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'direct_efficiency' }, 
-            { name: 'kWh per 100 km', symbol: 'kWh/100km', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE, mode: 'all', unitType: 'inverse_consumption' }, 
-            { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: (100 * LITER_GASOLINE_KWH_EQUIVALENCE) / 1.60934 , mode: 'all', unitType: 'inverse_consumption' }, 
-        ].sort((a, b) => {
-            const getUnitRank = (unit: Unit) => {
-                const preferredOrderICE = ['km/L', 'L/100km', 'MPG (US)', 'MPG (UK)'];
-                const preferredOrderEV = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi'];
-                
-                let rank = 100;
-                let index = -1;
-
-                if (preferredOrderICE.includes(unit.symbol)) {
-                    index = preferredOrderICE.indexOf(unit.symbol);
-                    if (index !== -1) rank = index;
-                } else if (preferredOrderEV.includes(unit.symbol)) {
-                    index = preferredOrderEV.indexOf(unit.symbol);
-                    if (index !== -1) rank = index + preferredOrderICE.length;
-                }
-                return rank;
-            };
-            const rankA = getUnitRank(a);
-            const rankB = getUnitRank(b);
-            if (rankA !== rankB) return rankA - rankB;
-            return a.name.localeCompare(b.name);
-        }),
+        units: fuelEconomyUnits,
     },
     'Data Storage': {
         name: 'Data Storage',
         units: [
-            { name: 'Byte', symbol: 'B', factor: 1, mode: 'all' },
-            { name: 'Kilobyte', symbol: 'KB', factor: 1024, mode: 'all' },
-            { name: 'Megabyte', symbol: 'MB', factor: 1024 ** 2, mode: 'all' },
-            { name: 'Gigabyte', symbol: 'GB', factor: 1024 ** 3, mode: 'all' },
-            { name: 'Terabyte', symbol: 'TB', factor: 1024 ** 4, mode: 'all' },
+            { name: 'Byte', symbol: 'B', factor: 1 },
+            { name: 'Kilobyte', symbol: 'KB', factor: 1024 },
+            { name: 'Megabyte', symbol: 'MB', factor: 1024 ** 2 },
+            { name: 'Gigabyte', symbol: 'GB', factor: 1024 ** 3 },
+            { name: 'Terabyte', symbol: 'TB', factor: 1024 ** 4 },
         ].sort((a,b) => a.factor - b.factor),
     },
     'Data Transfer Rate': {
         name: 'Data Transfer Rate',
         units: [
-            { name: 'Bits per second', symbol: 'bps', factor: 1, mode: 'all' },
-            { name: 'Kilobits per second', symbol: 'Kbps', factor: 1000, mode: 'all' },
-            { name: 'Megabits per second', symbol: 'Mbps', factor: 1e6, mode: 'all' },
-            { name: 'Gigabits per second', symbol: 'Gbps', factor: 1e9, mode: 'all' },
-            { name: 'Bytes per second', symbol: 'B/s', factor: 8, mode: 'all' },
-            { name: 'Kilobytes per second', symbol: 'KB/s', factor: 8 * 1000, mode: 'all' },
-            { name: 'Megabytes per second', symbol: 'MB/s', factor: 8 * 1e6, mode: 'all' },
+            { name: 'Bits per second', symbol: 'bps', factor: 1 },
+            { name: 'Kilobits per second', symbol: 'Kbps', factor: 1000 },
+            { name: 'Megabits per second', symbol: 'Mbps', factor: 1e6 },
+            { name: 'Gigabits per second', symbol: 'Gbps', factor: 1e9 },
+            { name: 'Bytes per second', symbol: 'B/s', factor: 8 },
+            { name: 'Kilobytes per second', symbol: 'KB/s', factor: 8 * 1000 },
+            { name: 'Megabytes per second', symbol: 'MB/s', factor: 8 * 1e6 },
         ].sort((a,b) => a.factor - b.factor),
     },
     Bitcoin: {
         name: 'Bitcoin',
         units: [
-            { name: 'Bitcoin', symbol: 'BTC', factor: 1, mode: 'all' },
-            { name: 'Satoshi', symbol: 'sat', factor: 1e-8, mode: 'all' },
+            { name: 'Bitcoin', symbol: 'BTC', factor: 1 },
+            { name: 'Satoshi', symbol: 'sat', factor: 1e-8 },
         ].sort((a,b) => a.factor - b.factor),
     },
 };
@@ -194,7 +199,7 @@ export const allPresets: Preset[] = [
   { category: 'Mass', fromUnit: 'g', toUnit: 'oz', name: 'Grams to Ounces' },
   { category: 'Temperature', fromUnit: '°C', toUnit: '°F', name: 'Celsius to Fahrenheit' },
   { category: 'Temperature', fromUnit: '°F', toUnit: '°C', name: 'Fahrenheit to Celsius' },
-  { category: 'Time', fromUnit: 'hr', toUnit: 'min', name: 'Hours to Minutes' },
+  { category: 'Time', fromUnit: 'h', toUnit: 'min', name: 'Hours to Minutes' },
   { category: 'Time', fromUnit: 's', toUnit: 'ms', name: 'Seconds to Milliseconds' },
   { category: 'Pressure', fromUnit: 'psi', toUnit: 'kPa', name: 'PSI to Kilopascals' },
   { category: 'Pressure', fromUnit: 'Pa', toUnit: 'atm', name: 'Pascals to Atmospheres' },
@@ -217,7 +222,7 @@ export const allPresets: Preset[] = [
   { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
   { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
 
-  // Advanced Mode Specific Presets (ensure these only use units marked 'advanced' or 'all'/'basic' IF the preset itself is conceptually advanced)
+  // Additional high-precision presets surfaced for power users
   { category: 'Time', fromUnit: 's', toUnit: 'ns', name: 'Seconds to Nanoseconds (Adv)' },
   { category: 'Length', fromUnit: 'm', toUnit: 'nm', name: 'Meters to Nanometers (Adv)' },
 ];
@@ -230,21 +235,17 @@ export const categoryDisplayOrder: UnitCategory[] = [
   // Removed: 'Ethereum', 'EM Frequency', 'Sound Frequency',
 ];
 
-export const getUnitsForCategoryAndMode = (category: UnitCategory | "", mode?: ConverterMode ): Unit[] => {
+export const getUnitsForCategory = (category: UnitCategory | ""): Unit[] => {
   const categoryKey = category as UnitCategory;
   if (!categoryKey || !unitData[categoryKey]) {
     return [];
   }
-  const units = unitData[categoryKey].units ?? [];
-  // If mode is not provided, or is 'basic', filter for 'all' or 'basic'
-  // Since mode toggle is removed, effectively always 'basic' or rather 'all available'
-  return units.filter(unit => unit.mode === 'all' || unit.mode === 'basic' || unit.mode === 'advanced');
+  return unitData[categoryKey].units ?? [];
 };
 
 
 export const getFilteredAndSortedPresets = (
-    favorites: FavoriteItem[] = [],
-    currentMode: ConverterMode = 'basic' 
+    favorites: FavoriteItem[] = []
 ): Preset[] => {
     const favoriteSignatures = new Set(
         favorites.map(fav => `${fav.category}-${fav.fromUnit}-${fav.toUnit}`)
@@ -255,20 +256,19 @@ export const getFilteredAndSortedPresets = (
         return !favoriteSignatures.has(presetSignature) && unitData[preset.category]; // Ensure category still exists
     });
     
-    const validPresetsForMode = presetsNotInFavorites.filter(preset => {
+    const validPresets = presetsNotInFavorites.filter(preset => {
         const categoryUnits = unitData[preset.category]?.units;
         if (!categoryUnits) return false;
 
         const fromUnitDetails = categoryUnits.find(u => u.symbol === preset.fromUnit);
         const toUnitDetails = categoryUnits.find(u => u.symbol === preset.toUnit);
         
-        // Since converter mode toggle is removed, all defined presets are potentially valid
-        // if their units exist.
+        // Ensure presets only surface when both referenced units exist for the category.
         return fromUnitDetails && toUnitDetails;
     });
 
 
-    const sortedValidPresets = [...validPresetsForMode].sort((a, b) => {
+    const sortedValidPresets = [...validPresets].sort((a, b) => {
         const indexA = categoryDisplayOrder.indexOf(a.category);
         const indexB = categoryDisplayOrder.indexOf(b.category);
 

@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from 'react';
-import { ArrowLeftRight, Copy } from 'lucide-react';
+import { ArrowLeftRight, Copy, Check } from 'lucide-react';
 
 import type { UnitCategory } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { convertNumericValue } from '@/lib/conversion-math';
+import { getConversionSources } from '@/lib/conversion-sources';
 import { useToast } from '@/hooks/use-toast';
 
 interface PairConverterProps {
@@ -41,9 +42,14 @@ export function PairConverter({
 }: PairConverterProps) {
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
+  const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
 
   const activeFrom = isSwapped ? toUnit : fromUnit;
   const activeTo = isSwapped ? fromUnit : toUnit;
+  const conversionSources = React.useMemo(
+    () => getConversionSources(category, activeFrom.symbol, activeTo.symbol),
+    [category, activeFrom.symbol, activeTo.symbol],
+  );
 
   const parsedInput = React.useMemo(() => {
     const trimmed = inputValue.trim();
@@ -82,12 +88,7 @@ export function PairConverter({
     const formatted = formatResult(result);
     try {
       await navigator.clipboard.writeText(`${formatted} ${activeTo.symbol}`);
-      toast({
-        variant: "confirmation",
-        title: "Copied to clipboard",
-        description: `${formatted} ${activeTo.symbol}`,
-        duration: 2000, // Show for 2 seconds
-      });
+      setCopyState('success');
     } catch (error) {
       console.error('Failed to copy conversion result:', error);
       toast({
@@ -97,6 +98,12 @@ export function PairConverter({
       });
     }
   }, [parsedInput, result, activeTo.symbol, toast]);
+
+  React.useEffect(() => {
+    if (copyState === 'success') {
+      setCopyState('idle');
+    }
+  }, [parsedInput, activeFrom.symbol, activeTo.symbol]);
 
   const generalFormula = React.useMemo(() => {
     // Temperature conversions
@@ -254,7 +261,11 @@ export function PairConverter({
               disabled={parsedInput === null}
               aria-label="Copy converted result"
             >
-              <Copy className="h-4 w-4" aria-hidden="true" />
+              {copyState === 'success' ? (
+                <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+              ) : (
+                <Copy className="h-4 w-4" aria-hidden="true" />
+              )}
             </Button>
           </div>
         </div>
@@ -266,6 +277,36 @@ export function PairConverter({
           {generalFormula && <p className="mt-2">{generalFormula}</p>}
           {dynamicFormula && <p className="mt-1 text-muted-foreground">{dynamicFormula}</p>}
         </div>
+      )}
+
+      {conversionSources.length > 0 && (
+        <details className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
+          <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold text-foreground">
+            Conversion sources
+            <span className="text-xs font-normal text-muted-foreground">
+              Tap or click to view references
+            </span>
+          </summary>
+          <ul className="mt-3 space-y-3">
+            {conversionSources.map((source) => (
+              <li key={source.id} className="leading-relaxed">
+                <p className="text-sm font-semibold text-foreground">{source.title}</p>
+                <p className="mt-1">
+                  <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+                  {source.summary}{' '}
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    View source
+                  </a>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
 
       <p className="text-xs text-muted-foreground">

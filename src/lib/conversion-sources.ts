@@ -94,6 +94,7 @@ export function getConversionSources(
     });
   });
 }
+<<<<<<< HEAD
 
 import type { UnitCategory } from '@/types';
 
@@ -192,3 +193,5 @@ export function getConversionSources(
   });
 }
 
+=======
+>>>>>>> c8bfa3a (Merge commit 'a89722f642f8af3fb603ead2c3dbe4b9675bfe81')

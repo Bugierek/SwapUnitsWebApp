@@ -24,7 +24,7 @@ import {
 import { MeasurementCategoryDropdown, MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { unitData, getUnitsForCategoryAndMode, categoryDisplayOrder } from '@/lib/unit-data';
+import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem, UnitData } from '@/types';
 import {
   ArrowRightLeft,
@@ -33,6 +33,8 @@ import {
   Star,
   Calculator,
   ChevronsUpDown,
+  ArrowUpRight,
+  Check,
 } from 'lucide-react';
 
 import { UnitIcon } from './unit-icon';
@@ -59,6 +61,7 @@ import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { getAliasesForUnit } from '@/lib/conversion-query-parser';
+import { getConversionSources } from '@/lib/conversion-sources';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -88,6 +91,8 @@ interface UnitConverterProps {
   initialFromUnit?: string;
   initialToUnit?: string;
   initialValue?: number;
+  favorites?: FavoriteItem[];
+  onToggleFavorite?: (favoriteData: Omit<FavoriteItem, 'id'>) => void;
 }
 
 export interface UnitConverterHandle {
@@ -209,11 +214,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     initialFromUnit,
     initialToUnit,
     initialValue = 1,
+    favorites = [],
+    onToggleFavorite,
   },
   ref,
 ) {
   const defaultCategory = initialCategory as UnitCategory;
-  const defaultUnits = getUnitsForCategoryAndMode(defaultCategory);
+  const defaultUnits = getUnitsForCategory(defaultCategory);
   const resolvedFromUnit = initialFromUnit ?? defaultUnits[0]?.symbol ?? '';
   const resolvedToUnit = initialToUnit
     ?? defaultUnits.find((unit) => unit.symbol !== resolvedFromUnit)?.symbol
@@ -253,7 +260,35 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfCategory = watch("category") as UnitCategory | "";
   const rhfFromUnit = watch("fromUnit");
   const rhfToUnit = watch("toUnit");
+  const hasToggleFavorites = typeof onToggleFavorite === 'function';
+  const getUnitDisplayName = React.useCallback(
+    (category: UnitCategory | "", symbol: string) => {
+      if (!category) return symbol;
+      const units = unitData[category]?.units ?? [];
+      return units.find((unit) => unit.symbol === symbol)?.name ?? symbol;
+    },
+    [],
+  );
+  const activeFavorite = React.useMemo(() => {
+    if (!hasToggleFavorites || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return undefined;
+    }
+    return favorites.find(
+      (fav) =>
+        fav.category === rhfCategory &&
+        fav.fromUnit === rhfFromUnit &&
+        fav.toUnit === rhfToUnit,
+    );
+  }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
   const rhfValue = watch("value");
+  const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
+  const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
+  const currentConversionPairUrl = React.useMemo(() => {
+    if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return null;
+    }
+    return buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
+  }, [rhfCategory, rhfFromUnit, rhfToUnit]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -278,7 +313,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       .filter((category) => unitData[category])
       .map((category) => {
         const slug = getCategorySlug(category);
-        const units = getUnitsForCategoryAndMode(category);
+        const units = getUnitsForCategory(category);
         const secondaryLimit = CATEGORY_TILE_SECONDARY_LIMIT[category] ?? 3;
         const topUnits = units
           .slice(0, secondaryLimit)
@@ -309,14 +344,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const currentUnitsForCategory = React.useMemo(() => {
     if (!rhfCategory) return [];
-    return getUnitsForCategoryAndMode(rhfCategory);
+    return getUnitsForCategory(rhfCategory);
   }, [rhfCategory]);
 
   const conversionPairs = React.useMemo(
     () =>
       (Object.entries(unitData) as [UnitCategory, UnitData][]).flatMap(
         ([category, data]) => {
-          const units = getUnitsForCategoryAndMode(category);
+          const units = getUnitsForCategory(category);
           return units.flatMap((fromUnit) =>
             units
               .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
@@ -366,10 +401,21 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 };
               }),
           );
-        },
-      ),
+      },
+    ),
     [],
   );
+
+  const conversionSources = React.useMemo(() => {
+    if (!rhfCategory) {
+      return [];
+    }
+    return getConversionSources(
+      rhfCategory as UnitCategory,
+      rhfFromUnit || undefined,
+      rhfToUnit || undefined,
+    );
+  }, [rhfCategory, rhfFromUnit, rhfToUnit]);
 
   const selectedConversionPairValue = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
@@ -403,7 +449,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const applyCategoryDefaults = React.useCallback(
     (category: UnitCategory, { forceDefaults }: { forceDefaults: boolean }) => {
-      const availableUnits = getUnitsForCategoryAndMode(category);
+      const availableUnits = getUnitsForCategory(category);
       if (availableUnits.length === 0) {
         setSelectedCategoryLocal(category);
         setValue('category', category, { shouldValidate: true });
@@ -612,7 +658,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const categoryToProcess = rhfCategory as UnitCategory;
     if (!categoryToProcess) return;
 
-    const availableUnits = getUnitsForCategoryAndMode(categoryToProcess);
+    const availableUnits = getUnitsForCategory(categoryToProcess);
     if (availableUnits.length === 0) return;
 
     if (categoryToProcess !== selectedCategoryLocal) {
@@ -687,7 +733,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
         setSelectedCategoryLocal(initialCategory);
 
-        const initialAvailableUnits = getUnitsForCategoryAndMode(initialCategory);
+        const initialAvailableUnits = getUnitsForCategory(initialCategory);
         let initialFrom = initialFormData.fromUnit;
         let initialTo = initialFormData.toUnit;
 
@@ -730,7 +776,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setValue("category", presetCategory, { shouldValidate: true, shouldDirty: true });
 
     Promise.resolve().then(() => {
-        const availableUnits = getUnitsForCategoryAndMode(presetCategory);
+        const availableUnits = getUnitsForCategory(presetCategory);
         const fromUnitValid = availableUnits.some(u => u.symbol === preset.fromUnit);
         const toUnitValid = availableUnits.some(u => u.symbol === preset.toUnit);
 
@@ -767,7 +813,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setValue("category", category, { shouldValidate: true, shouldDirty: true });
 
     Promise.resolve().then(() => {
-        const availableUnits = getUnitsForCategoryAndMode(category);
+        const availableUnits = getUnitsForCategory(category);
         const fromUnitValid = availableUnits.some(u => u.symbol === fromUnit);
         const toUnitValid = availableUnits.some(u => u.symbol === toUnit);
 
@@ -841,6 +887,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   };
 
   const showPlaceholder = rhfValue === undefined || rhfFromUnit === '' || !conversionResult || String(rhfValue).trim() === '' || String(rhfValue) === '-';
+  React.useEffect(() => {
+    if (!showPlaceholder) return;
+    if (textCopyState !== 'idle') {
+      setTextCopyState('idle');
+    }
+    if (resultCopyState !== 'idle') {
+      setResultCopyState('idle');
+    }
+  }, [showPlaceholder, textCopyState, resultCopyState]);
 
   const { formattedString: formattedResultString, actualFormatUsed, scientificReason } = React.useMemo(() => {
     return showPlaceholder || !conversionResult ? { formattedString: '-', actualFormatUsed: numberFormat, scientificReason: null } : formatNumber(conversionResult.value, numberFormat);
@@ -849,6 +904,24 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   React.useEffect(() => {
       handleActualFormatChange(actualFormatUsed, scientificReason);
   }, [actualFormatUsed, scientificReason, handleActualFormatChange]);
+
+  React.useEffect(() => {
+    if (resultCopyState === 'success') {
+      setResultCopyState('idle');
+    }
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue]);
+
+  React.useEffect(() => {
+    if (textCopyState === 'success') {
+      setTextCopyState('idle');
+    }
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
+
+  React.useEffect(() => {
+    if (textCopyState === 'success') {
+      setTextCopyState('idle');
+    }
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
 
   const handleCopy = React.useCallback(async () => {
@@ -860,12 +933,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
-        toast({
-            title: "Copied!",
-            description: `Result "${textToCopy}" copied to clipboard.`,
-            variant: "confirmation",
-            duration: 1500,
-        });
+        setResultCopyState('success');
         if (
             onResultCopied &&
             rhfCategory &&
@@ -902,12 +970,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     const copied = await copyTextToClipboard(textToCopy);
     if (copied) {
-        toast({
-            title: "Copied!",
-            description: `Conversion "${textToCopy}" copied to clipboard.`,
-            variant: "confirmation",
-            duration: 1500,
-        });
+        setTextCopyState('success');
         if (
             onResultCopied &&
             rhfCategory &&
@@ -945,7 +1008,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
 
     if (onSaveFavoriteProp) {
-      const currentCategoryUnits = getUnitsForCategoryAndMode(rhfCategory);
+      const currentCategoryUnits = getUnitsForCategory(rhfCategory);
       const fromUnitDetails = currentCategoryUnits.find(u => u.symbol === rhfFromUnit);
       const toUnitDetails = currentCategoryUnits.find(u => u.symbol === rhfToUnit);
 
@@ -968,12 +1031,34 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
   }, [rhfCategory, rhfFromUnit, rhfToUnit, onSaveFavoriteProp, toast]);
 
+  const handleToggleFavoriteInternal = React.useCallback(() => {
+    if (!onToggleFavorite || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      handleSaveToFavoritesInternal();
+      return;
+    }
+
+    const fromName = getUnitDisplayName(rhfCategory, rhfFromUnit);
+    const toName = getUnitDisplayName(rhfCategory, rhfToUnit);
+
+    onToggleFavorite({
+      category: rhfCategory as UnitCategory,
+      fromUnit: rhfFromUnit,
+      toUnit: rhfToUnit,
+      name: `${fromName} to ${toName}`,
+    });
+  }, [onToggleFavorite, rhfCategory, rhfFromUnit, rhfToUnit, handleSaveToFavoritesInternal, getUnitDisplayName]);
+
   const screenReaderText = showPlaceholder
     ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue))} ${rhfFromUnit}` : 'Enter a value and select units to convert')
     : `${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
 
   const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
-  const finalSaveDisabled = baseSaveDisabled || disableAddFavoriteButton;
+  const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
+  const favoriteButtonLabel = hasToggleFavorites
+    ? activeFavorite
+      ? 'Remove from favorites'
+      : 'Save conversion to favorites'
+    : 'Save conversion to favorites';
 
   const handleCalculatorValueSent = (valueFromCalculator: string) => {
     const numericValue = parseFloat(valueFromCalculator);
@@ -1061,8 +1146,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           options={categoryOptions}
                           value={(field.value as UnitCategory) ?? ''}
                           onSelect={(nextCategory) => {
-                            field.onChange(nextCategory);
-                            applyCategoryDefaults(nextCategory, { forceDefaults: true });
+                            if (typeof nextCategory !== 'string') {
+                              return;
+                            }
+                            const normalizedCategory = nextCategory as UnitCategory;
+                            field.onChange(normalizedCategory);
+                            applyCategoryDefaults(normalizedCategory, { forceDefaults: true });
                           }}
                           placeholder="Select a category"
                           triggerClassName="h-11"
@@ -1195,16 +1284,16 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             <span className="hidden md:inline">Swap units</span>
                         </Button>
 
-                       {onSaveFavoriteProp && (
+                       {(onSaveFavoriteProp || hasToggleFavorites) && (
                           <Button
                               type="button"
                               variant="outline" 
-                              onClick={handleSaveToFavoritesInternal}
+                              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
                               className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 md:flex-none md:px-5"
-                              aria-label="Save conversion to favorites"
+                              aria-label={favoriteButtonLabel}
                             >
-                              <Star className={cn("h-4 w-4", (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
+                              <Star className={cn("h-4 w-4", activeFavorite ? "fill-primary text-primary" : (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
                             </Button>
                         )}
                     </div>
@@ -1229,7 +1318,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         className="h-11 w-11 shrink-0 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary disabled:bg-muted"
                         aria-label="Copy result to clipboard"
                       >
-                        <Copy className="h-5 w-5" />
+                        {resultCopyState === 'success' ? (
+                          <Check className="h-5 w-5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-5 w-5" />
+                        )}
                       </Button>
                       <FormField
                         control={form.control}
@@ -1279,26 +1372,68 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 )}
                 
                  {/* Textual Conversion Result Display */}
-                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                 <div className="relative">
-                    <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary">
-                        <span className="flex-1 text-left">
-                            {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+                {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
+                  <div className="relative">
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary sm:gap-3">
+                      <div className="flex flex-1 items-center gap-2 text-left">
+                        <span className="truncate">
+                          {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
                         </span>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={handleCopyTextualResult}
-                            className="h-8 w-8 shrink-0 rounded-lg border-none bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                            aria-label="Copy textual result to clipboard"
+                        <button
+                          type="button"
+                          onClick={handleCopyTextualResult}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                          aria-label="Copy textual result to clipboard"
                         >
+                          {textCopyState === 'success' ? (
+                            <Check className="h-4 w-4 text-emerald-500" />
+                          ) : (
                             <Copy className="h-4 w-4" />
-                        </Button>
+                          )}
+                        </button>
+                      </div>
+                      {currentConversionPairUrl && (
+                        <Link
+                          href={currentConversionPairUrl}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                          aria-label="Open detailed conversion page"
+                        >
+                          <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 )}
 
+                {conversionSources.length > 0 && (
+                  <details className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
+                    <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold text-foreground">
+                      Conversion sources
+                      <span className="text-xs font-normal text-muted-foreground">
+                        Tap or click to view references
+                      </span>
+                    </summary>
+                    <ul className="mt-3 space-y-3">
+                      {conversionSources.map((source) => (
+                        <li key={source.id} className="leading-relaxed">
+                          <p className="text-sm font-semibold text-foreground">{source.title}</p>
+                          <p className="mt-1">
+                            <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+                            {source.summary}{' '}
+                            <a
+                              href={source.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="font-semibold text-primary underline-offset-2 hover:underline"
+                            >
+                              View source
+                            </a>
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
 
                 <fieldset className="pt-1">
                    <Label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</Label>
