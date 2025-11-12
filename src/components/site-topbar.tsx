@@ -102,7 +102,7 @@ export function SiteTopbar({
                 variant="ghost"
                 size="icon"
                 aria-label="Open navigation"
-                className="lg:hidden rounded-full border border-border/50 bg-white/80 text-foreground transition hover:bg-white"
+                className="lg:hidden rounded-full border border-border/60 bg-[hsl(var(--card))]/90 text-foreground transition hover:bg-[hsl(var(--card))] dark:bg-[hsl(var(--card))]/70 dark:hover:bg-[hsl(var(--card))]/90"
               >
                 <Menu className="h-5 w-5" />
               </Button>
