@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react';
 
 import type { CategoryInfo } from '@/lib/category-info';
@@ -98,11 +99,22 @@ export function ConversionPairPageContent({
   otherUnits,
   navbarPresets,
 }: ConversionPairPageContentProps) {
+  const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
   const pairConverterRef = React.useRef<PairConverterHandle>(null);
   const { toast } = useToast();
 
   const handleHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
+    if (item.meta?.kind === 'si-prefix') {
+      const params = new URLSearchParams({
+        from: item.meta.fromPrefixSymbol,
+        to: item.meta.toPrefixSymbol,
+        value: item.meta.inputText ?? String(item.fromValue),
+      });
+      router.push(`${item.meta.route}?${params.toString()}`);
+      return;
+    }
+
     if (!pairConverterRef.current) return;
     const applied = pairConverterRef.current.applyHistorySelect(item);
     if (!applied) {
@@ -112,7 +124,7 @@ export function ConversionPairPageContent({
         variant: 'default',
       });
     }
-  }, [toast]);
+  }, [router, toast]);
 
   const handleCopyHistoryItem = React.useCallback(async (item: ConversionHistoryItem) => {
     const textToCopy = `${formatHistoryNumber(item.fromValue)} ${item.fromUnit} → ${formatHistoryNumber(item.toValue)} ${item.toUnit}`;
