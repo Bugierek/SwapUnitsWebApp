@@ -1419,15 +1419,27 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           <p className="text-sm font-semibold text-foreground">{source.title}</p>
                           <p className="mt-1">
                             <span className="font-medium text-foreground">{source.organization}</span>.{' '}
-                            {source.summary}{' '}
-                            <a
-                              href={source.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="font-semibold text-primary underline-offset-2 hover:underline"
-                            >
-                              View source
-                            </a>
+                      {source.summary}{' '}
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        View source
+                      </a>
+                      {source.id === 'nist-guide-si' && (
+                        <>
+                          {' '}
+                          ·{' '}
+                          <Link
+                            href="/standards/nist-si-tenfold"
+                            className="font-semibold text-primary underline-offset-2 hover:underline"
+                          >
+                            View SI table
+                          </Link>
+                        </>
+                      )}
                           </p>
                         </li>
                       ))}

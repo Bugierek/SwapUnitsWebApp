@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from 'react';
+import Link from 'next/link';
 import { ArrowLeftRight, Copy, Check } from 'lucide-react';
 
 import type { UnitCategory } from '@/types';
@@ -302,6 +303,18 @@ export function PairConverter({
                   >
                     View source
                   </a>
+                  {source.id === 'nist-guide-si' && (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <Link
+                        href="/standards/nist-si-tenfold"
+                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        View SI table
+                      </Link>
+                    </>
+                  )}
                 </p>
               </li>
             ))}

@@ -11,6 +11,7 @@ import {
   Copy,
   Star,
   X,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 import type { ConversionHistoryItem, FavoriteItem, Preset } from '@/types';
@@ -39,7 +40,12 @@ type SiteTopbarProps = {
   onPresetSelect?: (preset: Preset | FavoriteItem) => void;
 };
 
-const noop = () => {};
+const getHistoryCategoryLabel = (item: ConversionHistoryItem): string => {
+  if (item.meta?.kind === 'si-prefix') {
+    return 'SI prefix scaling';
+  }
+  return item.category;
+};
 
 export function SiteTopbar({
   handleLogoClick,
@@ -126,7 +132,7 @@ export function SiteTopbar({
                         <HistoryIcon className="h-5 w-5 text-primary" aria-hidden="true" />
                         Recent history
                       </span>
-                      {history.length > 0 && clearHistory && (
+                    {history.length > 0 && clearHistory && (
                         <SheetClose asChild>
                           <Button
                             variant="ghost"
@@ -146,7 +152,10 @@ export function SiteTopbar({
                       <p className="text-muted-foreground">Copy a result to store it here.</p>
                     ) : (
                       <ul className="space-y-1.5">
-                        {history.map((item) => (
+                        {history.map((item) => {
+                          const isSiPrefix = item.meta?.kind === 'si-prefix';
+                          const categoryLabel = getHistoryCategoryLabel(item);
+                          return (
                           <li
                             key={item.id}
                             className="group/history-item flex items-start gap-2 rounded-lg px-1 py-1 transition-colors"
@@ -158,14 +167,18 @@ export function SiteTopbar({
                                 onClick={() => onHistorySelect?.(item)}
                               >
                                 <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                  <UnitIcon category={item.category} className="h-4 w-4" aria-hidden="true" />
+                                  {isSiPrefix ? (
+                                    <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+                                  ) : (
+                                    <UnitIcon category={item.category} className="h-4 w-4" aria-hidden="true" />
+                                  )}
                                 </span>
                                 <span className="min-w-0 flex-1 space-y-1 whitespace-normal break-words">
                                   <span className="block text-sm font-semibold leading-snug text-foreground">
                                     {item.fromValue.toLocaleString()} {item.fromUnit} → {item.toValue.toLocaleString()} {item.toUnit}
                                   </span>
                                   <span className="block text-xs leading-tight text-muted-foreground">
-                                    {item.category} · {format(new Date(item.timestamp), 'MMM d, p')}
+                                    {categoryLabel} · {format(new Date(item.timestamp), 'MMM d, p')}
                                   </span>
                                 </span>
                               </Button>
@@ -183,7 +196,7 @@ export function SiteTopbar({
                               <Copy className="h-4 w-4" />
                             </Button>
                           </li>
-                        ))}
+                        );})}
                       </ul>
                     )}
                   </section>

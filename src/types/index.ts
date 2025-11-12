@@ -49,6 +49,15 @@ export type FavoriteItem = {
 
 export type NumberFormat = 'normal' | 'scientific';
 
+export type ConversionHistoryMeta =
+  | {
+      kind: 'si-prefix';
+      route: string;
+      fromPrefixSymbol: string;
+      toPrefixSymbol: string;
+      inputText?: string;
+    };
+
 export type ConversionHistoryItem = {
   id: string;
   category: UnitCategory;
@@ -57,4 +66,5 @@ export type ConversionHistoryItem = {
   toValue: number;
   toUnit: string;
   timestamp: number;
+  meta?: ConversionHistoryMeta;
 };

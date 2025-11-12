@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ConversionHistoryItem, UnitCategory } from '@/types';
+import type { ConversionHistoryItem, UnitCategory, ConversionHistoryMeta } from '@/types';
 
 const HISTORY_KEY = 'swapUnitsConversionHistory';
 const MAX_HISTORY_ITEMS = 8; 
@@ -35,6 +35,7 @@ export function useConversionHistory() {
     fromUnit: string;
     toValue: number;
     toUnit: string;
+    meta?: ConversionHistoryMeta;
   }) => {
     const newItem: ConversionHistoryItem = {
       ...itemData,

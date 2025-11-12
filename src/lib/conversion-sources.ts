@@ -15,7 +15,7 @@ const NIST_GUIDE_SOURCE: ConversionSource = {
   organization: 'National Institute of Standards and Technology (NIST)',
   url: 'https://www.nist.gov/pml/special-publication-330',
   summary:
-    'The SI Brochure (SP 330) is the definitive English edition of the BIPM SI tables. NIST’s edition lists the official constants and conversion factors tying inch-pound units to SI, which SwapUnits applies for length, mass, temperature, pressure, volume, and related conversions.',
+    'The SI Brochure (SP 330) is the definitive English edition of the BIPM SI tables. NIST’s edition lists the official constants and conversion factors tying inch-pound units to SI, which SwapUnits applies for length, mass, temperature, pressure, volume, and related conversions. See /standards/nist-si-tenfold for the complete decimal multiple/submultiple table.',
 };
 
 const EPA_FUEL_ECONOMY_GUIDE: ConversionSource = {

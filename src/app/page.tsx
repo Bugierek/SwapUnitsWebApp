@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Script from 'next/script';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 
 import dynamic from 'next/dynamic';
@@ -74,7 +75,7 @@ const formatHistoryNumberMobile = (num: number): string => {
   if (!isFinite(num)) return '-';
   const absNum = Math.abs(num);
   if (absNum > 1e4 || (absNum < 1e-3 && absNum !== 0)) {
-    let exp = num.toExponential(2).replace('e', 'E');
+    const exp = num.toExponential(2).replace('e', 'E');
     const match = exp.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
     if (match) {
       let coeff = match[1];
@@ -96,6 +97,7 @@ const formatHistoryNumberMobile = (num: number): string => {
 
 export default function Home() {
   const { toast } = useToast();
+  const router = useRouter();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const unitConverterRef = React.useRef<UnitConverterHandle>(null);
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -117,12 +119,29 @@ export default function Home() {
     addHistoryItem(data);
   }, [addHistoryItem]);
 
+  const navigateToSpecialHistoryItem = React.useCallback((item: ConversionHistoryItem) => {
+    if (item.meta?.kind === 'si-prefix') {
+      const params = new URLSearchParams({
+        from: item.meta.fromPrefixSymbol,
+        to: item.meta.toPrefixSymbol,
+        value: item.meta.inputText ?? String(item.fromValue),
+      });
+      router.push(`${item.meta.route}?${params.toString()}`);
+      return true;
+    }
+    return false;
+  }, [router]);
+
   const onMobileHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
+    if (navigateToSpecialHistoryItem(item)) {
+      setIsSheetOpen(false);
+      return;
+    }
     if (unitConverterRef.current) {
       unitConverterRef.current.applyHistorySelect(item);
     }
     setIsSheetOpen(false);
-  }, []);
+  }, [navigateToSpecialHistoryItem]);
 
   const onMobilePresetSelect = (preset: Preset | FavoriteItem) => {
     if (unitConverterRef.current) {
@@ -132,10 +151,13 @@ export default function Home() {
   };
 
   const onDesktopHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
+    if (navigateToSpecialHistoryItem(item)) {
+      return;
+    }
     if (unitConverterRef.current) {
       unitConverterRef.current.applyHistorySelect(item);
     }
-  }, []);
+  }, [navigateToSpecialHistoryItem]);
 
   const onDesktopPresetSelect = (preset: Preset | FavoriteItem) => {
     if (unitConverterRef.current) {
