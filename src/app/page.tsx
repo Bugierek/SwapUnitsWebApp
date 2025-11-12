@@ -212,42 +212,6 @@ export default function Home() {
 
         <main className="flex-1">
           <Toaster />
-          <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-14 pt-8 sm:px-6 lg:px-10" id="top-nav-content">
-            <section className="rounded-2xl border border-border/60 bg-card px-5 py-6 shadow-lg">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="max-w-2xl space-y-3">
-                  <Badge variant="outline" className="inline-flex items-center gap-1.5 rounded-full border-border/60 bg-primary/5 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-primary">
-                    Instant results
-                  </Badge>
-                  <div className="space-y-1.5">
-                    <h1 className="text-2xl font-semibold leading-snug text-foreground sm:text-[1.9rem]">
-                      A calmer, quicker way to convert the units you use every day.
-                    </h1>
-                    <p className="text-sm text-muted-foreground sm:text-base">
-                      SwapUnits keeps favorites and history nearby, formats results clearly, and works great on every screen size.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid w-full max-w-md grid-cols-2 gap-3 text-xs text-muted-foreground sm:text-sm">
-                  <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-center">
-                    <p className="uppercase tracking-[0.18em] text-primary">Coverage</p>
-                    <p className="mt-1 text-lg font-semibold text-foreground">14+ categories</p>
-                  </div>
-                  <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-center">
-                    <p className="uppercase tracking-[0.18em] text-primary">Favorites</p>
-                    <p className="mt-1 text-lg font-semibold text-foreground">{favorites.length}/{MAX_FAVORITES_FOR_BUTTON_DISABLE}</p>
-                  </div>
-                  <div className="col-span-2 rounded-xl border border-border/60 bg-secondary/60 px-3 py-3 text-center">
-                    <p className="uppercase tracking-[0.18em] text-muted-foreground">Last activity</p>
-                    <p className="mt-1 text-base font-medium text-foreground">
-                      {history[0] ? `${history[0].category} · ${format(new Date(history[0].timestamp), 'MMM d, p')}` : 'Start by converting anything.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-
             <div className="grid gap-7 lg:grid-cols-[minmax(260px,320px)_minmax(0,1.75fr)_minmax(260px,320px)] lg:items-stretch xl:grid-cols-[320px_minmax(0,1.4fr)_320px] 2xl:grid-cols-[360px_minmax(0,1.6fr)_360px]">
               <HistoryList
                 items={history}
