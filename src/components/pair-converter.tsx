@@ -4,10 +4,9 @@ import * as React from 'react';
 import Link from 'next/link';
 import { ArrowLeftRight, Copy, Check } from 'lucide-react';
 
-import type { UnitCategory } from '@/types';
+import type { UnitCategory, ConversionHistoryItem } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { convertNumericValue } from '@/lib/conversion-math';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { useToast } from '@/hooks/use-toast';
@@ -17,8 +16,18 @@ interface PairConverterProps {
   fromUnit: { symbol: string; name: string };
   toUnit: { symbol: string; name: string };
   initialValue?: number;
-  formulaText?: string | null;
   baseMultiplier?: number | null;
+  onCopyResult?: (payload: {
+    category: UnitCategory;
+    fromValue: number;
+    fromUnit: string;
+    toValue: number;
+    toUnit: string;
+  }) => void;
+}
+
+export interface PairConverterHandle {
+  applyHistorySelect: (item: ConversionHistoryItem) => boolean;
 }
 
 const formatResult = (value: number | null): string => {
@@ -33,14 +42,17 @@ const formatResult = (value: number | null): string => {
   }).format(value);
 };
 
-export function PairConverter({
-  category,
-  fromUnit,
-  toUnit,
-  initialValue = 1,
-  formulaText = null,
-  baseMultiplier = null,
-}: PairConverterProps) {
+export const PairConverter = React.forwardRef<PairConverterHandle, PairConverterProps>(function PairConverter(
+  {
+    category,
+    fromUnit,
+    toUnit,
+    initialValue = 1,
+    baseMultiplier = null,
+    onCopyResult,
+  }: PairConverterProps,
+  ref,
+) {
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
@@ -85,11 +97,18 @@ export function PairConverter({
   const { toast } = useToast();
 
   const handleCopy = React.useCallback(async () => {
-    if (parsedInput === null) return;
+    if (parsedInput === null || result === null) return;
     const formatted = formatResult(result);
     try {
       await navigator.clipboard.writeText(`${formatted} ${activeTo.symbol}`);
       setCopyState('success');
+      onCopyResult?.({
+        category,
+        fromValue: parsedInput,
+        fromUnit: activeFrom.symbol,
+        toValue: result,
+        toUnit: activeTo.symbol,
+      });
     } catch (error) {
       console.error('Failed to copy conversion result:', error);
       toast({
@@ -98,13 +117,35 @@ export function PairConverter({
         duration: 2000, // Show for 2 seconds
       });
     }
-  }, [parsedInput, result, activeTo.symbol, toast]);
+  }, [parsedInput, result, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
 
   React.useEffect(() => {
-    if (copyState === 'success') {
-      setCopyState('idle');
-    }
+    setCopyState('idle');
   }, [parsedInput, activeFrom.symbol, activeTo.symbol]);
+
+  React.useEffect(() => {
+    if (copyState !== 'success') {
+      return;
+    }
+    const timeout = window.setTimeout(() => setCopyState('idle'), 1500);
+    return () => window.clearTimeout(timeout);
+  }, [copyState]);
+
+  const applyHistorySelect = React.useCallback((item: ConversionHistoryItem): boolean => {
+    const matchesForward = item.fromUnit === fromUnit.symbol && item.toUnit === toUnit.symbol;
+    const matchesReverse = item.fromUnit === toUnit.symbol && item.toUnit === fromUnit.symbol;
+    if (!matchesForward && !matchesReverse) {
+      return false;
+    }
+
+    setIsSwapped(matchesReverse);
+    setInputValue(String(item.fromValue));
+    return true;
+  }, [fromUnit.symbol, toUnit.symbol]);
+
+  React.useImperativeHandle(ref, () => ({
+    applyHistorySelect,
+  }), [applyHistorySelect]);
 
   const generalFormula = React.useMemo(() => {
     // Temperature conversions
@@ -328,4 +369,4 @@ export function PairConverter({
       </p>
     </div>
   );
-}
+});
