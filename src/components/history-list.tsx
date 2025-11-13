@@ -89,8 +89,8 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
     }, [toast]);
 
     return (
-        <Card className={cn("flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-md backdrop-blur-sm", className)} aria-label="Conversion History">
-            <CardHeader className="flex-shrink-0 border-b border-border/60 px-4 py-3">
+    <Card className={cn("flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-md backdrop-blur-sm", className)} aria-label="Conversion History">
+            <CardHeader className="flex-shrink-0 border-b border-border/60 px-[0.9rem] py-[0.675rem]">
                 <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -129,14 +129,14 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                     )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow px-4 pb-6 pt-4">
+            <CardContent className="flex-grow px-[0.9rem] pb-[1.35rem] pt-[0.9rem]">
                 {isLoading ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-5 text-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-[0.9rem] py-[1.125rem] text-center">
                         <p className="text-sm font-medium text-muted-foreground">Loading your recent conversions…</p>
                         <Progress value={50} className="h-1.5 w-full rounded-full bg-secondary" aria-label="Loading progress" />
                     </div>
                 ) : items.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-8 text-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-[0.9rem] py-[1.8rem] text-center">
                         <p className="text-sm font-semibold text-foreground">Nothing here yet</p>
                         <p className="text-xs text-muted-foreground">Copy a result to add it to your history.</p>
                     </div>

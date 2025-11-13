@@ -45,7 +45,11 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const internalTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const filterRef = React.useRef<HTMLDivElement | null>(null);
+  const gridScrollRef = React.useRef<HTMLDivElement | null>(null);
   const [contentWidth, setContentWidth] = React.useState<number | undefined>(undefined);
+  const [popoverMinHeight, setPopoverMinHeight] = React.useState<number | undefined>(undefined);
+  const [gridHeight, setGridHeight] = React.useState<number | undefined>(undefined);
 
   const selectedOption = React.useMemo(
     () => options.find((option) => option.value === value),
@@ -53,12 +57,61 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   );
 
   React.useLayoutEffect(() => {
-    if (open) {
-      setContentWidth(internalTriggerRef.current?.offsetWidth ?? undefined);
-    } else {
+    if (!open) {
       setSearch('');
+      setPopoverMinHeight(undefined);
+      setGridHeight(undefined);
+      return;
     }
-  }, [open]);
+
+    setContentWidth(internalTriggerRef.current?.offsetWidth ?? undefined);
+
+    const measure = () => {
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+      if (!viewportHeight) {
+        setPopoverMinHeight(undefined);
+        setGridHeight(undefined);
+        return;
+      }
+
+      const gridEl = gridScrollRef.current;
+      const tileEl = gridEl?.querySelector<HTMLElement>('[data-measurement-tile]');
+      const tileRect = tileEl?.getBoundingClientRect();
+      const gridStyles = gridEl ? window.getComputedStyle(gridEl) : null;
+      const rowGapPx = gridStyles ? parseFloat(gridStyles.rowGap || '0') : 0;
+      const columns = viewportWidth >= 768 ? 2 : 1;
+
+      const fallbackTileHeight = viewportWidth >= 640 ? 110 : 82;
+      const fallbackRowGap = viewportWidth >= 640 ? 16 : 8;
+      const tileHeight = tileRect?.height ?? fallbackTileHeight;
+      const rowGap = Number.isFinite(rowGapPx) && rowGapPx > 0 ? rowGapPx : fallbackRowGap;
+
+      const totalOptions = filteredOptions.length || options.length || 1;
+      const totalRows = columns > 0 ? Math.ceil(totalOptions / columns) : totalOptions;
+      const rowsToShow = Math.min(3, totalRows || 1);
+      const computedGridHeight =
+        (rowsToShow * tileHeight + Math.max(0, rowsToShow - 1) * rowGap) * 1.1;
+
+      const filterHeight =
+        filterRef.current?.getBoundingClientRect().height ?? (viewportWidth >= 640 ? 96 : 84);
+      const paddingAllowance = 28 * 1.1;
+      const desiredPopover = filterHeight + computedGridHeight + paddingAllowance;
+      const availableHeight = Math.max(0, viewportHeight - 32);
+      const finalPopover = Math.min(desiredPopover, availableHeight);
+      const maxGridHeight = Math.max(finalPopover - filterHeight - paddingAllowance, tileHeight);
+
+      setGridHeight(Math.min(computedGridHeight, maxGridHeight));
+      setPopoverMinHeight(finalPopover);
+    };
+
+    const raf = requestAnimationFrame(measure);
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', measure);
+    };
+  }, [open, options.length]);
 
   const handleSelect = React.useCallback(
     (nextValue: UnitCategory) => {
@@ -94,7 +147,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   }, [normalizedQuery, options]);
 
   const popoverWidth = contentWidth;
-  const maxHeight = filteredOptions.length > 4 ? 360 : undefined;
+  const scrollableHeight = gridHeight;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -127,12 +180,19 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
         side="bottom"
         sideOffset={6}
         avoidCollisions={false}
-        style={{ width: popoverWidth, maxHeight }}
-        className="z-50 w-[min(360px,90vw)] max-h-[360px] overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] p-0 shadow-xl"
+        style={{
+          width: popoverWidth,
+          minHeight: popoverMinHeight,
+          maxHeight: 'calc(100vh - 32px)',
+        }}
+        className="z-50 w-[min(360px,90vw)] overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] p-0 shadow-xl"
       >
         <div className="flex h-full flex-col">
           <div className="flex-1 overflow-hidden">
-            <div className="sticky top-0 z-10 border-b border-border/60 bg-[hsl(var(--control-background))] px-3 pb-2 pt-3">
+            <div
+              ref={filterRef}
+              className="sticky top-0 z-10 border-b border-border/60 bg-[hsl(var(--control-background))] px-3 pb-2 pt-3"
+            >
               <Input
                 placeholder="Filter measurement types..."
                 value={search}
@@ -141,17 +201,21 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                 autoFocus
               />
             </div>
-            <div className="max-h-[300px] overflow-y-auto px-3 pb-3">
+            <div
+              className="overflow-y-auto px-3 pb-3"
+              style={scrollableHeight ? { height: scrollableHeight } : undefined}
+            >
               {filteredOptions.length === 0 ? (
                 <p className="py-4 text-sm text-muted-foreground">No matching categories.</p>
               ) : (
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <div ref={gridScrollRef} className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {filteredOptions.map((option) => {
                     const isSelected = option.value === value;
                     const isSiPrefix = option.kind === 'si-prefix';
                     return (
                       <div
                         key={option.value}
+                        data-measurement-tile
                         className={cn(
                           'relative flex h-[82px] w-full flex-col gap-1 overflow-hidden rounded-xl border border-border/50 bg-[hsl(var(--control-background))] px-3 py-2 text-sm font-medium text-foreground shadow-sm transition duration-150 ease-out hover:border-primary/40 hover:bg-primary/5 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 sm:h-[110px] sm:gap-3 sm:px-4 sm:py-3',
                           isSelected && 'border-primary/60 bg-primary/5',
@@ -185,12 +249,12 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                             event.preventDefault();
                             event.stopPropagation();
                           }}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setOpen(false);
-                          router.push(option.href ?? `/measurements/${option.slug}`);
-                        }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            setOpen(false);
+                            router.push(option.href ?? `/measurements/${option.slug}`);
+                          }}
                       >
                         <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                       </Link>

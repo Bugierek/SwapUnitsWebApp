@@ -284,6 +284,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
   const rhfValue = watch("value");
   const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
+  const resultInputRef = React.useRef<HTMLInputElement | null>(null);
   const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
   const currentConversionPairUrl = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
@@ -659,6 +660,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const handleParsedConversion = React.useCallback(
     (payload: ParsedConversionPayload) => {
+      const focusResultField = () => {
+        requestAnimationFrame(() => resultInputRef.current?.focus());
+      };
+
       if (payload.kind === 'si-prefix') {
         const parsedValue = Number.isFinite(payload.value) ? payload.value : 1;
         setValue('category', 'SI Prefixes', { shouldValidate: true, shouldDirty: true });
@@ -679,6 +684,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
           });
 
           setConversionResult(conversion);
+          focusResultField();
         });
         return;
       }
@@ -701,6 +707,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         });
 
         setConversionResult(conversion);
+        focusResultField();
       });
     },
     [
@@ -1389,6 +1396,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                     {/* To Result Row */}
                     <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
                       <Input
+                          ref={resultInputRef}
                           readOnly
                           value={showPlaceholder ? '-' : formattedResultString}
                           className={cn(

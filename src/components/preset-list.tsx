@@ -66,7 +66,7 @@ export const PresetList = React.memo(function PresetListComponent({
     return (
         <Card className={cn("flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-md backdrop-blur-sm", className)} aria-label="Favorite and Common Unit Conversions">
             {/* My Favorites Section */}
-            <CardHeader className="flex-shrink-0 border-b border-border/60 px-5 py-4">
+            <CardHeader className="flex-shrink-0 border-b border-border/60 px-[1.125rem] py-[0.9rem]">
                  <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -81,7 +81,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                                             size="sm"
                                                             onClick={() => setIsClearFavoritesDialogOpen(true)}
                                                             aria-label="Clear all favorites"
-                                                            className="h-8 rounded-full border-border/60 bg-[hsl(var(--control-background))] px-3 text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                                                            className="h-8 rounded-full border-border/60 bg-[hsl(var(--control-background))] px-[0.675rem] text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
                                                     >
                                                             Clear All
                                                     </Button>
@@ -105,14 +105,14 @@ export const PresetList = React.memo(function PresetListComponent({
                                         )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow px-5 pb-6 pt-5">
+            <CardContent className="flex-grow px-[1.125rem] pb-[1.35rem] pt-[1.125rem]">
                 {isLoadingFavorites ? (
-                     <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-4 py-5 text-center">
+                     <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-[0.9rem] py-[1.125rem] text-center">
                         <p className="text-sm font-medium text-muted-foreground">Loading your saved conversions…</p>
                         <Progress value={50} className="h-1.5 w-full rounded-full bg-secondary" aria-label="Loading progress" />
                     </div>
                 ): favorites.length === 0 ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-8 text-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-[0.9rem] py-[1.8rem] text-center">
                         <p className="text-sm font-semibold text-foreground">No favorites yet</p>
                         <p className="text-xs text-muted-foreground">Save a conversion from the main panel to build your list.</p>
                     </div>
@@ -158,7 +158,7 @@ export const PresetList = React.memo(function PresetListComponent({
                 )}
             </CardContent>
             {/* Common Conversions Section */}
-            <CardHeader className="flex-shrink-0 border-t border-border/60 px-5 py-4">
+            <CardHeader className="flex-shrink-0 border-t border-border/60 px-[1.125rem] py-[0.9rem]">
                 <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <List className="h-4 w-4" aria-hidden="true" />
@@ -166,9 +166,9 @@ export const PresetList = React.memo(function PresetListComponent({
                     Common conversions
                 </CardTitle>
             </CardHeader>
-            <CardContent className="flex-grow px-5 pb-6 pt-5"> 
+            <CardContent className="flex-grow px-[1.125rem] pb-[1.35rem] pt-[1.125rem]"> 
                  {visibleCommonPresets.length === 0 && !isLoadingFavorites ? (
-                     <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-8 text-center">
+                     <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-[0.9rem] py-[1.8rem] text-center">
                         <p className="text-sm font-semibold text-foreground">No suggestions yet</p>
                         <p className="text-xs text-muted-foreground">Add favorites to refine this list.</p>
                     </div>
