@@ -82,6 +82,7 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
   oz: ['ounce', 'ounces'],
   mi: ['mile', 'miles'],
   ft: ['foot', 'feet'],
+  yd: ['yard', 'yards'],
   in: ['inch', 'inches'],
   km: ['kilometer', 'kilometers', 'kilometre', 'kilometres'],
   m: ['meter', 'meters', 'metre', 'metres'],

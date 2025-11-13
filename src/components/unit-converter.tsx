@@ -231,6 +231,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const [selectedCategoryLocal, setSelectedCategoryLocal] = React.useState<UnitCategory | ''>(defaultCategory);
   const [ComboboxComponent, setComboboxComponent] = React.useState<React.ComponentType<ConversionComboboxProps> | null>(null);
+  const [finderVersion, setFinderVersion] = React.useState(0);
   const initialConversion = React.useMemo(() =>
     convertUnitsDetailed({
       category: defaultCategory,
@@ -285,6 +286,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfValue = watch("value");
   const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
+  const resetFinderInput = React.useCallback(() => {
+    setFinderVersion((prev) => prev + 1);
+  }, []);
   const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
   const currentConversionPairUrl = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
@@ -1204,6 +1208,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       <div className="relative mb-3">
                         {ComboboxComponent ? (
                           <ComboboxComponent
+                            key={finderVersion}
                             items={conversionPairs}
                             value={selectedConversionPairValue}
                             onChange={(nextValue: string) => {
@@ -1214,7 +1219,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                                 setValue('toUnit', to);
                               }
                             }}
-                            placeholder={'Type a phrase like "100 kg in g" to get a conversion'}
+                            placeholder={"Type '100 kg to g' or 'milli to nano' for results"}
                             inputId="conversion-search"
                             onParsedConversion={handleParsedConversion}
                             onParseError={handleParseError}
@@ -1245,6 +1250,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                             }
                             const normalizedCategory = nextCategory as UnitCategory;
                             field.onChange(normalizedCategory);
+                            resetFinderInput();
                             applyCategoryDefaults(normalizedCategory, { forceDefaults: true });
                           }}
                           placeholder="Select a category"
@@ -1324,7 +1330,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         render={({ field }) => (
                           <FormItem className="flex-shrink-0">
                             <Select
-                              onValueChange={(value) => field.onChange(value)}
+                              onValueChange={(value) => {
+                                resetFinderInput();
+                                field.onChange(value);
+                              }}
                               value={field.value}
                               disabled={!rhfCategory}
                             >
@@ -1425,7 +1434,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                         render={({ field }) => (
                           <FormItem className="flex-shrink-0">
                             <Select
-                              onValueChange={(value) => field.onChange(value)}
+                              onValueChange={(value) => {
+                                resetFinderInput();
+                                field.onChange(value);
+                              }}
                               value={field.value}
                               disabled={!rhfCategory}
                             >

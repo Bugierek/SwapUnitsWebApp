@@ -64,6 +64,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Nanometer', symbol: 'nm', factor: 1e-9 },
       { name: 'Mile', symbol: 'mi', factor: 1609.344 },
       { name: 'Foot', symbol: 'ft', factor: 0.3048 },
+      { name: 'Yard', symbol: 'yd', factor: 0.9144 },
       { name: 'Inch', symbol: 'in', factor: 0.0254 },
     ].sort((a,b) => a.factor - b.factor),
   },
@@ -219,6 +220,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
 
 export const allPresets: Preset[] = [
   { category: 'Length', fromUnit: 'm', toUnit: 'ft', name: 'Meter to Feet' },
+  { category: 'Length', fromUnit: 'm', toUnit: 'yd', name: 'Meter to Yards' },
   { category: 'Length', fromUnit: 'km', toUnit: 'mi', name: 'Kilometer to Miles' },
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'g', toUnit: 'oz', name: 'Grams to Ounces' },
