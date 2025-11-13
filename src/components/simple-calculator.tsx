@@ -19,8 +19,10 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   const [firstOperand, setFirstOperand] = React.useState<number | null>(null);
   const [operator, setOperator] = React.useState<string | null>(null);
   const [waitingForSecondOperand, setWaitingForSecondOperand] = React.useState<boolean>(false);
+  const [enterArmed, setEnterArmed] = React.useState(false);
 
   const inputDigit = (digit: string) => {
+    setEnterArmed(false);
     if (displayValue.length >= 15 && !waitingForSecondOperand) return; // Limit input length
     if (waitingForSecondOperand) {
       setDisplayValue(digit);
@@ -31,6 +33,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   };
 
   const inputDecimal = () => {
+    setEnterArmed(false);
     if (waitingForSecondOperand) {
       setDisplayValue('0.');
       setWaitingForSecondOperand(false);
@@ -42,6 +45,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   };
 
   const clearDisplay = () => {
+    setEnterArmed(false);
     setDisplayValue('0');
     setFirstOperand(null);
     setOperator(null);
@@ -49,6 +53,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   };
 
   const handleBackspace = React.useCallback(() => {
+    setEnterArmed(false);
     setDisplayValue((prev) => {
       if (waitingForSecondOperand) {
         return prev;
@@ -61,7 +66,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
       }
       return prev.slice(0, -1);
     });
-  }, [waitingForSecondOperand]);
+  }, [waitingForSecondOperand, setEnterArmed]);
 
   const calculate = (operand1: number, operand2: number, currentOperator: string): number => {
     switch (currentOperator) {
@@ -82,6 +87,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   };
 
   const performOperation = (nextOperator: string) => {
+    setEnterArmed(false);
     const inputValue = parseFloat(displayValue);
 
     if (isNaN(inputValue) && displayValue !== 'Error') {
@@ -162,7 +168,9 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
       console.warn("Calculator value is 'Error' or invalid, cannot send.");
       return;
     }
-    onSendValue(valueToEmit);
+    const normalized = String(parseFloat(valueToEmit));
+    onSendValue(normalized);
+    setEnterArmed(false);
     if (onClose) onClose(); // Call onClose if provided
   };
 
@@ -191,9 +199,18 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
 
       if (key === 'Enter' || key === '=' || key === 'NumpadEnter') {
         event.preventDefault();
+        if (enterArmed) {
+          handleSendValue(displayValue);
+          setEnterArmed(false);
+          return;
+        }
         const result = handleEquals();
-        const valueToSend = result ?? displayValue;
-        setTimeout(() => handleSendValue(valueToSend), 0);
+        const nextValue = result ?? displayValue;
+        if (nextValue !== 'Error' && !Number.isNaN(parseFloat(nextValue))) {
+          setEnterArmed(true);
+        } else {
+          setEnterArmed(false);
+        }
         return;
       }
 
@@ -210,15 +227,16 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
       }
     },
     [
+      displayValue,
+      enterArmed,
       handleBackspace,
-      handleEquals,
-      handleEquals,
       handleEquals,
       handleSendValue,
       inputDecimal,
       inputDigit,
       onClose,
       performOperation,
+      setEnterArmed,
     ],
   );
 
@@ -237,12 +255,25 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     { label: '1', action: () => inputDigit('1') },
     { label: '2', action: () => inputDigit('2') },
     { label: '3', action: () => inputDigit('3') },
-    { label: '=', action: () => { handleEquals(); }, className: 'bg-primary hover:bg-primary/90 text-primary-foreground', ariaLabel: "Equals" },
+    {
+      label: '=',
+      action: () => {
+        const result = handleEquals();
+        const nextValue = result ?? displayValue;
+        if (nextValue !== 'Error' && !Number.isNaN(parseFloat(nextValue))) {
+          setEnterArmed(true);
+        } else {
+          setEnterArmed(false);
+        }
+      },
+      className: 'bg-primary hover:bg-primary/90 text-primary-foreground',
+      ariaLabel: "Equals"
+    },
     { label: '0', action: () => inputDigit('0'), className: 'col-span-2' },
     { label: '.', action: inputDecimal, ariaLabel: "Decimal" },
     {
       label: <SendHorizonal className="h-5 w-5" />,
-      action: handleSendValue,
+      action: () => handleSendValue(),
       className: 'bg-secondary hover:bg-secondary/90 text-secondary-foreground',
       ariaLabel: 'Send value to converter'
     },
