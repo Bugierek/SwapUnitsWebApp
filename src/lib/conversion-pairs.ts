@@ -51,6 +51,9 @@ export const listAllConversionPairs = (): Array<{
   }> = [];
 
   for (const info of categoryInfoList) {
+    if (info.category === 'SI Prefixes') {
+      continue;
+    }
     const units = unitData[info.category]?.units ?? [];
     for (const fromUnit of units) {
       for (const toUnit of units) {

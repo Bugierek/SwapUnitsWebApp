@@ -116,32 +116,24 @@ export default function Home() {
     toValue: number;
     toUnit: string;
   }) => {
-    addHistoryItem(data);
+    const meta = data.category === 'SI Prefixes'
+      ? {
+          kind: 'si-prefix' as const,
+          route: '/standards/nist-si-tenfold',
+          fromPrefixSymbol: data.fromUnit,
+          toPrefixSymbol: data.toUnit,
+          inputText: `${data.fromValue} ${data.fromUnit} to ${data.toUnit}`,
+        }
+      : undefined;
+    addHistoryItem(meta ? { ...data, meta } : data);
   }, [addHistoryItem]);
 
-  const navigateToSpecialHistoryItem = React.useCallback((item: ConversionHistoryItem) => {
-    if (item.meta?.kind === 'si-prefix') {
-      const params = new URLSearchParams({
-        from: item.meta.fromPrefixSymbol,
-        to: item.meta.toPrefixSymbol,
-        value: item.meta.inputText ?? String(item.fromValue),
-      });
-      router.push(`${item.meta.route}?${params.toString()}`);
-      return true;
-    }
-    return false;
-  }, [router]);
-
   const onMobileHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
-    if (navigateToSpecialHistoryItem(item)) {
-      setIsSheetOpen(false);
-      return;
-    }
     if (unitConverterRef.current) {
       unitConverterRef.current.applyHistorySelect(item);
     }
     setIsSheetOpen(false);
-  }, [navigateToSpecialHistoryItem]);
+  }, []);
 
   const onMobilePresetSelect = (preset: Preset | FavoriteItem) => {
     if (unitConverterRef.current) {
@@ -151,13 +143,10 @@ export default function Home() {
   };
 
   const onDesktopHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {
-    if (navigateToSpecialHistoryItem(item)) {
-      return;
-    }
     if (unitConverterRef.current) {
       unitConverterRef.current.applyHistorySelect(item);
     }
-  }, [navigateToSpecialHistoryItem]);
+  }, []);
 
   const onDesktopPresetSelect = (preset: Preset | FavoriteItem) => {
     if (unitConverterRef.current) {

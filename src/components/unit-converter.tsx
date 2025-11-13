@@ -61,6 +61,8 @@ import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { getAliasesForUnit } from '@/lib/conversion-query-parser';
+import type { ParsedConversionPayload } from '@/lib/conversion-query-parser';
+import { ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { getConversionSources } from '@/lib/conversion-sources';
 
 const formSchema = z.object({
@@ -145,7 +147,7 @@ const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
         actualFormatUsed = 'scientific';
         scientificReason = useScientificDueToMagnitude ? 'magnitude' : (requestedFormat === 'scientific' ? 'user_choice' : null);
 
-        let exponential = num.toExponential(7).replace('e', 'E');
+        const exponential = num.toExponential(7).replace('e', 'E');
         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
         if (match) {
             let coefficient = match[1];
@@ -180,7 +182,7 @@ const formatFromValue = (num: number | undefined): string => {
     const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || (Math.abs(num) < 1e-7 && num !== 0));
 
     if (useScientificDueToMagnitude) {
-        let exponential = num.toExponential(7).replace('e', 'E');
+        const exponential = num.toExponential(7).replace('e', 'E');
         const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
         if (match) {
             let coefficient = match[1];
@@ -228,7 +230,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const resolvedValue = Number.isFinite(initialValue) ? initialValue : 1;
 
   const [selectedCategoryLocal, setSelectedCategoryLocal] = React.useState<UnitCategory | ''>(defaultCategory);
-  const [ComboboxComponent, setComboboxComponent] = React.useState<React.ComponentType<any> | null>(null);
+  const [ComboboxComponent, setComboboxComponent] = React.useState<React.ComponentType<ConversionComboboxProps> | null>(null);
   const initialConversion = React.useMemo(() =>
     convertUnitsDetailed({
       category: defaultCategory,
@@ -287,8 +289,16 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return null;
     }
+    if (rhfCategory === 'SI Prefixes') {
+      const params = new URLSearchParams({
+        from: rhfFromUnit,
+        to: rhfToUnit,
+        value: String(rhfValue ?? ''),
+      });
+      return `/standards/nist-si-tenfold?${params.toString()}`;
+    }
     return buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
-  }, [rhfCategory, rhfFromUnit, rhfToUnit]);
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -332,12 +342,30 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             keywords.add(unit.unitType.replace(/_/g, ' ').toLowerCase());
           }
         });
+        if (category === 'SI Prefixes') {
+          ALL_SI_PREFIXES.forEach((prefix) => {
+            keywords.add(prefix.prefix.toLowerCase());
+            keywords.add(prefix.symbol.toLowerCase());
+          });
+        }
+        const href =
+          category === 'SI Prefixes'
+            ? '/standards/nist-si-tenfold'
+            : `/measurements/${slug}`;
+        const kind = category === 'SI Prefixes' ? 'si-prefix' : 'default';
+        const title =
+          category === 'SI Prefixes'
+            ? 'SI Unit Prefixes'
+            : CATEGORY_TILE_TITLES[category] ?? unitData[category].name;
+
         return {
           value: category,
-          title: CATEGORY_TILE_TITLES[category] ?? unitData[category].name,
+          title,
           slug,
-          topUnits,
+          href,
+          topUnits: category === 'SI Prefixes' ? 'Decimal multiples & submultiples' : topUnits,
           keywords: Array.from(keywords),
+          kind,
         };
       });
   }, []);
@@ -347,64 +375,107 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     return getUnitsForCategory(rhfCategory);
   }, [rhfCategory]);
 
-  const conversionPairs = React.useMemo(
-    () =>
-      (Object.entries(unitData) as [UnitCategory, UnitData][]).flatMap(
-        ([category, data]) => {
-          const units = getUnitsForCategory(category);
-          return units.flatMap((fromUnit) =>
-            units
-              .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
-              .map((toUnit) => {
-                const label = `${fromUnit.symbol} \u2192 ${toUnit.symbol}`;
-                const pairUrl = buildConversionPairUrl(
-                  category,
-                  fromUnit.symbol,
-                  toUnit.symbol,
-                );
-                const keywordSet = new Set<string>([
-                  category,
-                  data.name,
-                  fromUnit.name,
-                  fromUnit.symbol,
-                  toUnit.name,
-                  toUnit.symbol,
-                  label,
-                  `${fromUnit.name} to ${toUnit.name}`,
-                  `${fromUnit.symbol} to ${toUnit.symbol}`,
-                  `${fromUnit.name} -> ${toUnit.name}`,
-                  `${fromUnit.symbol} -> ${toUnit.symbol}`,
-                  `${fromUnit.name} → ${toUnit.name}`,
-                  `${fromUnit.symbol} → ${toUnit.symbol}`,
-                  `${fromUnit.name} ${toUnit.symbol}`,
-                  `${fromUnit.symbol} ${toUnit.name}`,
-                  `${fromUnit.symbol}${toUnit.symbol}`,
-                  `${fromUnit.name} ${toUnit.name}`,
-                ]);
+  const unitConversionPairs = React.useMemo(() => {
+    const orderedCategories: UnitCategory[] = [
+      ...categoryDisplayOrder,
+      ...Object.keys(unitData).filter(
+        (category) => !categoryDisplayOrder.includes(category as UnitCategory),
+      ),
+    ]
+      .filter((category, index, arr) => arr.indexOf(category) === index)
+      .filter((category): category is UnitCategory => !!unitData[category]);
 
-                getAliasesForUnit(fromUnit).forEach((alias) => keywordSet.add(alias));
-                getAliasesForUnit(toUnit).forEach((alias) => keywordSet.add(alias));
+    return orderedCategories.flatMap((category) => {
+      const data = unitData[category];
+      if (!data) return [];
 
-                const keywords = Array.from(keywordSet);
-                return {
-                  value: `${category}:${fromUnit.symbol}:${toUnit.symbol}`,
-                  category,
-                  categoryLabel: data.name,
-                  fromSymbol: fromUnit.symbol,
-                  toSymbol: toUnit.symbol,
-                  fromName: fromUnit.name,
-                  toName: toUnit.name,
-                  label,
-                  keywords,
-                  keywordsLower: keywords.map((keyword) => keyword.toLowerCase()),
-                  pairUrl,
-                };
-              }),
-          );
-      },
-    ),
-    [],
-  );
+      if (category === 'SI Prefixes') {
+        return ALL_SI_PREFIXES.flatMap((fromPrefix) =>
+          ALL_SI_PREFIXES.filter((other) => other.symbol !== fromPrefix.symbol).map((toPrefix) => {
+            const keywords = new Set<string>([
+              'si prefix',
+              'prefix conversion',
+              fromPrefix.prefix,
+              toPrefix.prefix,
+              fromPrefix.symbol,
+              toPrefix.symbol,
+              `${fromPrefix.prefix} to ${toPrefix.prefix}`,
+              `${fromPrefix.symbol} to ${toPrefix.symbol}`,
+            ]);
+            fromPrefix.aliases.forEach((alias) => keywords.add(alias));
+            toPrefix.aliases.forEach((alias) => keywords.add(alias));
+
+            const keywordList = Array.from(keywords);
+            return {
+              value: `${category}:${fromPrefix.symbol}:${toPrefix.symbol}`,
+              category,
+              categoryLabel: 'SI Unit Prefixes',
+              fromSymbol: fromPrefix.symbol,
+              toSymbol: toPrefix.symbol,
+              fromName: fromPrefix.prefix,
+              toName: toPrefix.prefix,
+              label: `${fromPrefix.prefix} → ${toPrefix.prefix}`,
+              keywords: keywordList,
+              keywordsLower: keywordList.map((keyword) => keyword.toLowerCase()),
+              pairUrl: `/standards/nist-si-tenfold?from=${fromPrefix.symbol}&to=${toPrefix.symbol}`,
+              kind: 'si-prefix' as const,
+              siPrefixMeta: { fromSymbol: fromPrefix.symbol, toSymbol: toPrefix.symbol },
+            };
+          }),
+        );
+      }
+
+      const units = getUnitsForCategory(category);
+      return units.flatMap((fromUnit) =>
+        units
+          .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
+          .map((toUnit) => {
+            const label = `${fromUnit.symbol} \u2192 ${toUnit.symbol}`;
+            const pairUrl = buildConversionPairUrl(category, fromUnit.symbol, toUnit.symbol);
+            const keywordSet = new Set<string>([
+              category,
+              data.name,
+              fromUnit.name,
+              fromUnit.symbol,
+              toUnit.name,
+              toUnit.symbol,
+              label,
+              `${fromUnit.name} to ${toUnit.name}`,
+              `${fromUnit.symbol} to ${toUnit.symbol}`,
+              `${fromUnit.name} -> ${toUnit.name}`,
+              `${fromUnit.symbol} -> ${toUnit.symbol}`,
+              `${fromUnit.name} → ${toUnit.name}`,
+              `${fromUnit.symbol} → ${toUnit.symbol}`,
+              `${fromUnit.name} ${toUnit.symbol}`,
+              `${fromUnit.symbol} ${toUnit.name}`,
+              `${fromUnit.symbol}${toUnit.symbol}`,
+              `${fromUnit.name} ${toUnit.name}`,
+            ]);
+
+            getAliasesForUnit(fromUnit).forEach((alias) => keywordSet.add(alias));
+            getAliasesForUnit(toUnit).forEach((alias) => keywordSet.add(alias));
+
+            const keywords = Array.from(keywordSet);
+            return {
+              value: `${category}:${fromUnit.symbol}:${toUnit.symbol}`,
+              category,
+              categoryLabel: data.name,
+              fromSymbol: fromUnit.symbol,
+              toSymbol: toUnit.symbol,
+              fromName: fromUnit.name,
+              toName: toUnit.name,
+              label,
+              keywords,
+              keywordsLower: keywords.map((keyword) => keyword.toLowerCase()),
+              pairUrl,
+              kind: 'unit' as const,
+            };
+          }),
+      );
+    });
+  }, []);
+
+  const conversionPairs = unitConversionPairs;
 
   const conversionSources = React.useMemo(() => {
     if (!rhfCategory) {
@@ -587,17 +658,32 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   );
 
   const handleParsedConversion = React.useCallback(
-    ({
-      category,
-      fromUnit,
-      toUnit,
-      value: parsedValue,
-    }: {
-      category: UnitCategory;
-      fromUnit: string;
-      toUnit: string;
-      value: number;
-    }) => {
+    (payload: ParsedConversionPayload) => {
+      if (payload.kind === 'si-prefix') {
+        const parsedValue = Number.isFinite(payload.value) ? payload.value : 1;
+        setValue('category', 'SI Prefixes', { shouldValidate: true, shouldDirty: true });
+        setSelectedCategoryLocal('SI Prefixes');
+        setIsSwapped(false);
+
+        Promise.resolve().then(() => {
+          setValue('fromUnit', payload.fromPrefixSymbol, { shouldValidate: true, shouldDirty: true });
+          setValue('toUnit', payload.toPrefixSymbol, { shouldValidate: true, shouldDirty: true });
+          setValue('value', parsedValue, { shouldValidate: true, shouldDirty: true });
+          setLastValidInputValue(parsedValue);
+
+          const conversion = convertUnits({
+            category: 'SI Prefixes',
+            fromUnit: payload.fromPrefixSymbol,
+            toUnit: payload.toPrefixSymbol,
+            value: parsedValue,
+          });
+
+          setConversionResult(conversion);
+        });
+        return;
+      }
+
+      const { category, fromUnit, toUnit, value: parsedValue } = payload;
       setValue('category', category, { shouldValidate: true, shouldDirty: true });
       setSelectedCategoryLocal(category);
 
@@ -623,6 +709,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       setSelectedCategoryLocal,
       setLastValidInputValue,
       setConversionResult,
+      setIsSwapped,
     ],
   );
 

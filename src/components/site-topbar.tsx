@@ -44,6 +44,9 @@ const getHistoryCategoryLabel = (item: ConversionHistoryItem): string => {
   if (item.meta?.kind === 'si-prefix') {
     return 'SI prefix scaling';
   }
+  if (item.category === 'SI Prefixes') {
+    return 'SI prefix scaling';
+  }
   return item.category;
 };
 

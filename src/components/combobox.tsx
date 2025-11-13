@@ -2,13 +2,13 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Check } from 'lucide-react';
+import { ArrowUpRight, Check, ArrowLeftRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UnitCategory } from '@/types';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { UnitIcon } from './unit-icon';
-import { parseConversionQuery } from '@/lib/conversion-query-parser';
+import { parseConversionQuery, type ParsedConversionPayload } from '@/lib/conversion-query-parser';
+import { categoryDisplayOrder } from '@/lib/unit-data';
 
 type ConversionComboboxItem = {
   value: string;
@@ -22,6 +22,11 @@ type ConversionComboboxItem = {
   keywords: string[];
   keywordsLower: string[];
   pairUrl: string;
+  kind?: 'unit' | 'si-prefix';
+  siPrefixMeta?: {
+    fromSymbol: string;
+    toSymbol: string;
+  };
 };
 
 export interface ConversionComboboxProps {
@@ -32,20 +37,15 @@ export interface ConversionComboboxProps {
   inputId?: string;
   disabled?: boolean;
   triggerClassName?: string;
-  onParsedConversion?: (payload: {
-    category: UnitCategory;
-    fromUnit: string;
-    toUnit: string;
-    value: number;
-  }) => void;
+  onParsedConversion?: (payload: ParsedConversionPayload) => void;
   onParseError?: (message: string) => void;
 }
 
 const CONNECTOR_REGEX = /\b(to|into|in)\b/i;
 const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;
 const LETTER_REGEX = /[a-zA-Z°µμ]/;
-const INITIAL_VISIBLE = 200;
-const LOAD_INCREMENT = 120;
+const INITIAL_VISIBLE_ITEMS = 50;
+const LOAD_INCREMENT = 50;
 const CONNECTOR_TERMS = new Set(['to', 'in', 'into']);
 
 function normalizeInput(value: string): string {
@@ -89,11 +89,11 @@ export function ConversionCombobox({
   const [search, setSearch] = React.useState('');
   const [committedInput, setCommittedInput] = React.useState('');
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
-  const [visibleCount, setVisibleCount] = React.useState(INITIAL_VISIBLE);
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const viewportRef = React.useRef<HTMLDivElement | null>(null);
+  const listContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const scrollTickingRef = React.useRef(false);
   const listId = React.useId();
   const generatedInputId = React.useId();
   const resolvedInputId = inputId ?? generatedInputId;
@@ -123,23 +123,127 @@ export function ConversionCombobox({
     }
 
     return items.filter((item) =>
-      terms.every((term) => item.keywordsLower.some((keyword) => keyword.includes(term))),
+      terms.every((term) =>
+        item.keywordsLower.some(
+          (keyword) =>
+            keyword.includes(term) ||
+            (keyword.length >= 3 && term.includes(keyword)),
+        ),
+      ),
     );
   }, [items, normalizedSearch, hasUnitCharacters]);
 
-  React.useEffect(() => {
-    setVisibleCount((prev) => {
-      const next = Math.min(INITIAL_VISIBLE, baseItems.length || INITIAL_VISIBLE);
-      return prev === next ? prev : next;
-    });
-  }, [baseItems]);
+  const orderedCategories = React.useMemo(() => {
+    const categoriesInItems = Array.from(new Set(items.map((item) => item.category)));
+    const extras = categoriesInItems.filter(
+      (category) => !categoryDisplayOrder.includes(category as UnitCategory),
+    );
 
-  const visibleItems = React.useMemo(
-    () => baseItems.slice(0, visibleCount),
-    [baseItems, visibleCount],
+    const combined = [
+      ...categoryDisplayOrder,
+      ...extras,
+    ].filter((category): category is UnitCategory => categoriesInItems.includes(category as UnitCategory));
+
+    const uniqueOrdered: UnitCategory[] = [];
+    combined.forEach((category) => {
+      if (!uniqueOrdered.includes(category)) {
+        uniqueOrdered.push(category);
+      }
+    });
+    return uniqueOrdered;
+  }, [items]);
+
+  const sortedItems = React.useMemo(() => {
+    const categoryRank = new Map<UnitCategory, number>();
+    orderedCategories.forEach((cat, index) => {
+      categoryRank.set(cat, index);
+    });
+
+    const rankOf = (category: UnitCategory) =>
+      categoryRank.has(category) ? (categoryRank.get(category) as number) : orderedCategories.length;
+
+    const normalizedItems = baseItems.map((item) =>
+      item.kind === 'si-prefix'
+        ? { ...item, category: 'SI Prefixes' as UnitCategory }
+        : item,
+    );
+
+    return normalizedItems.sort((a, b) => {
+      const rankDiff = rankOf(a.category) - rankOf(b.category);
+      if (rankDiff !== 0) return rankDiff;
+      return a.label.localeCompare(b.label);
+    });
+  }, [baseItems, orderedCategories]);
+
+  const [visibleItemLimit, setVisibleItemLimit] = React.useState(INITIAL_VISIBLE_ITEMS);
+  const [autoHighlightedValue, setAutoHighlightedValue] = React.useState<string | null>(null);
+  const previousSearchRef = React.useRef(normalizedSearch);
+  const previousOpenRef = React.useRef(open);
+
+  React.useEffect(() => {
+    setVisibleItemLimit((prev) => Math.min(prev, sortedItems.length));
+  }, [sortedItems.length]);
+
+  React.useEffect(() => {
+    const searchChanged = previousSearchRef.current !== normalizedSearch;
+    const openChanged = previousOpenRef.current !== open;
+
+    previousSearchRef.current = normalizedSearch;
+    previousOpenRef.current = open;
+
+    if (!searchChanged && !openChanged) {
+      return;
+    }
+
+    const baseline = Math.min(INITIAL_VISIBLE_ITEMS, sortedItems.length);
+    setVisibleItemLimit(baseline);
+  }, [normalizedSearch, open, sortedItems.length]);
+
+  const baseVisibleItems = React.useMemo(
+    () => sortedItems.slice(0, visibleItemLimit),
+    [sortedItems, visibleItemLimit],
   );
 
-  const hasMoreItems = visibleCount < baseItems.length;
+  const displayItems = React.useMemo(() => {
+    if (!autoHighlightedValue) {
+      return baseVisibleItems;
+    }
+
+    const inBaseSlice = baseVisibleItems.some((item) => item.value === autoHighlightedValue);
+    if (inBaseSlice) {
+      return baseVisibleItems;
+    }
+
+    const match = sortedItems.find((item) => item.value === autoHighlightedValue);
+    if (!match) {
+      return baseVisibleItems;
+    }
+
+    const deduped = baseVisibleItems.filter((item) => item.value !== autoHighlightedValue);
+    return [match, ...deduped].slice(0, visibleItemLimit);
+  }, [autoHighlightedValue, baseVisibleItems, sortedItems, visibleItemLimit]);
+
+  const hasMoreItems = visibleItemLimit < sortedItems.length;
+  const increaseVisibleItems = React.useCallback(() => {
+    setVisibleItemLimit((prev) => Math.min(prev + LOAD_INCREMENT, sortedItems.length));
+  }, [sortedItems.length]);
+
+  const handleScroll = React.useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (!hasMoreItems) return;
+      if (scrollTickingRef.current) return;
+      const target = event.currentTarget;
+      scrollTickingRef.current = true;
+      requestAnimationFrame(() => {
+        scrollTickingRef.current = false;
+        const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+        if (distanceFromBottom <= 160) {
+          increaseVisibleItems();
+        }
+      });
+    },
+    [hasMoreItems, increaseVisibleItems],
+  );
 
   const displayValue = open ? search : committedInput;
 
@@ -151,33 +255,53 @@ export function ConversionCombobox({
   const handleSelect = React.useCallback(
     (selectedValue: string) => {
       const match = items.find((item) => item.value === selectedValue);
+      if (!match) {
+        closeDropdown();
+        return;
+      }
+
+      setAutoHighlightedValue(null);
+
+      if (match.kind === 'si-prefix' && match.siPrefixMeta) {
+        onParsedConversion?.({
+          ok: true,
+          kind: 'si-prefix',
+          value: 1,
+          fromPrefixSymbol: match.siPrefixMeta.fromSymbol,
+          toPrefixSymbol: match.siPrefixMeta.toSymbol,
+          inputText: match.label,
+        });
+        setCommittedInput(match.label);
+        setSearch(match.label);
+        closeDropdown();
+        return;
+      }
+
       onChange(selectedValue);
-      setCommittedInput(match?.label ?? '');
-      setSearch(match?.label ?? '');
+      setCommittedInput(match.label ?? '');
+      setSearch(match.label ?? '');
       closeDropdown();
     },
-    [closeDropdown, items, onChange],
+    [closeDropdown, items, onChange, onParsedConversion],
   );
 
   const handleParsedSelection = React.useCallback(
-    ({
-      category,
-      fromUnit,
-      toUnit,
-      value: parsedValue,
-    }: {
-      category: UnitCategory;
-      fromUnit: string;
-      toUnit: string;
-      value: number;
-    }, typedQuery: string) => {
-      onParsedConversion?.({ category, fromUnit, toUnit, value: parsedValue });
+    (parsed: ParsedConversionPayload, typedQuery: string) => {
+      onParsedConversion?.(parsed);
+
+      if (parsed.kind === 'si-prefix') {
+        setCommittedInput(typedQuery);
+        setSearch(typedQuery);
+        closeDropdown();
+        return;
+      }
 
       const matchingItem = items.find(
         (item) =>
-          item.category === category &&
-          item.fromSymbol === fromUnit &&
-          item.toSymbol === toUnit,
+          item.kind !== 'si-prefix' &&
+          item.category === parsed.category &&
+          item.fromSymbol === parsed.fromUnit &&
+          item.toSymbol === parsed.toUnit,
       );
 
       if (matchingItem) {
@@ -207,57 +331,93 @@ export function ConversionCombobox({
   }, [closeDropdown, open, search]);
 
   React.useEffect(() => {
-    if (!open || visibleItems.length === 0) {
+    if (!open) {
       setHighlightedIndex(-1);
       return;
     }
+
+    if (displayItems.length === 0) {
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    if (autoHighlightedValue) {
+      const matchIndex = displayItems.findIndex((item) => item.value === autoHighlightedValue);
+      if (matchIndex >= 0) {
+        setHighlightedIndex(matchIndex);
+        return;
+      }
+    }
+
     setHighlightedIndex((prev) => {
-      if (prev < 0 || prev >= visibleItems.length) {
+      if (prev < 0 || prev >= displayItems.length) {
         return 0;
       }
       return prev;
     });
-  }, [open, visibleItems.length]);
+  }, [autoHighlightedValue, displayItems, open]);
 
   const shouldAttemptParsing = React.useCallback(
     (query: string) => {
       if (!query) return false;
       const sanitized = query.replace(CONNECTOR_TOKEN_REGEX, ' ');
       if (!LETTER_REGEX.test(sanitized)) return false;
-      return CONNECTOR_REGEX.test(query);
+      if (CONNECTOR_REGEX.test(query)) return true;
+      const tokens = sanitized.trim().split(/\s+/).filter(Boolean);
+      return tokens.length >= 2;
     },
     [],
   );
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setAutoHighlightedValue(null);
+      scrollTickingRef.current = false;
+      return;
+    }
+
     if (!shouldAttemptParsing(normalizedSearch)) {
+      setAutoHighlightedValue(null);
       return;
     }
 
     const parsed = parseConversionQuery(normalizedSearch);
     if (!parsed.ok) {
+      setAutoHighlightedValue(null);
       return;
     }
 
-    const matchIndex = baseItems.findIndex(
+    if (parsed.kind === 'si-prefix') {
+      const match = sortedItems.find(
+        (item) =>
+          item.kind === 'si-prefix' &&
+          item.siPrefixMeta?.fromSymbol === parsed.fromPrefixSymbol &&
+          item.siPrefixMeta?.toSymbol === parsed.toPrefixSymbol,
+      );
+      setAutoHighlightedValue(match?.value ?? null);
+      return;
+    }
+
+    if (parsed.kind === 'unit' && parsed.category === 'SI Prefixes') {
+      const match = sortedItems.find(
+        (item) =>
+          item.kind === 'si-prefix' &&
+          item.siPrefixMeta?.fromSymbol === parsed.fromUnit &&
+          item.siPrefixMeta?.toSymbol === parsed.toUnit,
+      );
+      setAutoHighlightedValue(match?.value ?? null);
+      return;
+    }
+
+    const match = sortedItems.find(
       (item) =>
+        item.kind !== 'si-prefix' &&
         item.category === parsed.category &&
         item.fromSymbol === parsed.fromUnit &&
         item.toSymbol === parsed.toUnit,
     );
-
-    if (matchIndex === -1) {
-      return;
-    }
-
-    if (matchIndex >= visibleCount) {
-      setVisibleCount((prev) => Math.min(Math.max(prev, matchIndex + 1), baseItems.length));
-      return;
-    }
-
-    setHighlightedIndex((prev) => (prev === matchIndex ? prev : matchIndex));
-  }, [baseItems, normalizedSearch, open, shouldAttemptParsing, visibleCount]);
+    setAutoHighlightedValue(match?.value ?? null);
+  }, [normalizedSearch, open, shouldAttemptParsing, sortedItems]);
 
   React.useEffect(() => {
     if (!open || highlightedIndex < 0) return;
@@ -267,48 +427,20 @@ export function ConversionCombobox({
     option?.scrollIntoView({ block: 'nearest' });
   }, [highlightedIndex, open]);
 
-  const increaseVisible = React.useCallback(() => {
-    setVisibleCount((prev) => Math.min(prev + LOAD_INCREMENT, baseItems.length));
-  }, [baseItems.length]);
-
   React.useEffect(() => {
     if (!open) return;
-    const viewport = containerRef.current?.querySelector<HTMLDivElement>(
-      '[data-radix-scroll-area-viewport]',
-    );
-    if (!viewport) return;
-    viewportRef.current = viewport;
-
-    const handleScroll = () => {
-      if (!viewportRef.current || !hasMoreItems) return;
-      const { scrollTop, scrollHeight, clientHeight } = viewportRef.current;
-      if (scrollTop + clientHeight >= scrollHeight - 40) {
-        increaseVisible();
-      }
-    };
-
-    viewport.addEventListener('scroll', handleScroll);
-    return () => viewport.removeEventListener('scroll', handleScroll);
-  }, [increaseVisible, hasMoreItems, open]);
+    listContainerRef.current?.scrollTo({ top: 0 });
+  }, [normalizedSearch, open]);
 
   const tryParse = React.useCallback(
     (query: string) => {
       if (!onParsedConversion && !onParseError) return false;
       const normalized = normalizeInput(query);
       if (!LETTER_REGEX.test(normalized.replace(CONNECTOR_TOKEN_REGEX, ' '))) return false;
-      if (!CONNECTOR_REGEX.test(normalized)) return false;
 
       const parsed = parseConversionQuery(normalized);
       if (parsed.ok) {
-        handleParsedSelection(
-          {
-            category: parsed.category,
-            fromUnit: parsed.fromUnit,
-            toUnit: parsed.toUnit,
-            value: parsed.value,
-          },
-          normalized,
-        );
+        handleParsedSelection(parsed, normalized);
         return true;
       }
 
@@ -326,18 +458,20 @@ export function ConversionCombobox({
       if (event.key === 'ArrowDown') {
         event.preventDefault();
         if (!open) setOpen(true);
-        if (!visibleItems.length) return;
+        if (!displayItems.length) return;
+        setAutoHighlightedValue(null);
         setHighlightedIndex((prev) =>
-          prev < 0 || prev + 1 >= visibleItems.length ? 0 : prev + 1,
+          prev < 0 || prev + 1 >= displayItems.length ? 0 : prev + 1,
         );
         return;
       }
 
       if (event.key === 'ArrowUp') {
         event.preventDefault();
-        if (!visibleItems.length) return;
+        if (!displayItems.length) return;
+        setAutoHighlightedValue(null);
         setHighlightedIndex((prev) =>
-          prev <= 0 ? visibleItems.length - 1 : prev - 1,
+          prev <= 0 ? displayItems.length - 1 : prev - 1,
         );
         return;
       }
@@ -350,7 +484,7 @@ export function ConversionCombobox({
 
       if (event.key === 'Enter') {
         const hasHighlight =
-          highlightedIndex >= 0 && highlightedIndex < visibleItems.length;
+          highlightedIndex >= 0 && highlightedIndex < displayItems.length;
 
         if (query && tryParse(query)) {
           event.preventDefault();
@@ -359,15 +493,23 @@ export function ConversionCombobox({
 
         if (hasHighlight) {
           event.preventDefault();
-          handleSelect(visibleItems[highlightedIndex].value);
+          handleSelect(displayItems[highlightedIndex].value);
         }
       }
     },
-    [closeDropdown, committedInput, handleSelect, highlightedIndex, open, tryParse, visibleItems],
+    [
+      closeDropdown,
+      committedInput,
+      displayItems,
+      handleSelect,
+      highlightedIndex,
+      open,
+      tryParse,
+    ],
   );
 
   const activeDescendant =
-    highlightedIndex >= 0 && highlightedIndex < visibleItems.length
+    highlightedIndex >= 0 && highlightedIndex < displayItems.length
       ? `conversion-option-${highlightedIndex}`
       : undefined;
 
@@ -401,17 +543,22 @@ export function ConversionCombobox({
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-xl">
-          {visibleItems.length === 0 ? (
+          {displayItems.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted-foreground">No conversion found.</p>
           ) : (
-            <ScrollArea className="max-h-80 overflow-y-auto">
+            <div
+              ref={listContainerRef}
+              className="max-h-80 overflow-y-auto"
+              onScroll={handleScroll}
+              role="presentation"
+            >
               <ul
                 id={listId}
                 className="divide-y divide-border/60"
                 role="listbox"
                 aria-label="Conversion results"
               >
-                {visibleItems.map((item, index) => {
+                {displayItems.map((item, index) => {
                   const isHighlighted = highlightedIndex === index;
                   const isSelected = value === item.value;
 
@@ -425,16 +572,23 @@ export function ConversionCombobox({
                           'flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition focus:outline-none',
                           isHighlighted ? 'bg-primary/10 text-foreground' : 'hover:bg-primary/10',
                         )}
-                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onMouseEnter={() => {
+                          setAutoHighlightedValue(null);
+                          setHighlightedIndex(index);
+                        }}
                         onClick={() => handleSelect(item.value)}
                         role="option"
                         aria-selected={isSelected}
                       >
-                        <UnitIcon
-                          category={item.category}
-                          className="h-4 w-4 flex-shrink-0 text-muted-foreground"
-                          aria-hidden="true"
-                        />
+                        {item.kind === 'si-prefix' ? (
+                          <ArrowLeftRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+                        ) : (
+                          <UnitIcon
+                            category={item.category as UnitCategory}
+                            className="h-4 w-4 flex-shrink-0 text-muted-foreground"
+                            aria-hidden="true"
+                          />
+                        )}
                         <div className="flex min-w-0 flex-col">
                           <span className="truncate font-medium text-foreground">
                             {item.label}
@@ -465,7 +619,7 @@ export function ConversionCombobox({
                   );
                 })}
               </ul>
-            </ScrollArea>
+            </div>
           )}
         </div>
       )}

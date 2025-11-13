@@ -19,7 +19,8 @@ export type UnitCategory =
   | 'Fuel Economy'
   | 'Data Storage'
   | 'Data Transfer Rate'
-  | 'Bitcoin';
+  | 'Bitcoin'
+  | 'SI Prefixes';
   // Removed: | 'Ethereum' | 'EM Frequency' | 'Sound Frequency'
 
 export type UnitData = {

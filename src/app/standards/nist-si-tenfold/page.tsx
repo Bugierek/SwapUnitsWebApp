@@ -16,32 +16,7 @@ import { SiteTopbar } from '@/components/site-topbar';
 import { Footer } from '@/components/footer';
 import { useConversionHistory } from '@/hooks/use-conversion-history';
 import type { ConversionHistoryItem } from '@/types';
-
-const multiples = [
-  { prefix: 'yotta', symbol: 'Y', exponent: 24 },
-  { prefix: 'zetta', symbol: 'Z', exponent: 21 },
-  { prefix: 'exa', symbol: 'E', exponent: 18 },
-  { prefix: 'peta', symbol: 'P', exponent: 15 },
-  { prefix: 'tera', symbol: 'T', exponent: 12 },
-  { prefix: 'giga', symbol: 'G', exponent: 9 },
-  { prefix: 'mega', symbol: 'M', exponent: 6 },
-  { prefix: 'kilo', symbol: 'k', exponent: 3 },
-  { prefix: 'hecto', symbol: 'h', exponent: 2 },
-  { prefix: 'deca', symbol: 'da', exponent: 1 },
-];
-
-const subMultiples = [
-  { prefix: 'deci', symbol: 'd', exponent: -1 },
-  { prefix: 'centi', symbol: 'c', exponent: -2 },
-  { prefix: 'milli', symbol: 'm', exponent: -3 },
-  { prefix: 'micro', symbol: 'µ', exponent: -6 },
-  { prefix: 'nano', symbol: 'n', exponent: -9 },
-  { prefix: 'pico', symbol: 'p', exponent: -12 },
-  { prefix: 'femto', symbol: 'f', exponent: -15 },
-  { prefix: 'atto', symbol: 'a', exponent: -18 },
-  { prefix: 'zepto', symbol: 'z', exponent: -21 },
-  { prefix: 'yocto', symbol: 'y', exponent: -24 },
-];
+import { SI_MULTIPLES, SI_SUBMULTIPLES, ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 
 const formatValue = (exp: number) => `10${exp >= 0 ? `^${exp}` : `^(${exp})`}`;
 
@@ -61,7 +36,7 @@ const formatNumber = (value: number): string => {
 };
 
 export default function NistSiTenfoldPage() {
-  const prefixOptions = React.useMemo(() => [...multiples, ...subMultiples].sort((a, b) => b.exponent - a.exponent), []);
+  const prefixOptions = React.useMemo(() => [...ALL_SI_PREFIXES].sort((a, b) => b.exponent - a.exponent), []);
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams.toString();
   const { history, addHistoryItem, isLoading: isLoadingHistory } = useConversionHistory();
@@ -269,11 +244,11 @@ export default function NistSiTenfoldPage() {
                   `${formattedInput} ${fromPrefix.prefix} = ${formattedOutput} ${toPrefix.prefix}`,
                 );
                 addHistoryItem({
-                  category: 'Length',
+                  category: 'SI Prefixes',
                   fromValue: numericValue,
-                  fromUnit: fromPrefix.prefix,
+                  fromUnit: fromPrefix.symbol,
                   toValue: computed,
-                  toUnit: toPrefix.prefix,
+                  toUnit: toPrefix.symbol,
                   meta: {
                     kind: 'si-prefix',
                     route: '/standards/nist-si-tenfold',
@@ -309,7 +284,7 @@ export default function NistSiTenfoldPage() {
                 </tr>
               </thead>
               <tbody>
-                {multiples.map((row) => (
+            {SI_MULTIPLES.map((row) => (
                   <tr key={row.prefix} className="border-t border-border/40 text-sm">
                     <td className="py-2 font-medium text-foreground">{row.prefix}</td>
                     <td className="py-2 text-muted-foreground">{row.symbol}</td>
@@ -331,7 +306,7 @@ export default function NistSiTenfoldPage() {
                 </tr>
               </thead>
               <tbody>
-                {subMultiples.map((row) => (
+            {SI_SUBMULTIPLES.map((row) => (
                   <tr key={row.prefix} className="border-t border-border/40 text-sm">
                     <td className="py-2 font-medium text-foreground">{row.prefix}</td>
                     <td className="py-2 text-muted-foreground">{row.symbol}</td>

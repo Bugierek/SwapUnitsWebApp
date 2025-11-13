@@ -597,6 +597,54 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       },
     ],
   },
+  'SI Prefixes': {
+    title: 'SI Unit Prefix Reference',
+    heroTagline: 'Scale any SI quantity with exact powers of ten.',
+    description:
+      'The SI prefix table shows how to move by factors of 10 from yocto all the way up to yotta. Use it to keep datasheets, lab notes, and hardware specs accurate.',
+    intro:
+      'When you convert “micro” to “mega” you are really multiplying by 10¹². The quick tables below, adapted from NIST Special Publication 330, keep those jumps straight so you can sanity-check sensor readouts or compute tolerances without guessing.',
+    quickTips: [
+      'Every prefix changes the magnitude by 10³ or a subdivision thereof. For example, milli → micro is a shift of 10³ because −3 − (−6) = 3.',
+      'Use the same exponent math regardless of the underlying unit. Prefix conversions work for meters, grams, bytes, or volts.',
+      'µ (micro) may appear as the Latin letter “u” in some CAD tools or firmware, but the exponent stays the same (10⁻⁶).',
+    ],
+    useCases: [
+      'Hardware teams scaling component values from datasheet notation (nF, µH, kΩ).',
+      'Scientists comparing measurements logged in different prefixes during experiments.',
+      'Educators demonstrating how SI prefixes apply consistently across mass, length, digital storage, and more.',
+    ],
+    seo: {
+      title: 'SI Prefix Converter & Table (NIST SP 330) | SwapUnits',
+      description:
+        'Convert between SI prefixes such as micro, milli, kilo, and giga using exact powers of ten. Includes a quick reference table sourced from NIST SP 330.',
+      keywords: [
+        'si prefix converter',
+        'metric prefixes',
+        'micro to milli',
+        'kilo to mega',
+        'nist sp 330',
+        'decimal multiples',
+      ],
+    },
+    faq: [
+      {
+        question: 'Do SI prefixes change the underlying unit?',
+        answer:
+          'No. Prefixes only scale the magnitude. “Milliwatt” still measures power in watts; it is simply 10⁻³ watts.',
+      },
+      {
+        question: 'How do I convert between two prefixes?',
+        answer:
+          'Subtract the exponents. For example, converting from milli (10⁻³) to nano (10⁻⁹) means a shift of 10⁻³ − (10⁻⁹) = 10⁶, so you multiply by one million.',
+      },
+      {
+        question: 'Where do these values come from?',
+        answer:
+          'The values are standardized by the International Bureau of Weights and Measures (BIPM) and published in the NIST Guide for the Use of the International System of Units (SP 330).',
+      },
+    ],
+  },
   Bitcoin: {
     title: 'Bitcoin & Satoshi Conversion Guide',
     heroTagline: 'Keep BTC, satoshis, and fiat comparisons aligned.',
@@ -659,6 +707,14 @@ const categoryInfoMap: Record<UnitCategory, CategoryInfo> = Object.fromEntries(
     ],
   ),
 ) as Record<UnitCategory, CategoryInfo>;
+
+if (categoryInfoMap['SI Prefixes']) {
+  categoryInfoMap['SI Prefixes'] = {
+    ...categoryInfoMap['SI Prefixes'],
+    slug: 'standards/nist-si-tenfold',
+  };
+}
+
 
 export const categoryInfoList: CategoryInfo[] = Object.values(categoryInfoMap);
 

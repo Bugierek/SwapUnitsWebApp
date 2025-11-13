@@ -14,6 +14,7 @@ import {
   HardDrive, 
   Network, 
   Bitcoin,
+  ArrowLeftRight,
   // Signal, // For EM Frequency - Removed
   // Volume2, // For Sound Frequency - Removed
 } from 'lucide-react';
@@ -53,6 +54,8 @@ export const UnitIcon = React.memo(function UnitIconComponent({ category, ...pro
         return <Network {...props} />;
     case 'Bitcoin':
         return <Bitcoin {...props} />;
+    case 'SI Prefixes':
+        return <ArrowLeftRight {...props} />;
     // Removed cases for 'Ethereum', 'EM Frequency', 'Sound Frequency'
     default:
       return <HelpCircle {...props} />;

@@ -69,6 +69,7 @@ const categorySources: Record<UnitCategory, ConversionSource[]> = {
   'Data Storage': [IEC_80000_13],
   'Data Transfer Rate': [IEC_80000_13],
   Bitcoin: [BITCOIN_CORE_DENOMINATION],
+  'SI Prefixes': [NIST_GUIDE_SOURCE],
 };
 
 export function getConversionSources(

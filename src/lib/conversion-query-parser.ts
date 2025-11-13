@@ -2,6 +2,7 @@
 
 import { unitData } from '@/lib/unit-data';
 import type { UnitCategory, Unit, UnitData } from '@/types';
+import { matchSiPrefixToken } from '@/lib/si-prefixes';
 
 type AliasEntry = {
   symbol: string;
@@ -10,13 +11,27 @@ type AliasEntry = {
 
 type AliasIndex = Map<string, AliasEntry[]>;
 
-type ParseSuccess = {
+type UnitParseSuccess = {
   ok: true;
+  kind: 'unit';
   value: number;
   fromUnit: string;
   toUnit: string;
   category: UnitCategory;
 };
+
+type SiPrefixParseSuccess = {
+  ok: true;
+  kind: 'si-prefix';
+  value: number;
+  fromPrefixSymbol: string;
+  toPrefixSymbol: string;
+  inputText: string;
+};
+
+export type ParseSuccess = UnitParseSuccess | SiPrefixParseSuccess;
+export type ParseResult = ParseSuccess | ParseFailure;
+export type ParsedConversionPayload = ParseSuccess;
 
 type ParseFailure = {
   ok: false;
@@ -24,10 +39,8 @@ type ParseFailure = {
   suggestions?: string[];
 };
 
-export type ParseResult = ParseSuccess | ParseFailure;
-
-const CONNECTOR_REGEX = /\b(to|into|in)\b/;
-const CONNECTOR_GLOBAL_REGEX = /\b(to|into|in)\b/g;
+const CONNECTOR_GLOBAL_REGEX = /\b(to|into|in)\b/gi;
+const CONNECTOR_WORDS = new Set(['to', 'into', 'in']);
 const STOP_WORDS = [
   'convert',
   'please',
@@ -182,17 +195,26 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
       continue;
     }
 
-    if (fromAlias.category !== toAlias.category) {
-      continue;
+    if (fromAlias && toAlias && fromAlias.category === toAlias.category) {
+      return {
+        ok: true,
+        kind: 'unit',
+        value,
+        fromUnit: fromAlias.symbol,
+        toUnit: toAlias.symbol,
+        category: fromAlias.category,
+      };
     }
 
-    return {
-      ok: true,
-      value,
-      fromUnit: fromAlias.symbol,
-      toUnit: toAlias.symbol,
-      category: fromAlias.category,
-    };
+    const prefixResult = tryParseSiPrefixes(fromPart, toPart, value);
+    if (prefixResult) {
+        return prefixResult;
+      }
+    }
+
+  const loosePrefixResult = tryParseSiPrefixesWithoutConnector(normalized, value);
+  if (loosePrefixResult) {
+    return loosePrefixResult;
   }
 
   return { ok: false, error: 'Missing unit information' };
@@ -202,21 +224,19 @@ function normalizeQuery(query: string): string {
   let result = query
     .replace(/[,]/g, '') // remove thousand separators
     .replace(/[\u2192\u2794]/g, ' to ') // arrows
-    .replace(/=>|->|=/g, ' to ')
-    .toLowerCase();
+    .replace(/=>|->|=/g, ' to ');
 
-  result = result.replace(/(^|[^a-z°µμ])(to|into|in)(?=$|[^a-z°µμ])/g, '$1 $2 ');
+  result = result.replace(/(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi, '$1 $2 ');
 
   result = result
-    .replace(/(\d)(?=[a-z°µμ])/g, (match, digit: string, offset: number, original: string) => {
-      const next = original[offset + 1];
+    .replace(/(\d)(?=[a-zA-Z°µμ])/g, (match, digit: string, offset: number, original: string) => {
       const rest = original.slice(offset + 1);
       if (/^[eE][+-]?\d/.test(rest)) {
         return digit;
       }
       return `${digit} `;
     })
-    .replace(/([a-z°µμ])(?=\d)/g, (match, letter: string, offset: number, original: string) => {
+    .replace(/([a-zA-Z°µμ])(?=\d)/g, (match, letter: string, offset: number, original: string) => {
       const rest = original.slice(offset + 1);
       if ((letter === 'e' || letter === 'E') && /^[+-]?\d/.test(rest)) {
         return letter;
@@ -263,18 +283,6 @@ function normalizeAlias(raw: string): string {
     .replace(/degrees?/gi, 'degree')
     .replace(/\s+/g, ' ')
     .toLowerCase();
-}
-
-function suggestAliases(index: AliasIndex, raw: string): string[] {
-  const cleaned = normalizeAlias(raw);
-  const suggestions: string[] = [];
-  for (const key of index.keys()) {
-    if (key.startsWith(cleaned.slice(0, 2))) {
-      suggestions.push(key);
-    }
-    if (suggestions.length >= 5) break;
-  }
-  return suggestions;
 }
 
 function buildAliasIndex(): AliasIndex {
@@ -456,4 +464,46 @@ function expandAliasVariants(alias: string): string[] {
 
 export function getAliasesForUnit(unit: Unit): string[] {
   return buildAliasesForUnit(unit);
+}
+
+function tryParseSiPrefixes(fromToken: string, toToken: string, value: number): SiPrefixParseSuccess | null {
+  const fromPrefix = matchSiPrefixToken(fromToken);
+  const toPrefix = matchSiPrefixToken(toToken);
+  if (!fromPrefix || !toPrefix) {
+    return null;
+  }
+
+  return {
+    ok: true,
+    kind: 'si-prefix',
+    value,
+    fromPrefixSymbol: fromPrefix.symbol,
+    toPrefixSymbol: toPrefix.symbol,
+    inputText: `${fromToken} to ${toToken}`,
+  };
+}
+
+function tryParseSiPrefixesWithoutConnector(normalized: string, value: number): SiPrefixParseSuccess | null {
+  const tokens = normalized
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token && !CONNECTOR_WORDS.has(token.toLowerCase()));
+  if (tokens.length < 2) {
+    return null;
+  }
+
+  for (let i = 1; i < tokens.length; i += 1) {
+    const fromToken = tokens.slice(0, i).join(' ');
+    const toToken = tokens.slice(i).join(' ');
+    const result = tryParseSiPrefixes(fromToken, toToken, value || 1);
+    if (result) {
+      return {
+        ...result,
+        inputText: normalized,
+        value: Number.isFinite(value) ? value : 1,
+      };
+    }
+  }
+
+  return null;
 }

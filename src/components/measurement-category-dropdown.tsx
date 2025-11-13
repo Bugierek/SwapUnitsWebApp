@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeftRight, ArrowUpRight, ChevronsUpDown } from 'lucide-react';
 
 import type { UnitCategory } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,8 +15,10 @@ export type MeasurementCategoryOption = {
   value: UnitCategory;
   title: string;
   slug: string;
+  href?: string;
   topUnits: string;
   keywords: string[];
+  kind?: 'default' | 'si-prefix';
 };
 
 type MeasurementCategoryDropdownProps = {
@@ -91,7 +93,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
     );
   }, [normalizedQuery, options]);
 
-  const popoverWidth = contentWidth ?? internalTriggerRef.current?.offsetWidth ?? undefined;
+  const popoverWidth = contentWidth;
   const maxHeight = filteredOptions.length > 4 ? 360 : undefined;
 
   return (
@@ -146,6 +148,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {filteredOptions.map((option) => {
                     const isSelected = option.value === value;
+                    const isSiPrefix = option.kind === 'si-prefix';
                     return (
                       <div
                         key={option.value}
@@ -160,7 +163,11 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                           className="flex flex-1 flex-col items-start text-left"
                         >
                           <span className="flex items-center gap-2">
-                            <UnitIcon category={option.value} className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                            {isSiPrefix ? (
+                              <ArrowLeftRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
+                            ) : (
+                              <UnitIcon category={option.value as UnitCategory} className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                            )}
                             <span className="block font-semibold text-foreground">{option.title}</span>
                           </span>
                           {option.topUnits && (
@@ -170,7 +177,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                           )}
                         </button>
                         <Link
-                          href={`/measurements/${option.slug}`}
+                          href={option.href ?? `/measurements/${option.slug}`}
                           prefetch={false}
                           className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/60 text-xs text-muted-foreground transition hover:border-primary/60 hover:text-primary"
                           aria-label={`Open ${option.title} reference page`}
@@ -182,7 +189,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                           event.preventDefault();
                           event.stopPropagation();
                           setOpen(false);
-                          router.push(`/measurements/${option.slug}`);
+                          router.push(option.href ?? `/measurements/${option.slug}`);
                         }}
                       >
                         <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />

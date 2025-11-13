@@ -183,7 +183,32 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Megabytes per second', symbol: 'MB/s', factor: 8 * 1e6 },
         ].sort((a,b) => a.factor - b.factor),
     },
-    Bitcoin: {
+    'SI Prefixes': {
+    name: 'SI Unit Prefixes',
+    units: [
+      { name: 'Yocto (10⁻²⁴)', symbol: 'y', factor: 1e-24 },
+      { name: 'Zepto (10⁻²¹)', symbol: 'z', factor: 1e-21 },
+      { name: 'Atto (10⁻¹⁸)', symbol: 'a', factor: 1e-18 },
+      { name: 'Femto (10⁻¹⁵)', symbol: 'f', factor: 1e-15 },
+      { name: 'Pico (10⁻¹²)', symbol: 'p', factor: 1e-12 },
+      { name: 'Nano (10⁻⁹)', symbol: 'n', factor: 1e-9 },
+      { name: 'Micro (10⁻⁶)', symbol: 'µ', factor: 1e-6 },
+      { name: 'Milli (10⁻³)', symbol: 'm', factor: 1e-3 },
+      { name: 'Centi (10⁻²)', symbol: 'c', factor: 1e-2 },
+      { name: 'Deci (10⁻¹)', symbol: 'd', factor: 1e-1 },
+      { name: 'Deca (10¹)', symbol: 'da', factor: 10 },
+      { name: 'Hecto (10²)', symbol: 'h', factor: 1e2 },
+      { name: 'Kilo (10³)', symbol: 'k', factor: 1e3 },
+      { name: 'Mega (10⁶)', symbol: 'M', factor: 1e6 },
+      { name: 'Giga (10⁹)', symbol: 'G', factor: 1e9 },
+      { name: 'Tera (10¹²)', symbol: 'T', factor: 1e12 },
+      { name: 'Peta (10¹⁵)', symbol: 'P', factor: 1e15 },
+      { name: 'Exa (10¹⁸)', symbol: 'E', factor: 1e18 },
+      { name: 'Zetta (10²¹)', symbol: 'Z', factor: 1e21 },
+      { name: 'Yotta (10²⁴)', symbol: 'Y', factor: 1e24 },
+    ],
+  },
+  Bitcoin: {
         name: 'Bitcoin',
         units: [
             { name: 'Bitcoin', symbol: 'BTC', factor: 1 },
@@ -221,6 +246,7 @@ export const allPresets: Preset[] = [
   { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
   { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
   { category: 'Bitcoin', fromUnit: 'sat', toUnit: 'BTC', name: 'Satoshi to Bitcoin' },
+  { category: 'SI Prefixes', fromUnit: 'p', toUnit: 'µ', name: 'Pico to micro' },
 
   // Additional high-precision presets surfaced for power users
   { category: 'Time', fromUnit: 's', toUnit: 'ns', name: 'Seconds to Nanoseconds (Adv)' },
@@ -231,7 +257,7 @@ export const allPresets: Preset[] = [
 export const categoryDisplayOrder: UnitCategory[] = [
   'Length', 'Mass', 'Temperature', 'Time', 'Pressure',
   'Area', 'Volume', 'Energy', 'Speed', 'Fuel Economy',
-  'Data Storage', 'Data Transfer Rate', 'Bitcoin',
+  'Data Storage', 'Data Transfer Rate', 'Bitcoin', 'SI Prefixes',
   // Removed: 'Ethereum', 'EM Frequency', 'Sound Frequency',
 ];
 
@@ -280,7 +306,7 @@ export const getFilteredAndSortedPresets = (
         return a.name.localeCompare(b.name);
     });
     
-    let onePresetPerCategoryList: Preset[] = [];
+    const onePresetPerCategoryList: Preset[] = [];
     const addedCategories = new Set<UnitCategory>();
     let bitcoinPreset: Preset | null = null;
 
