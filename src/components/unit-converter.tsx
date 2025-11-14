@@ -886,6 +886,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
 
   const internalHandlePresetSelect = React.useCallback((preset: Preset | FavoriteItem) => {
+    resetFinderInput();
     const presetCategory = Object.keys(unitData).find(catKey => catKey === preset.category) as UnitCategory | undefined;
     if (!presetCategory) return;
 
@@ -921,9 +922,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             setConversionResult(result);
         });
     });
-  }, [setValue, getValues, convertUnits, lastValidInputValue]);
+  }, [setValue, getValues, convertUnits, lastValidInputValue, resetFinderInput]);
 
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
+    resetFinderInput();
     const { category, fromUnit, toUnit, fromValue } = item;
 
     setValue("category", category, { shouldValidate: true, shouldDirty: true });
@@ -963,7 +965,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
            setConversionResult(newResult);
         });
     });
-  }, [setValue, reset, getValues, convertUnits]);
+  }, [setValue, reset, getValues, convertUnits, resetFinderInput]);
 
 
   useImperativeHandle(ref, () => ({

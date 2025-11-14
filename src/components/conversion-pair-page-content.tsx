@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, ArrowUpRight, RefreshCw } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
 import type { CategoryInfo } from '@/lib/category-info';
 import type { ConversionHistoryItem, Preset, UnitCategory } from '@/types';
@@ -230,6 +230,15 @@ export function ConversionPairPageContent({
             />
           </section>
 
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:text-primary"
+            >
+              Back to main converter
+            </Link>
+          </div>
+
           {exampleRows.length > 0 && (
             <section className="space-y-4">
               <div className="flex flex-col gap-2">
@@ -342,22 +351,6 @@ export function ConversionPairPageContent({
             </div>
           </section>
 
-          <section className="rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-foreground">Need a fresh start?</h2>
-                <p className="text-sm text-muted-foreground">
-                  Jump back to the home converter, reset the fields, or build new favorites for other unit pairs.
-                </p>
-              </div>
-              <Button asChild>
-                <Link href="/">
-                  <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
-                  Back to main converter
-                </Link>
-              </Button>
-            </div>
-          </section>
         </div>
       </main>
 
