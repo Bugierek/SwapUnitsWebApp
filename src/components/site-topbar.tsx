@@ -23,6 +23,17 @@ import { UnitIcon } from '@/components/unit-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { unitData } from '@/lib/unit-data';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type SiteTopbarProps = {
   handleLogoClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
@@ -66,9 +77,23 @@ export function SiteTopbar({
   onPresetSelect,
 }: SiteTopbarProps) {
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const [isHistoryConfirmOpen, setIsHistoryConfirmOpen] = React.useState(false);
+  const [isFavoritesConfirmOpen, setIsFavoritesConfirmOpen] = React.useState(false);
   const LABEL_CHAR_LIMIT = 36;
 
   const isMobile = useIsMobile();
+
+  const handleConfirmClearHistory = React.useCallback(() => {
+    clearHistory?.();
+    setIsHistoryConfirmOpen(false);
+    setIsSheetOpen(false);
+  }, [clearHistory]);
+
+  const handleConfirmClearFavorites = React.useCallback(() => {
+    onClearAllFavorites?.();
+    setIsFavoritesConfirmOpen(false);
+    setIsSheetOpen(false);
+  }, [onClearAllFavorites]);
 
   const getUnitName = React.useCallback((category: UnitCategory, symbol: string) => {
     const units = unitData[category]?.units ?? [];
@@ -135,18 +160,31 @@ export function SiteTopbar({
                         <HistoryIcon className="h-5 w-5 text-primary" aria-hidden="true" />
                         Recent history
                       </span>
-                    {history.length > 0 && clearHistory && (
-                        <SheetClose asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearHistory}
-                            aria-label="Clear history"
-                            className="h-8 px-3 text-xs font-semibold"
-                          >
-                            Clear
-                          </Button>
-                        </SheetClose>
+                      {history.length > 0 && clearHistory && (
+                        <AlertDialog open={isHistoryConfirmOpen} onOpenChange={setIsHistoryConfirmOpen}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Clear history"
+                              className="h-8 px-3 text-xs font-semibold"
+                            >
+                              Clear
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Clear conversion history?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove all saved conversions from your device. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleConfirmClearHistory}>Clear history</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                     {isLoadingHistory ? (
@@ -211,17 +249,30 @@ export function SiteTopbar({
                         Favorites
                       </span>
                       {favorites.length > 0 && onClearAllFavorites && (
-                        <SheetClose asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={onClearAllFavorites}
-                            aria-label="Clear favorites"
-                            className="h-8 px-3 text-xs font-semibold"
-                          >
-                            Clear
-                          </Button>
-                        </SheetClose>
+                        <AlertDialog open={isFavoritesConfirmOpen} onOpenChange={setIsFavoritesConfirmOpen}>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-label="Clear favorites"
+                              className="h-8 px-3 text-xs font-semibold"
+                            >
+                              Clear
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove all favorites?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This deletes every saved conversion from your favorites list. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleConfirmClearFavorites}>Remove</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                     {isLoadingFavorites ? (
