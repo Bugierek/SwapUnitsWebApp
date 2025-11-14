@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowRight, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
 import { getCategoryInfoBySlug, categoryInfoList } from '@/lib/category-info';
 import { getPresetsForCategory, unitData } from '@/lib/unit-data';
@@ -117,6 +117,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const baseUnit = units.find((unit) => unit.factor === 1) ?? units[0];
   const presets = getPresetsForCategory(info.category);
   const topPresets = presets.slice(0, 8);
+  const conversionPairs = units.flatMap((fromUnit) =>
+    units
+      .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
+      .map((toUnit) => ({
+        from: fromUnit,
+        to: toUnit,
+        url: buildConversionPairUrl(info.category, fromUnit.symbol, toUnit.symbol),
+      })),
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-4 pb-16 pt-12 sm:px-6 lg:px-8">
@@ -177,31 +186,50 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </div>
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <article className="space-y-4 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-foreground">Quick tips</h2>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            {info.quickTips.map((tip, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
-                <span>{tip}</span>
-              </li>
-            ))}
-          </ul>
-        </article>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:text-primary"
+        >
+          Back to main converter
+        </Link>
+      </div>
 
-        <article className="space-y-4 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-foreground">Where this category shows up</h2>
-          <ul className="space-y-3 text-sm text-muted-foreground">
-            {info.useCases.map((useCase, index) => (
-              <li key={index} className="flex items-start gap-3">
-                <ArrowRight className="mt-0.5 h-4 w-4 text-primary" aria-hidden="true" />
-                <span>{useCase}</span>
-              </li>
+      {conversionPairs.length > 0 && (
+        <section className="space-y-4 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Conversion pair tiles</h2>
+              <p className="text-sm text-muted-foreground">
+                Jump directly to any available converter for {info.title.toLowerCase()} units.
+              </p>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+              {conversionPairs.length} options
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {conversionPairs.map((pair) => (
+              <Link
+                key={`${pair.from.symbol}-${pair.to.symbol}`}
+                href={pair.url}
+                className="group flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-left shadow-sm transition hover:border-primary/50 hover:bg-primary/5"
+              >
+                <span className="text-sm font-semibold text-foreground">
+                  {pair.from.symbol} → {pair.to.symbol}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {pair.from.name} to {pair.to.name}
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.25em] text-primary transition group-hover:text-primary/80">
+                  View details
+                  <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+                </span>
+              </Link>
             ))}
-          </ul>
-        </article>
-      </section>
+          </div>
+        </section>
+      )}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
