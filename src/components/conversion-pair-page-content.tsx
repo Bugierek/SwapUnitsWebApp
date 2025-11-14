@@ -46,6 +46,7 @@ type ConversionPairPageContentProps = {
   reverseExampleRows: ExampleRow[];
   otherUnits: SimpleUnit[];
   navbarPresets: Preset[];
+  initialValue?: number;
 };
 
 const formatNumber = (value: number): string => {
@@ -98,6 +99,7 @@ export function ConversionPairPageContent({
   reverseExampleRows,
   otherUnits,
   navbarPresets,
+  initialValue,
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -223,7 +225,7 @@ export function ConversionPairPageContent({
               category={categoryInfo.category}
               fromUnit={fromUnit}
               toUnit={toUnit}
-              initialValue={1}
+              initialValue={initialValue ?? 1}
               onCopyResult={handleCopyResult}
             />
           </section>

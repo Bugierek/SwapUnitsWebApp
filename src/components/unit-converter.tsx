@@ -293,15 +293,28 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return null;
     }
+    const rawValue = typeof rhfValue === 'number' ? String(rhfValue) : String(rhfValue ?? '');
+    const trimmedValue = rawValue.trim();
     if (rhfCategory === 'SI Prefixes') {
       const params = new URLSearchParams({
         from: rhfFromUnit,
         to: rhfToUnit,
-        value: String(rhfValue ?? ''),
+        value: trimmedValue,
       });
       return `/standards/nist-si-tenfold?${params.toString()}`;
     }
-    return buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
+    const baseUrl = buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
+    if (
+      trimmedValue === '' ||
+      trimmedValue === '-' ||
+      trimmedValue === '.' ||
+      trimmedValue === '-.' ||
+      !Number.isFinite(Number(trimmedValue))
+    ) {
+      return baseUrl;
+    }
+    const params = new URLSearchParams({ value: trimmedValue });
+    return `${baseUrl}?${params.toString()}`;
   }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue]);
 
   React.useEffect(() => {

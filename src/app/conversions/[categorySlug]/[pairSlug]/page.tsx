@@ -77,8 +77,8 @@ export function generateStaticParams() {
 }
 
 type PageProps = {
-  params: PageParams;
-  searchParams: { [key: string]: string | string[] | undefined };
+  params: PageParams | Promise<PageParams>;
+  searchParams?: URLSearchParams | { [key: string]: string | string[] | undefined };
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -114,10 +114,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ConversionPairPage({ params }: PageProps) {
+export default async function ConversionPairPage({ params, searchParams }: PageProps) {
   // Await params to ensure they are fully resolved
   const resolvedParams = await Promise.resolve(params);
+  const resolvedSearchParams = await Promise.resolve(searchParams);
   const { categorySlug, pairSlug } = resolvedParams;
+  const normalizedValue = (() => {
+    if (resolvedSearchParams instanceof URLSearchParams) {
+      return resolvedSearchParams.get('value') ?? undefined;
+    }
+    const raw = resolvedSearchParams?.value;
+    if (Array.isArray(raw)) {
+      return raw[0];
+    }
+    return raw;
+  })();
+  const parsedInitialValue = normalizedValue !== undefined ? Number(normalizedValue) : undefined;
+  const initialValue = parsedInitialValue !== undefined && Number.isFinite(parsedInitialValue)
+    ? parsedInitialValue
+    : undefined;
 
   const categoryInfo = getCategoryInfoBySlug(categorySlug);
   if (!categoryInfo) {
@@ -183,6 +198,7 @@ export default async function ConversionPairPage({ params }: PageProps) {
       reverseExampleRows={reverseExampleRows}
       otherUnits={otherUnits.map((unit) => ({ symbol: unit.symbol, name: unit.name }))}
       navbarPresets={navbarPresets}
+      initialValue={initialValue}
     />
   );
 }
