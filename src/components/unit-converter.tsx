@@ -1598,7 +1598,7 @@ return (
                   <div className="relative">
                     <div
                       className={cn(
-                        "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary transition-colors duration-700 sm:gap-3",
+                        "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
                         resultHighlightPulse &&
                           'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
                       )}
