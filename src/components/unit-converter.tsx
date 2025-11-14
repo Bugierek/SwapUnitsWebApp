@@ -34,6 +34,7 @@ import {
   ChevronsUpDown,
   ArrowUpRight,
   Check,
+  Info,
 } from 'lucide-react';
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -56,12 +57,13 @@ import SimpleCalculator from '@/components/simple-calculator';
 import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
-import { getAliasesForUnit } from '@/lib/conversion-query-parser';
+import { getAliasesForUnit, parseConversionQuery } from '@/lib/conversion-query-parser';
 import type { ParsedConversionPayload } from '@/lib/conversion-query-parser';
 import { ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -109,6 +111,9 @@ const CATEGORY_TILE_SECONDARY_LIMIT: Partial<Record<UnitCategory, number>> = {
   'Fuel Economy': 2,
   'Data Transfer Rate': 2,
 };
+
+const FINDER_CONVERSION_EXAMPLES = ['12 kg in mg', 'mile to meter'];
+const FINDER_CATEGORY_EXAMPLES = ['energy'];
 
 const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     formattedString: string;
@@ -213,7 +218,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
   const [selectedCategoryLocal, setSelectedCategoryLocal] = React.useState<UnitCategory | ''>(defaultCategory);
   const [ComboboxComponent, setComboboxComponent] = React.useState<React.ComponentType<ConversionComboboxProps> | null>(null);
-  const [finderVersion, setFinderVersion] = React.useState(0);
   const initialConversion = React.useMemo(() =>
     convertUnitsDetailed({
       category: defaultCategory,
@@ -271,7 +275,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
   const resultHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasAppliedHighlightRef = React.useRef(false);
+  const [finderVersion, setFinderVersion] = React.useState(0);
+  const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
   const resetFinderInput = React.useCallback(() => {
+    setFinderPresetQuery(null);
     setFinderVersion((prev) => prev + 1);
   }, []);
   const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
@@ -725,6 +732,25 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       });
     },
     [toast],
+  );
+
+  const handleFinderExampleSelect = React.useCallback(
+    (example: string) => {
+      const normalized = example.trim();
+      if (!normalized) {
+        return;
+      }
+      setFinderPresetQuery(normalized);
+      setFinderVersion((prev) => prev + 1);
+
+      const parsed = parseConversionQuery(normalized);
+      if (parsed.ok) {
+        handleParsedConversion(parsed);
+      } else {
+        handleParseError(parsed.error);
+      }
+    },
+    [handleParsedConversion, handleParseError],
   );
 
 
@@ -1211,9 +1237,70 @@ return (
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <Label htmlFor="conversion-search" className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                        Conversion finder
-                      </Label>
+                      <div className="mb-1 flex items-center gap-2">
+                        <Label
+                          htmlFor="conversion-search"
+                          className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground"
+                        >
+                          Conversion finder
+                        </Label>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                aria-label="How the conversion finder understands your input"
+                              >
+                                <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent
+                              align="start"
+                              className="max-w-[260px] whitespace-normal break-words text-xs leading-relaxed"
+                            >
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                    TRY CONVERSIONS EG.
+                                  </p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {FINDER_CONVERSION_EXAMPLES.map((example) => (
+                                      <button
+                                        type="button"
+                                        key={example}
+                                        onClick={() => handleFinderExampleSelect(example)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${example} in the conversion finder`}
+                                      >
+                                        {example}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                    OR FIND CATEGORY EG.
+                                  </p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {FINDER_CATEGORY_EXAMPLES.map((example) => (
+                                      <button
+                                        type="button"
+                                        key={example}
+                                        onClick={() => handleFinderExampleSelect(example)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${example} as the category`}
+                                      >
+                                        {example}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       <div className="relative mb-6">
                         {ComboboxComponent ? (
                           <ComboboxComponent
@@ -1228,10 +1315,11 @@ return (
                                 setValue('toUnit', to);
                               }
                             }}
-                            placeholder={"Type '100 kg to g' or 'milli to nano' for results"}
+                            placeholder={"Type '100 kg to g', unit(s), or a category"}
                             inputId="conversion-search"
                             onParsedConversion={handleParsedConversion}
                             onParseError={handleParseError}
+                            presetQuery={finderPresetQuery}
                           />
                         ) : (
                           <Button

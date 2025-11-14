@@ -39,6 +39,7 @@ export interface ConversionComboboxProps {
   triggerClassName?: string;
   onParsedConversion?: (payload: ParsedConversionPayload) => void;
   onParseError?: (message: string) => void;
+  presetQuery?: string | null;
 }
 
 const CONNECTOR_REGEX = /\b(to|into|in)\b/i;
@@ -146,6 +147,7 @@ export function ConversionCombobox({
   triggerClassName,
   onParsedConversion,
   onParseError,
+  presetQuery = null,
 }: ConversionComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -159,6 +161,29 @@ export function ConversionCombobox({
   const listId = React.useId();
   const generatedInputId = React.useId();
   const resolvedInputId = inputId ?? generatedInputId;
+
+  React.useEffect(() => {
+    if (!presetQuery) return;
+    const normalizedPreset = normalizeInput(presetQuery);
+    setSearch(normalizedPreset);
+    setCommittedInput(normalizedPreset);
+    setOpen(true);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      if (inputRef.current && normalizedPreset) {
+        const position = normalizedPreset.length;
+        inputRef.current.setSelectionRange(position, position);
+      }
+      if (normalizedPreset) {
+        const parsed = parseConversionQuery(normalizedPreset);
+        if (parsed.ok) {
+          onParsedConversion?.(parsed);
+        } else {
+          onParseError?.(parsed.error);
+        }
+      }
+    });
+  }, [presetQuery, onParsedConversion, onParseError]);
 
   const trimmedSearch = search.trim();
   const normalizedSearch = React.useMemo(() => normalizeInput(trimmedSearch), [trimmedSearch]);
