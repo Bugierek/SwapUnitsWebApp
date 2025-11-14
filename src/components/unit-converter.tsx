@@ -11,7 +11,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import {
@@ -23,9 +22,9 @@ import {
 } from '@/components/ui/select';
 import { MeasurementCategoryDropdown, MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
-import type { UnitCategory, Unit, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem, UnitData } from '@/types';
+import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
 import {
   ArrowRightLeft,
   FlaskConical,
@@ -37,7 +36,6 @@ import {
   Check,
 } from 'lucide-react';
 
-import { UnitIcon } from './unit-icon';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -53,10 +51,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
-import { Separator } from './ui/separator';
 import { getCategorySlug } from '@/lib/category-info';
 import { convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
@@ -1007,15 +1003,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [actualFormatUsed, scientificReason, handleActualFormatChange]);
 
   React.useEffect(() => {
-    if (resultCopyState === 'success') {
-      setResultCopyState('idle');
-    }
+    setResultCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue]);
 
   React.useEffect(() => {
-    if (textCopyState === 'success') {
-      setTextCopyState('idle');
-    }
+    setTextCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
   React.useEffect(() => {
@@ -1044,13 +1036,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       }
     };
   }, []);
-
-  React.useEffect(() => {
-    if (textCopyState === 'success') {
-      setTextCopyState('idle');
-    }
-  }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
-
 
   const handleCopy = React.useCallback(async () => {
     const currentRawFormValue = getValues("value");

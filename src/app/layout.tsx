@@ -123,12 +123,13 @@ const backgroundStyle = `
   }
 `;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialPreference = cookies().get('swapunits-theme')?.value ?? 'system';
+  const cookieStore = await cookies();
+  const initialPreference = cookieStore.get('swapunits-theme')?.value ?? 'system';
   const initialClass = initialPreference === 'dark' ? 'dark' : '';
 
   return (

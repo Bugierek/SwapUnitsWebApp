@@ -102,6 +102,10 @@ export function SiteTopbar({
 
   const formatFavoriteLabel = React.useCallback(
     (fav: FavoriteItem) => {
+      const trimmedName = fav.name?.trim() ?? '';
+      if (trimmedName && trimmedName.length <= LABEL_CHAR_LIMIT) {
+        return trimmedName;
+      }
       if (isMobile) {
         return `${fav.fromUnit} → ${fav.toUnit}`;
       }
@@ -119,9 +123,10 @@ export function SiteTopbar({
   const formatPresetLabel = React.useCallback(
     (preset: Preset) => {
       const trimmed = preset.name?.trim() ?? '';
-      return trimmed.length > 0 && trimmed.length <= LABEL_CHAR_LIMIT
-        ? trimmed
-        : `${preset.fromUnit} → ${preset.toUnit}`;
+      if (trimmed.length > 0 && trimmed.length <= LABEL_CHAR_LIMIT) {
+        return trimmed;
+      }
+      return `${preset.fromUnit} → ${preset.toUnit}`;
     },
     [],
   );
@@ -282,11 +287,7 @@ export function SiteTopbar({
                     ) : (
                       <ul className="space-y-1.5">
                         {favorites.map((fav) => {
-                          const trimmed = fav.name?.trim() ?? '';
-                          const displayLabel =
-                            trimmed.length > 0 && trimmed.length <= 30
-                              ? trimmed
-                              : `${fav.fromUnit} → ${fav.toUnit}`;
+                          const displayLabel = formatFavoriteLabel(fav);
                           return (
                           <li
                             key={fav.id}
@@ -335,11 +336,7 @@ export function SiteTopbar({
                     ) : (
                       <ul className="space-y-1.5 pb-10">
                         {presets.map((preset, index) => {
-                          const trimmed = preset.name?.trim() ?? '';
-                          const displayLabel =
-                            trimmed.length > 0 && trimmed.length <= 30
-                              ? trimmed
-                              : `${preset.fromUnit} → ${preset.toUnit}`;
+                          const displayLabel = formatPresetLabel(preset);
                           return (
                           <li key={`${preset.category}-${preset.name}-${index}`}>
                             <SheetClose asChild>

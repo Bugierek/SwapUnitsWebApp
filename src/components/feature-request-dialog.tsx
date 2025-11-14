@@ -56,6 +56,7 @@ export function FeatureRequestDialog() {
         throw new Error('Failed to submit conversion pair request');
       }
     } catch (error) {
+      console.error('Failed to submit feature request', error);
       toast({
         title: 'Error',
         description: 'Failed to submit feature request. Please try again.',

@@ -2,19 +2,14 @@
 
 import * as React from 'react';
 import Script from 'next/script';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { format } from 'date-fns';
 
 import dynamic from 'next/dynamic';
 import type { UnitConverterHandle } from '@/components/unit-converter';
-import { BookmarkButton } from '@/components/bookmark-button';
 import { SiteTopbar } from '@/components/site-topbar';
 import { Toaster } from '@/components/ui/toaster';
 import { Footer } from '@/components/footer';
 import { PresetList } from '@/components/preset-list';
 import { HistoryList } from '@/components/history-list';
-import { UnitIcon } from '@/components/unit-icon';
 import { getFilteredAndSortedPresets } from '@/lib/unit-data';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import type { Preset, UnitCategory, ConversionHistoryItem, FavoriteItem } from '@/types';
@@ -22,18 +17,6 @@ import type { Preset, UnitCategory, ConversionHistoryItem, FavoriteItem } from '
 import { useConversionHistory } from '@/hooks/use-conversion-history';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetClose,
-} from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Menu, RefreshCw, List, History as HistoryIconLucide, Copy, Star, X } from 'lucide-react';
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -97,8 +80,6 @@ const formatHistoryNumberMobile = (num: number): string => {
 
 export default function Home() {
   const { toast } = useToast();
-  const router = useRouter();
-  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const unitConverterRef = React.useRef<UnitConverterHandle>(null);
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
   const { favorites, addFavorite, removeFavorite, clearAllFavorites, isLoadingFavorites } = useFavorites();
@@ -132,14 +113,12 @@ export default function Home() {
     if (unitConverterRef.current) {
       unitConverterRef.current.applyHistorySelect(item);
     }
-    setIsSheetOpen(false);
   }, []);
 
   const onMobilePresetSelect = (preset: Preset | FavoriteItem) => {
     if (unitConverterRef.current) {
       unitConverterRef.current.handlePresetSelect(preset);
     }
-    setIsSheetOpen(false);
   };
 
   const onDesktopHistoryItemSelect = React.useCallback((item: ConversionHistoryItem) => {

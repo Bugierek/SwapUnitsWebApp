@@ -21,7 +21,15 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
   const [waitingForSecondOperand, setWaitingForSecondOperand] = React.useState<boolean>(false);
   const [enterArmed, setEnterArmed] = React.useState(false);
 
-  const inputDigit = (digit: string) => {
+  const clearDisplay = React.useCallback(() => {
+    setEnterArmed(false);
+    setDisplayValue('0');
+    setFirstOperand(null);
+    setOperator(null);
+    setWaitingForSecondOperand(false);
+  }, []);
+
+  const inputDigit = React.useCallback((digit: string) => {
     setEnterArmed(false);
     if (displayValue.length >= 15 && !waitingForSecondOperand) return; // Limit input length
     if (waitingForSecondOperand) {
@@ -30,9 +38,9 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     } else {
       setDisplayValue(displayValue === '0' ? digit : displayValue + digit);
     }
-  };
+  }, [displayValue, waitingForSecondOperand]);
 
-  const inputDecimal = () => {
+  const inputDecimal = React.useCallback(() => {
     setEnterArmed(false);
     if (waitingForSecondOperand) {
       setDisplayValue('0.');
@@ -42,15 +50,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     if (!displayValue.includes('.')) {
       setDisplayValue(displayValue + '.');
     }
-  };
-
-  const clearDisplay = () => {
-    setEnterArmed(false);
-    setDisplayValue('0');
-    setFirstOperand(null);
-    setOperator(null);
-    setWaitingForSecondOperand(false);
-  };
+  }, [displayValue, waitingForSecondOperand]);
 
   const handleBackspace = React.useCallback(() => {
     setEnterArmed(false);
@@ -86,7 +86,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     }
   };
 
-  const performOperation = (nextOperator: string) => {
+  const performOperation = React.useCallback((nextOperator: string) => {
     setEnterArmed(false);
     const inputValue = parseFloat(displayValue);
 
@@ -122,7 +122,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
 
     setWaitingForSecondOperand(true);
     setOperator(nextOperator);
-  };
+  }, [clearDisplay, displayValue, firstOperand, operator]);
 
 
   const handleEquals = React.useCallback((): string | null => {
@@ -162,7 +162,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     return displayValue;
   }, [displayValue, firstOperand, operator]);
 
-  const handleSendValue = (valueOverride?: string) => {
+  const handleSendValue = React.useCallback((valueOverride?: string) => {
     const valueToEmit = valueOverride ?? displayValue;
     if (valueToEmit === 'Error' || isNaN(parseFloat(valueToEmit))) {
       console.warn("Calculator value is 'Error' or invalid, cannot send.");
@@ -172,7 +172,7 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
     onSendValue(normalized);
     setEnterArmed(false);
     if (onClose) onClose(); // Call onClose if provided
-  };
+  }, [displayValue, onClose, onSendValue]);
 
   const handleKeyboardInput = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement | HTMLDivElement>) => {
@@ -236,7 +236,6 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
       inputDigit,
       onClose,
       performOperation,
-      setEnterArmed,
     ],
   );
 

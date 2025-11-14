@@ -1,7 +1,5 @@
 import React from 'react';
-import * as Popover from '@radix-ui/react-popover';
 import * as SelectPrimitive from '@radix-ui/react-select';
-import * as Select from '@radix-ui/react-select';
 
 const TestPopover = () => (
   <div style={{ padding: 20 }}>

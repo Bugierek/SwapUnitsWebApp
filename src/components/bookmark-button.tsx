@@ -8,6 +8,15 @@ import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 import { Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+type BookmarkCapableWindow = Window & {
+  sidebar?: {
+    addPanel?: (title: string, url: string, panelId?: string) => void;
+  };
+  external?: {
+    AddFavorite?: (url: string, title: string) => void;
+  };
+};
+
 // Memoize the component
 export const BookmarkButton = React.memo(function BookmarkButtonComponent() {
   const { toast } = useToast();
@@ -64,14 +73,15 @@ export const BookmarkButton = React.memo(function BookmarkButtonComponent() {
     // in the toast is the standard and reliable approach.
     // The code below is mostly for demonstration and unlikely to work across browsers.
     try {
+      const legacyWindow = window as BookmarkCapableWindow;
       // Older Firefox method (mostly deprecated)
-      if ((window as any).sidebar && (window as any).sidebar.addPanel) {
-        (window as any).sidebar.addPanel(document.title, window.location.href, '');
+      if (legacyWindow.sidebar?.addPanel) {
+        legacyWindow.sidebar.addPanel(document.title, window.location.href, '');
          console.log("Attempted Firefox addPanel bookmark method.");
       }
       // Attempt for IE (highly deprecated)
-      else if ((window as any).external && ('AddFavorite' in (window as any).external)) {
-        (window as any).external.AddFavorite(window.location.href, document.title);
+      else if (legacyWindow.external?.AddFavorite) {
+        legacyWindow.external.AddFavorite(window.location.href, document.title);
          console.log("Attempted IE AddFavorite bookmark method.");
       }
       // Generic alert fallback (if specific methods fail or aren't applicable)
@@ -123,4 +133,3 @@ export const BookmarkButton = React.memo(function BookmarkButtonComponent() {
 });
 
 BookmarkButton.displayName = 'BookmarkButton';
-

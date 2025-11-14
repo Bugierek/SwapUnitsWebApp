@@ -8,15 +8,17 @@ import { getCategoryInfoBySlug, categoryInfoList } from '@/lib/category-info';
 import { getPresetsForCategory, unitData } from '@/lib/unit-data';
 import { convertNumericValue } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
-import type { Unit, UnitCategory } from '@/types';
+import type { UnitCategory } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
+type CategoryPageParams = {
+  slug: string;
+};
+
 type CategoryPageProps = {
-  params: {
-    slug: string;
-  };
+  params: CategoryPageParams | Promise<CategoryPageParams>;
 };
 
 const ratioFriendlyCategories: UnitCategory[] = [
@@ -79,8 +81,9 @@ export function generateStaticParams(): Array<{ slug: string }> {
   return categoryInfoList.map((info) => ({ slug: info.slug }));
 }
 
-export function generateMetadata({ params }: CategoryPageProps): Metadata {
-  const info = getCategoryInfoBySlug(params.slug);
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { slug } = await Promise.resolve(params);
+  const info = getCategoryInfoBySlug(slug);
   if (!info) {
     return {};
   }
@@ -98,8 +101,9 @@ export function generateMetadata({ params }: CategoryPageProps): Metadata {
   };
 }
 
-export default function CategoryPage({ params }: CategoryPageProps) {
-  const info = getCategoryInfoBySlug(params.slug);
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { slug } = await Promise.resolve(params);
+  const info = getCategoryInfoBySlug(slug);
   if (!info) {
     notFound();
   }
@@ -113,8 +117,6 @@ export default function CategoryPage({ params }: CategoryPageProps) {
   const baseUnit = units.find((unit) => unit.factor === 1) ?? units[0];
   const presets = getPresetsForCategory(info.category);
   const topPresets = presets.slice(0, 8);
-
-  const ratioFriendly = isRatioConvertible(info.category);
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-4 pb-16 pt-12 sm:px-6 lg:px-8">

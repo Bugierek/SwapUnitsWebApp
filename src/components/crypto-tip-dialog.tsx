@@ -18,7 +18,7 @@ declare global {
   interface Window {
     ethereum?: {
       isMetaMask?: boolean;
-      request: (args: { method: string; params: any[] }) => Promise<any>;
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
     };
   }
 }
@@ -91,6 +91,7 @@ export function CryptoTipDialog() {
         description: `${type} address copied to clipboard`,
       });
     } catch (err) {
+      console.error('Failed to copy crypto address', err);
       toast({
         title: 'Failed to copy',
         description: 'Please try copying manually',
