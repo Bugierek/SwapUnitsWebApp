@@ -46,7 +46,9 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   const [search, setSearch] = React.useState('');
   const internalTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const filterRef = React.useRef<HTMLDivElement | null>(null);
+  const filterInputRef = React.useRef<HTMLInputElement | null>(null);
   const gridScrollRef = React.useRef<HTMLDivElement | null>(null);
+  const [prefersTouch, setPrefersTouch] = React.useState(false);
   const [contentWidth, setContentWidth] = React.useState<number | undefined>(undefined);
   const [popoverMinHeight, setPopoverMinHeight] = React.useState<number | undefined>(undefined);
   const [gridHeight, setGridHeight] = React.useState<number | undefined>(undefined);
@@ -102,6 +104,10 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
     }
 
     setContentWidth(internalTriggerRef.current?.offsetWidth ?? undefined);
+    let focusRaf: number | null = null;
+    if (!prefersTouch) {
+      focusRaf = requestAnimationFrame(() => filterInputRef.current?.focus());
+    }
 
     const measure = () => {
       const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
@@ -146,9 +152,12 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
     window.addEventListener('resize', measure);
     return () => {
       cancelAnimationFrame(raf);
+      if (focusRaf) {
+        cancelAnimationFrame(focusRaf);
+      }
       window.removeEventListener('resize', measure);
     };
-  }, [open, options.length, filteredOptions.length]);
+  }, [open, options.length, filteredOptions.length, prefersTouch]);
 
   const handleSelect = React.useCallback(
     (nextValue: UnitCategory) => {
@@ -173,6 +182,15 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
 
   const popoverWidth = contentWidth;
   const scrollableHeight = gridHeight;
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const coarseQuery = window.matchMedia('(pointer: coarse)');
+    const updatePreference = () => setPrefersTouch(coarseQuery.matches);
+    updatePreference();
+    coarseQuery.addEventListener('change', updatePreference);
+    return () => coarseQuery.removeEventListener('change', updatePreference);
+  }, []);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -264,7 +282,8 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                   }
                 }}
                 className="h-9 rounded-lg border border-border/50 bg-[hsl(var(--control-background))] px-3 text-sm"
-                autoFocus
+                autoFocus={false}
+                ref={filterInputRef}
               />
             </div>
             <div
