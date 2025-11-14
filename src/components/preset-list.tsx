@@ -10,14 +10,15 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface PresetListProps {
     presetsToDisplay: Preset[]; // Use this prop for the list of presets
@@ -86,21 +87,30 @@ export const PresetList = React.memo(function PresetListComponent({
                                                             Clear All
                                                     </Button>
 
-                                                    <Dialog open={isClearFavoritesDialogOpen} onOpenChange={setIsClearFavoritesDialogOpen}>
-                                                        <DialogContent className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xl">
-                                                            <DialogHeader>
-                                                                <DialogTitle>Clear all favorites?</DialogTitle>
-                                                                <DialogDescription>
+                                                    <AlertDialog open={isClearFavoritesDialogOpen} onOpenChange={setIsClearFavoritesDialogOpen}>
+                                                        <AlertDialogContent className="rounded-2xl border border-border/60 bg-card shadow-xl">
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Clear all favorites?</AlertDialogTitle>
+                                                                <AlertDialogDescription>
                                                                     This will remove all saved favorite conversions. This action cannot be undone.
-                                                                </DialogDescription>
-                                                            </DialogHeader>
-                                                            <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                                                <Button variant="outline" size="sm" onClick={() => setIsClearFavoritesDialogOpen(false)} className="rounded-lg border-border/60 bg-[hsl(var(--control-background))]">Cancel</Button>
-                                                                <Button variant="destructive" size="sm" onClick={() => { setIsClearFavoritesDialogOpen(false); onClearAllFavorites?.(); }} className="rounded-lg">Yes, clear</Button>
-                                                            </DialogFooter>
-                                                            <DialogClose />
-                                                        </DialogContent>
-                                                    </Dialog>
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                                                <AlertDialogCancel className="rounded-lg border-border/60 bg-[hsl(var(--control-background))]">
+                                                                    Cancel
+                                                                </AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    className="rounded-lg"
+                                                                    onClick={() => {
+                                                                        onClearAllFavorites?.();
+                                                                        setIsClearFavoritesDialogOpen(false);
+                                                                    }}
+                                                                >
+                                                                    Yes, clear
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </>
                                         )}
                 </div>

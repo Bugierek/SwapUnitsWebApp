@@ -10,14 +10,15 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast'; 
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-} from '@/components/ui/dialog';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress'; // Import Progress component
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 
@@ -110,21 +111,30 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                 Clear
                             </Button>
 
-                            <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
-                                <DialogContent className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-xl">
-                                    <DialogHeader>
-                                        <DialogTitle>Clear conversion history?</DialogTitle>
-                                        <DialogDescription>
-                                            This will permanently remove all saved conversions from your local history. This cannot be undone.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                                        <Button variant="outline" size="sm" onClick={() => setIsClearDialogOpen(false)} className="rounded-lg border-border/60 bg-[hsl(var(--control-background))]">Cancel</Button>
-                                        <Button variant="destructive" size="sm" onClick={() => { setIsClearDialogOpen(false); onClearHistory?.(); }} className="rounded-lg">Yes, clear</Button>
-                                    </DialogFooter>
-                                    <DialogClose />
-                                </DialogContent>
-                            </Dialog>
+                            <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+                              <AlertDialogContent className="rounded-2xl border border-border/60 bg-card shadow-xl">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Clear conversion history?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently remove all saved conversions from your local history. This cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                                  <AlertDialogCancel className="rounded-lg border-border/60 bg-[hsl(var(--control-background))]">
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="rounded-lg"
+                                    onClick={() => {
+                                      onClearHistory?.();
+                                      setIsClearDialogOpen(false);
+                                    }}
+                                  >
+                                    Yes, clear
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                         </>
                     )}
                 </div>
