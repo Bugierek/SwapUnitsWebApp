@@ -58,11 +58,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  colorScheme: 'light dark',
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0b1221' },
-    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-  ],
   // Set favicon and PWA icons to the SwapUnits refresh logo
   icons: {
     icon: [
@@ -81,6 +76,11 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0b1221' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+  ],
 };
 
 const LIGHT_BG = '#f8fafc';
