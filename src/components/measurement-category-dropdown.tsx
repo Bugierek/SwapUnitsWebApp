@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { UnitIcon } from '@/components/unit-icon';
 import { useRouter } from 'next/navigation';
+import { useIsCoarsePointer } from '@/hooks/use-pointer-capabilities';
 
 export type MeasurementCategoryOption = {
   value: UnitCategory;
@@ -42,6 +43,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
     ref,
   ) => {
   const router = useRouter();
+  const prefersTouch = useIsCoarsePointer();
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const internalTriggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -201,6 +203,16 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
         </button>
       </PopoverTrigger>
       <PopoverContent
+        onOpenAutoFocus={(event) => {
+          if (prefersTouch) {
+            event.preventDefault();
+            return;
+          }
+          requestAnimationFrame(() => {
+            const input = filterRef.current?.querySelector<HTMLInputElement>('input[data-filter-input]');
+            input?.focus();
+          });
+        }}
         align="start"
         side="bottom"
         sideOffset={6}
@@ -264,7 +276,8 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                   }
                 }}
                 className="h-9 rounded-lg border border-border/50 bg-[hsl(var(--control-background))] px-3 text-sm"
-                autoFocus
+                autoFocus={false}
+                data-filter-input
               />
             </div>
             <div
