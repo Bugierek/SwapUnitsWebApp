@@ -285,7 +285,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
   const rhfValue = watch("value");
   const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
+  const [resultHighlightPulse, setResultHighlightPulse] = React.useState(false);
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
+  const resultHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasAppliedHighlightRef = React.useRef(false);
   const resetFinderInput = React.useCallback(() => {
     setFinderVersion((prev) => prev + 1);
   }, []);
@@ -1016,6 +1019,33 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
   React.useEffect(() => {
+    if (!hasAppliedHighlightRef.current) {
+      hasAppliedHighlightRef.current = true;
+      return;
+    }
+    if (showPlaceholder) {
+      return;
+    }
+    if (resultHighlightTimeoutRef.current) {
+      clearTimeout(resultHighlightTimeoutRef.current);
+      resultHighlightTimeoutRef.current = null;
+    }
+    setResultHighlightPulse(true);
+    resultHighlightTimeoutRef.current = setTimeout(() => {
+      setResultHighlightPulse(false);
+      resultHighlightTimeoutRef.current = null;
+    }, 1000);
+  }, [formattedResultString, rhfFromUnit, rhfToUnit, rhfCategory, showPlaceholder]);
+
+  React.useEffect(() => {
+    return () => {
+      if (resultHighlightTimeoutRef.current) {
+        clearTimeout(resultHighlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
     if (textCopyState === 'success') {
       setTextCopyState('idle');
     }
@@ -1170,7 +1200,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setIsCalculatorOpen(false); 
   };
 
-  return (
+return (
+  <>
      <Card
         id="converter"
         className={cn(
@@ -1205,7 +1236,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                       <Label htmlFor="conversion-search" className="mb-1 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
                         Conversion finder
                       </Label>
-                      <div className="relative mb-3">
+                      <div className="relative mb-6">
                         {ComboboxComponent ? (
                           <ComboboxComponent
                             key={finderVersion}
@@ -1265,116 +1296,125 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
                     {/* From Input Row */}
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                      <FormField
-                        control={form.control}
-                        name="value"
-                        render={({ field }) => (
-                          <FormItem className="flex-grow">
-                            <FormControl>
-                              <Input
-                                id="value-input"
-                                type="text"
-                                inputMode="decimal"
-                                placeholder="Enter value"
-                                {...field}
-                                onChange={(e) => {
-                                    const rawValue = e.target.value;
-                                     if (rawValue === '' || rawValue === '-' || /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) || /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)) {
+                    <div className="flex flex-wrap items-stretch gap-3">
+                      <div className="flex min-w-0 flex-1">
+                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <FormField
+                            control={form.control}
+                            name="value"
+                            render={({ field }) => (
+                              <FormItem className="flex-1 space-y-0">
+                                <FormControl>
+                                  <Input
+                                    id="value-input"
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder="Enter value"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const rawValue = e.target.value;
+                                      if (
+                                        rawValue === '' ||
+                                        rawValue === '-' ||
+                                        /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
+                                        /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
+                                      ) {
                                         if (/([eE])/.test(rawValue)) {
-                                            field.onChange(rawValue);
+                                          field.onChange(rawValue);
                                         } else {
-                                            const parts = rawValue.split('.');
-                                            if (parts[0].replace('-', '').length <= 8 && (parts[1] === undefined || parts[1].length <= 7)) {
-                                                field.onChange(rawValue);
-                                            } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
-                                                field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
-                                            }
+                                          const parts = rawValue.split('.');
+                                          if (
+                                            parts[0].replace('-', '').length <= 8 &&
+                                            (parts[1] === undefined || parts[1].length <= 7)
+                                          ) {
+                                            field.onChange(rawValue);
+                                          } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
+                                            field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
+                                          }
                                         }
-                                    }
-                                }}
-                                value={field.value === undefined ? '' : String(field.value)}
-                                disabled={!rhfFromUnit || !rhfToUnit}
-                                aria-required="true"
-                                className={cn(
-                                  "h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-base font-medium transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                                )}
-                              />
-                            </FormControl>
-                             <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
-                          <DialogTrigger asChild>
-                              <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary"
-                                  aria-label="Open calculator"
-                              >
-                                  <Calculator className="h-5 w-5" />
-                              </Button>
-                          </DialogTrigger>
-                           <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
-                             <DialogHeader className="sr-only"> 
-                                <DialogTitle>Calculator</DialogTitle>
-                             </DialogHeader>
-                             <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
-                          </DialogContent>
-                      </Dialog>
-                      <FormField
-                        control={form.control}
-                        name="fromUnit"
-                        render={({ field }) => (
-                          <FormItem className="flex-shrink-0">
-                            <Select
-                              onValueChange={(value) => {
-                                resetFinderInput();
-                                field.onChange(value);
-                              }}
-                              value={field.value}
-                              disabled={!rhfCategory}
-                            >
-                              <FormControl>
-                                <SelectTrigger
-                                  className={cn(
-                                    "h-11 min-w-[110px] rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
-                                  )}
+                                      }
+                                    }}
+                                    value={field.value === undefined ? '' : String(field.value)}
+                                    disabled={!rhfFromUnit || !rhfToUnit}
+                                    aria-required="true"
+                                    className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="fromUnit"
+                            render={({ field }) => (
+                              <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
+                                <Select
+                                  onValueChange={(value) => {
+                                    resetFinderInput();
+                                    field.onChange(value);
+                                  }}
+                                  value={field.value}
+                                  disabled={!rhfCategory}
                                 >
-                                  {field.value && currentUnitsForCategory.find(u => u.symbol === field.value) ? (
-                                    <>
-                                      {isMobile ? (
-                                        <span>({currentUnitsForCategory.find(u => u.symbol === field.value)!.symbol})</span>
+                                  <FormControl>
+                                    <SelectTrigger className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0">
+                                      {field.value && currentUnitsForCategory.find((u) => u.symbol === field.value) ? (
+                                        <>
+                                          {isMobile ? (
+                                            <span>({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})</span>
+                                          ) : (
+                                            <span>
+                                              {currentUnitsForCategory.find((u) => u.symbol === field.value)!.name}{' '}
+                                              ({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})
+                                            </span>
+                                          )}
+                                        </>
                                       ) : (
-                                        <span>
-                                          {currentUnitsForCategory.find(u => u.symbol === field.value)!.name}{' '}
-                                          ({currentUnitsForCategory.find(u => u.symbol === field.value)!.symbol})
-                                        </span>
+                                        <SelectValue placeholder="Unit" />
                                       )}
-                                    </>
-                                  ) : (
-                                    <SelectValue placeholder="Unit" />
-                                  )}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible">
-                                {currentUnitsForCategory.map((unit) => (
-                                  <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                    {unit.name} ({unit.symbol})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent
+                                    side="bottom"
+                                    align="end"
+                                    avoidCollisions={false}
+                                    className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible"
+                                  >
+                                    {currentUnitsForCategory.map((unit) => (
+                                      <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
+                                        {unit.name} ({unit.symbol})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                      <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary"
+                            aria-label="Open calculator"
+                          >
+                            <Calculator className="h-5 w-5" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
+                          <DialogHeader className="sr-only">
+                            <DialogTitle>Calculator</DialogTitle>
+                          </DialogHeader>
+                          <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
+                        </DialogContent>
+                      </Dialog>
                     </div>
 
                    {/* Middle Row - Swap and Favorite Buttons */}
-                   <div className="flex w-full flex-col gap-3 md:flex-row">
+                   <div className="flex flex-wrap items-stretch gap-3">
                         <Button
                             type="button"
                             variant="outline"
@@ -1393,27 +1433,80 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                               variant="outline" 
                               onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
-                              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 md:flex-none md:px-5"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition  hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
                               aria-label={favoriteButtonLabel}
                             >
                               <Star className={cn("h-4 w-4", activeFavorite ? "fill-primary text-primary" : (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
-                            </Button>
+                          </Button>
                         )}
                     </div>
 
 
                     {/* To Result Row */}
-                    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-                      <Input
-                          ref={resultInputRef}
-                          readOnly
-                          value={showPlaceholder ? '-' : formattedResultString}
-                          className={cn(
-                            "h-11 w-full rounded-xl border border-border/60 bg-secondary/60 px-3 text-base font-semibold text-foreground",
-                            showPlaceholder && 'text-muted-foreground'
-                          )}
-                          aria-label="Conversion result"
-                        />
+                    <div className="flex flex-wrap items-stretch gap-3">
+                      <div className="flex min-w-0 flex-1">
+                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <div className="flex-1">
+                            <Input
+                              ref={resultInputRef}
+                              readOnly
+                              value={showPlaceholder ? '-' : formattedResultString}
+                              className={cn(
+                                "h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                                showPlaceholder && 'text-muted-foreground'
+                              )}
+                              aria-label="Conversion result"
+                            />
+                          </div>
+                          <FormField
+                            control={form.control}
+                            name="toUnit"
+                            render={({ field }) => (
+                              <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
+                                <Select
+                                  onValueChange={(value) => {
+                                    resetFinderInput();
+                                    field.onChange(value);
+                                  }}
+                                  value={field.value}
+                                  disabled={!rhfCategory}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0">
+                                      {field.value && currentUnitsForCategory.find((u) => u.symbol === field.value) ? (
+                                        <>
+                                          {isMobile ? (
+                                            <span>({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})</span>
+                                          ) : (
+                                            <span>
+                                              {currentUnitsForCategory.find((u) => u.symbol === field.value)!.name}{' '}
+                                              ({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})
+                                            </span>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <SelectValue placeholder="Unit" />
+                                      )}
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent
+                                    side="bottom"
+                                    align="end"
+                                    avoidCollisions={false}
+                                    className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible"
+                                  >
+                                    {currentUnitsForCategory.map((unit) => (
+                                      <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
+                                        {unit.name} ({unit.symbol})
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
@@ -1428,52 +1521,6 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                           <Copy className="h-5 w-5" />
                         )}
                       </Button>
-                      <FormField
-                        control={form.control}
-                        name="toUnit"
-                        render={({ field }) => (
-                          <FormItem className="flex-shrink-0">
-                            <Select
-                              onValueChange={(value) => {
-                                resetFinderInput();
-                                field.onChange(value);
-                              }}
-                              value={field.value}
-                              disabled={!rhfCategory}
-                            >
-                              <FormControl>
-                                <SelectTrigger className={cn(
-                                   "h-11 min-w-[110px] rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-left text-sm font-medium transition hover:border-primary/50 focus-visible:border-primary/60 md:min-w-[180px]"
-                                  )}
-                                 >
-                                  {field.value && currentUnitsForCategory.find(u => u.symbol === field.value) ? (
-                                    <>
-                                      {isMobile ? (
-                                        <span>({currentUnitsForCategory.find(u => u.symbol === field.value)!.symbol})</span>
-                                      ) : (
-                                        <span>
-                                          {currentUnitsForCategory.find(u => u.symbol === field.value)!.name}{' '}
-                                          ({currentUnitsForCategory.find(u => u.symbol === field.value)!.symbol})
-                                        </span>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <SelectValue placeholder="Unit" />
-                                  )}
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent side="bottom" align="end" avoidCollisions={false} className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible">
-                                 {currentUnitsForCategory.map((unit) => (
-                                  <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                    {unit.name} ({unit.symbol})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
                     </div>
                   </div>
                 )}
@@ -1481,7 +1528,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
                  {/* Textual Conversion Result Display */}
                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
                   <div className="relative">
-                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary sm:gap-3">
+                    <div
+                      className={cn(
+                        "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-sm font-medium text-primary transition-colors duration-700 sm:gap-3",
+                        resultHighlightPulse &&
+                          'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
+                      )}
+                    >
                       <div className="flex flex-1 items-center gap-2 text-left">
                         <span className="truncate">
                           {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
@@ -1594,6 +1647,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
           </Form>
         </CardContent>
       </Card>
+  </>
   );
 }));
 

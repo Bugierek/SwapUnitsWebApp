@@ -56,6 +56,18 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
     [options, value],
   );
 
+  const normalizedQuery = search.trim().toLowerCase();
+  const filteredOptions = React.useMemo(() => {
+    if (!normalizedQuery) return options;
+    const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return options;
+    return options.filter((option) =>
+      tokens.every((token) =>
+        option.keywords.some((keyword) => keyword.includes(token) || token.includes(keyword)),
+      ),
+    );
+  }, [normalizedQuery, options]);
+
   React.useLayoutEffect(() => {
     if (!open) {
       setSearch('');
@@ -111,7 +123,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', measure);
     };
-  }, [open, options.length]);
+  }, [open, options.length, filteredOptions.length]);
 
   const handleSelect = React.useCallback(
     (nextValue: UnitCategory) => {
@@ -133,18 +145,6 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   }, [ref]);
 
   const { className: triggerClassNameProp, ...restTriggerProps } = triggerProps;
-
-  const normalizedQuery = search.trim().toLowerCase();
-  const filteredOptions = React.useMemo(() => {
-    if (!normalizedQuery) return options;
-    const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
-    if (tokens.length === 0) return options;
-    return options.filter((option) =>
-      tokens.every((token) =>
-        option.keywords.some((keyword) => keyword.includes(token) || token.includes(keyword)),
-      ),
-    );
-  }, [normalizedQuery, options]);
 
   const popoverWidth = contentWidth;
   const scrollableHeight = gridHeight;
