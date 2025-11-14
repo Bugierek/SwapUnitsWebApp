@@ -282,6 +282,31 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setFinderVersion((prev) => prev + 1);
   }, []);
   const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
+  const normalizeNumericInputValue = React.useCallback((value: number | undefined): string | number | undefined => {
+    if (value === undefined || value === null) {
+      return value;
+    }
+    if (!Number.isFinite(value)) {
+      return value;
+    }
+
+    const absValue = Math.abs(value);
+    const requiresScientific = absValue !== 0 && (absValue >= 1e8 || absValue < 1e-7);
+
+    if (requiresScientific) {
+      const scientific = value.toExponential(7);
+      return scientific.replace(/(\.\d*?[1-9])0+(e.*)/i, '$1$2').replace(/\.0+(e.*)/i, '$1');
+    }
+
+    const fixed = value.toFixed(7);
+    const trimmed = fixed.replace(/\.?0+$/, '');
+    const [intPartRaw, fracPartRaw = ''] = trimmed.split('.');
+    if (intPartRaw.replace('-', '').length > 8) {
+      const scientific = value.toExponential(7);
+      return scientific.replace(/(\.\d*?[1-9])0+(e.*)/i, '$1$2').replace(/\.0+(e.*)/i, '$1');
+    }
+    return trimmed || '0';
+  }, []);
   const currentConversionPairUrl = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return null;
@@ -988,7 +1013,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         newInputValue = lastValidInputValue;
     }
     
-    setValue("value", newInputValue, { shouldValidate: true, shouldDirty: true });
+    const normalizedValue = normalizeNumericInputValue(newInputValue);
+    setValue("value", normalizedValue, { shouldValidate: true, shouldDirty: true });
     if (newInputValue !== undefined) {
       setLastValidInputValue(newInputValue);
     }
@@ -997,7 +1023,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     setIsSwapped((prev) => !prev); 
 
-  }, [setValue, getValues, conversionResult, lastValidInputValue]);
+  }, [setValue, getValues, conversionResult, lastValidInputValue, normalizeNumericInputValue]);
 
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
