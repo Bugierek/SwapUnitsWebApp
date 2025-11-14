@@ -50,6 +50,8 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   const [contentWidth, setContentWidth] = React.useState<number | undefined>(undefined);
   const [popoverMinHeight, setPopoverMinHeight] = React.useState<number | undefined>(undefined);
   const [gridHeight, setGridHeight] = React.useState<number | undefined>(undefined);
+  const [highlightedValue, setHighlightedValue] = React.useState<UnitCategory | null>(null);
+  const keyboardOverrideRef = React.useRef(false);
 
   const selectedOption = React.useMemo(
     () => options.find((option) => option.value === value),
@@ -60,19 +62,42 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
   const filteredOptions = React.useMemo(() => {
     if (!normalizedQuery) return options;
     const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
-    if (tokens.length === 0) return options;
-    return options.filter((option) =>
-      tokens.every((token) =>
-        option.keywords.some((keyword) => keyword.includes(token) || token.includes(keyword)),
-      ),
-    );
+    if (tokens.length === 0) {
+      return options;
+    }
+    return options.filter((option) => {
+      const haystack = new Set<string>();
+      haystack.add(option.title.toLowerCase());
+      haystack.add(option.topUnits.toLowerCase());
+      haystack.add(option.value.toLowerCase());
+      option.keywords.forEach((keyword) => haystack.add(keyword.toLowerCase()));
+      return tokens.every((token) =>
+        Array.from(haystack).some((entry) => entry.includes(token)),
+      );
+    });
   }, [normalizedQuery, options]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (filteredOptions.length === 0) {
+      setHighlightedValue(null);
+      return;
+    }
+    setHighlightedValue((current) => {
+      if (current && filteredOptions.some((option) => option.value === current)) {
+        return current;
+      }
+      const selectedMatch = filteredOptions.find((option) => option.value === value);
+      return selectedMatch?.value ?? filteredOptions[0].value;
+    });
+  }, [filteredOptions, open, value]);
 
   React.useLayoutEffect(() => {
     if (!open) {
       setSearch('');
       setPopoverMinHeight(undefined);
       setGridHeight(undefined);
+      setHighlightedValue(null);
       return;
     }
 
@@ -196,7 +221,48 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
               <Input
                 placeholder="Filter measurement types..."
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (filteredOptions.length === 0) return;
+                  if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    keyboardOverrideRef.current = true;
+                    setHighlightedValue((current) => {
+                      if (!current) {
+                        return filteredOptions[0].value;
+                      }
+                      const index = filteredOptions.findIndex((opt) => opt.value === current);
+                      if (index < 0) {
+                        return filteredOptions[0].value;
+                      }
+                      const nextIndex = Math.min(index + 1, filteredOptions.length - 1);
+                      return filteredOptions[nextIndex].value;
+                    });
+                    return;
+                  }
+                  if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    keyboardOverrideRef.current = true;
+                    setHighlightedValue((current) => {
+                      if (!current) {
+                        return filteredOptions[0].value;
+                      }
+                      const index = filteredOptions.findIndex((opt) => opt.value === current);
+                      if (index <= 0) {
+                        return filteredOptions[0].value;
+                      }
+                      return filteredOptions[index - 1].value;
+                    });
+                    return;
+                  }
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    const target = highlightedValue ?? filteredOptions[0].value;
+                    handleSelect(target);
+                  }
+                }}
                 className="h-9 rounded-lg border border-border/50 bg-[hsl(var(--control-background))] px-3 text-sm"
                 autoFocus
               />
@@ -212,6 +278,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                   {filteredOptions.map((option) => {
                     const isSelected = option.value === value;
                     const isSiPrefix = option.kind === 'si-prefix';
+                    const isHighlighted = option.value === highlightedValue;
                     return (
                       <div
                         key={option.value}
@@ -219,11 +286,13 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                         className={cn(
                           'relative flex h-[82px] w-full flex-col gap-1 overflow-hidden rounded-xl border border-border/50 bg-[hsl(var(--control-background))] px-3 py-2 text-sm font-medium text-foreground shadow-sm transition duration-150 ease-out hover:border-primary/40 hover:bg-primary/5 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/20 sm:h-[110px] sm:gap-3 sm:px-4 sm:py-3',
                           isSelected && 'border-primary/60 bg-primary/5',
+                          isHighlighted && 'ring-2 ring-primary/40',
                         )}
                       >
                         <button
                           type="button"
                           onClick={() => handleSelect(option.value)}
+                          onMouseEnter={() => setHighlightedValue(option.value)}
                           className="flex flex-1 flex-col items-start text-left"
                         >
                           <span className="flex items-center gap-2">
