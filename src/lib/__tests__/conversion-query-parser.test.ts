@@ -34,4 +34,76 @@ describe('parseConversionQuery', () => {
     const result = parseConversionQuery('3 square meter to m2');
     expect(result).toMatchObject({ ok: true, fromUnit: 'm²', toUnit: 'm²' });
   });
+
+  it('defaults value to 1 when only units are provided', () => {
+    const result = parseConversionQuery('kPa to atm');
+    expect(result).toMatchObject({
+      ok: true,
+      value: 1,
+      fromUnit: 'kPa',
+      toUnit: 'atm',
+      valueStrategy: 'force-default',
+    });
+  });
+
+  it('infers missing to-unit from category defaults when only one unit is provided', () => {
+    const result = parseConversionQuery('kPa');
+    expect(result).toMatchObject({
+      ok: true,
+      value: 1,
+      fromUnit: 'kPa',
+      toUnit: 'atm',
+      category: 'Pressure',
+      valueStrategy: 'preserve-existing',
+    });
+  });
+
+  it('avoids identical from/to units when using inferred defaults', () => {
+    const result = parseConversionQuery('atm');
+    expect(result).toMatchObject({
+      ok: true,
+      fromUnit: 'atm',
+      toUnit: 'Pa',
+      category: 'Pressure',
+    });
+  });
+
+  it('identifies category-only queries', () => {
+    const result = parseConversionQuery('time');
+    expect(result).toMatchObject({
+      ok: true,
+      kind: 'category',
+      category: 'Time',
+    });
+  });
+
+  it('matches category aliases with extra words', () => {
+    const result = parseConversionQuery('time conversions');
+    expect(result).toMatchObject({
+      ok: true,
+      kind: 'category',
+      category: 'Time',
+    });
+  });
+
+  it('requires SI directive to parse prefix conversions', () => {
+    const result = parseConversionQuery('si micro to milli');
+    expect(result).toMatchObject({
+      ok: true,
+      kind: 'si-prefix',
+      fromPrefixSymbol: 'µ',
+      toPrefixSymbol: 'm',
+    });
+  });
+
+  it('extracts numeric values after the SI directive', () => {
+    const result = parseConversionQuery('SI 5 kilo to milli');
+    expect(result).toMatchObject({
+      ok: true,
+      kind: 'si-prefix',
+      value: 5,
+      fromPrefixSymbol: 'k',
+      toPrefixSymbol: 'm',
+    });
+  });
 });

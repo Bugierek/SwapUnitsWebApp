@@ -47,6 +47,68 @@ const LETTER_REGEX = /[a-zA-Z°µμ]/;
 const INITIAL_VISIBLE_ITEMS = 50;
 const LOAD_INCREMENT = 50;
 const CONNECTOR_TERMS = new Set(['to', 'in', 'into']);
+const WORD_CHAR_REGEX = /[a-z0-9°µμ]/;
+
+function isWordBoundaryChar(char: string | undefined) {
+  if (!char) return true;
+  return !WORD_CHAR_REGEX.test(char);
+}
+
+function containsAtWordStart(haystack: string, needle: string): boolean {
+  if (!needle) return false;
+  let startIndex = 0;
+
+  while (startIndex <= haystack.length - needle.length) {
+    const index = haystack.indexOf(needle, startIndex);
+    if (index === -1) {
+      break;
+    }
+    if (isWordBoundaryChar(index === 0 ? undefined : haystack[index - 1])) {
+      return true;
+    }
+    startIndex = index + 1;
+  }
+
+  return false;
+}
+
+function collapseNonWordCharacters(value: string): string {
+  return value.replace(/[^a-z0-9°µμ]+/g, '');
+}
+
+function matchesKeywordTerm(keyword: string, term: string): boolean {
+  if (!keyword || !term) {
+    return false;
+  }
+
+  if (keyword === term) {
+    return true;
+  }
+
+  if (containsAtWordStart(keyword, term)) {
+    return true;
+  }
+
+  if (keyword.length >= 3 && containsAtWordStart(term, keyword)) {
+    return true;
+  }
+
+  const collapsedKeyword = collapseNonWordCharacters(keyword);
+  const collapsedTerm = collapseNonWordCharacters(term);
+  if (!collapsedKeyword || !collapsedTerm) {
+    return false;
+  }
+
+  if (containsAtWordStart(collapsedKeyword, collapsedTerm)) {
+    return true;
+  }
+
+  if (collapsedKeyword.length >= 3 && containsAtWordStart(collapsedTerm, collapsedKeyword)) {
+    return true;
+  }
+
+  return false;
+}
 
 function normalizeInput(value: string): string {
   const withArrowsNormalized = value.replace(/(->|=>|→)/gi, ' to ');
@@ -124,11 +186,7 @@ export function ConversionCombobox({
 
     return items.filter((item) =>
       terms.every((term) =>
-        item.keywordsLower.some(
-          (keyword) =>
-            keyword.includes(term) ||
-            (keyword.length >= 3 && term.includes(keyword)),
-        ),
+        item.keywordsLower.some((keyword) => matchesKeywordTerm(keyword, term)),
       ),
     );
   }, [items, normalizedSearch, hasUnitCharacters]);
@@ -289,6 +347,13 @@ export function ConversionCombobox({
     (parsed: ParsedConversionPayload, typedQuery: string) => {
       onParsedConversion?.(parsed);
 
+      if (parsed.kind === 'category') {
+        setCommittedInput(typedQuery);
+        setSearch(typedQuery);
+        closeDropdown();
+        return;
+      }
+
       if (parsed.kind === 'si-prefix') {
         setCommittedInput(typedQuery);
         setSearch(typedQuery);
@@ -361,10 +426,7 @@ export function ConversionCombobox({
     (query: string) => {
       if (!query) return false;
       const sanitized = query.replace(CONNECTOR_TOKEN_REGEX, ' ');
-      if (!LETTER_REGEX.test(sanitized)) return false;
-      if (CONNECTOR_REGEX.test(query)) return true;
-      const tokens = sanitized.trim().split(/\s+/).filter(Boolean);
-      return tokens.length >= 2;
+      return LETTER_REGEX.test(sanitized);
     },
     [],
   );
@@ -409,6 +471,15 @@ export function ConversionCombobox({
       return;
     }
 
+    if (parsed.kind === 'category') {
+      const match = sortedItems.find(
+        (item) =>
+          item.kind !== 'si-prefix' && item.category === parsed.category,
+      );
+      setAutoHighlightedValue(match?.value ?? null);
+      return;
+    }
+
     const match = sortedItems.find(
       (item) =>
         item.kind !== 'si-prefix' &&
@@ -444,10 +515,12 @@ export function ConversionCombobox({
         return true;
       }
 
-      onParseError?.(parsed.error);
+      if (displayItems.length === 0) {
+        onParseError?.(parsed.error);
+      }
       return false;
     },
-    [handleParsedSelection, onParsedConversion, onParseError],
+    [displayItems.length, handleParsedSelection, onParsedConversion, onParseError],
   );
 
   const handleKeyDown = React.useCallback(

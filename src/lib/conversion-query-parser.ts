@@ -3,6 +3,8 @@
 import { unitData } from '@/lib/unit-data';
 import type { UnitCategory, Unit, UnitData } from '@/types';
 import { matchSiPrefixToken } from '@/lib/si-prefixes';
+import { getCategoryDefaultPair } from '@/lib/category-defaults';
+import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 
 type AliasEntry = {
   symbol: string;
@@ -11,6 +13,8 @@ type AliasEntry = {
 
 type AliasIndex = Map<string, AliasEntry[]>;
 
+type ValueStrategy = 'explicit' | 'force-default' | 'preserve-existing';
+
 type UnitParseSuccess = {
   ok: true;
   kind: 'unit';
@@ -18,6 +22,7 @@ type UnitParseSuccess = {
   fromUnit: string;
   toUnit: string;
   category: UnitCategory;
+  valueStrategy: ValueStrategy;
 };
 
 type SiPrefixParseSuccess = {
@@ -27,9 +32,16 @@ type SiPrefixParseSuccess = {
   fromPrefixSymbol: string;
   toPrefixSymbol: string;
   inputText: string;
+  valueStrategy: ValueStrategy;
 };
 
-export type ParseSuccess = UnitParseSuccess | SiPrefixParseSuccess;
+type CategoryParseSuccess = {
+  ok: true;
+  kind: 'category';
+  category: UnitCategory;
+};
+
+export type ParseSuccess = UnitParseSuccess | SiPrefixParseSuccess | CategoryParseSuccess;
 export type ParseResult = ParseSuccess | ParseFailure;
 export type ParsedConversionPayload = ParseSuccess;
 
@@ -141,6 +153,7 @@ const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
 };
 
 let cachedAliasIndex: AliasIndex | null = null;
+let cachedCategoryAliasMap: Map<string, UnitCategory> | null = null;
 
 function getAliasIndex(): AliasIndex {
   if (!cachedAliasIndex) {
@@ -149,73 +162,125 @@ function getAliasIndex(): AliasIndex {
   return cachedAliasIndex;
 }
 
+function getCategoryAliasMap(): Map<string, UnitCategory> {
+  if (cachedCategoryAliasMap) {
+    return cachedCategoryAliasMap;
+  }
+
+  const map = new Map<string, UnitCategory>();
+  (Object.keys(unitData) as UnitCategory[]).forEach((category) => {
+    const categoryName = unitData[category]?.name ?? category;
+    const aliases = new Set<string>([
+      category,
+      categoryName,
+      ...(CATEGORY_KEYWORDS[category] ?? []),
+    ]);
+    aliases.forEach((alias) => {
+      const key = alias.trim().toLowerCase();
+      if (!key) return;
+      map.set(key, category);
+    });
+  });
+
+  cachedCategoryAliasMap = map;
+  return map;
+}
+
 export function parseConversionQuery(rawQuery: string): ParseResult {
   if (!rawQuery || !rawQuery.trim()) {
     return { ok: false, error: 'Empty query' };
   }
 
   let normalized = normalizeQuery(rawQuery);
+  const siDirectiveMatch = normalized.match(/^si\b/i);
+  const hasSiDirective = Boolean(siDirectiveMatch);
+  if (hasSiDirective) {
+    normalized = normalized.slice(siDirectiveMatch![0].length).trim();
+  }
 
   const valueMatch = normalized.match(
     /^(-?\d+(?:\.\d+)?(?:e[+-]?\d+)?)/i,
   );
 
   let value = 1;
+  let hasExplicitValue = false;
   if (valueMatch) {
     value = normalizeNumberToken(valueMatch[1]);
     normalized = normalized.slice(valueMatch[0].length).trim();
+    hasExplicitValue = true;
   }
 
+  const defaultValueStrategy: ValueStrategy = hasExplicitValue ? 'explicit' : 'force-default';
+
   const connectorMatches = Array.from(normalized.matchAll(CONNECTOR_GLOBAL_REGEX));
-  if (connectorMatches.length === 0) {
-    return { ok: false, error: 'Could not find connector (to/in)' };
-  }
 
   const index = getAliasIndex();
 
-  for (const connectorMatch of connectorMatches) {
-    const matchIndex = connectorMatch.index ?? -1;
-    if (matchIndex < 0) continue;
+  if (connectorMatches.length > 0) {
+    for (const connectorMatch of connectorMatches) {
+      const matchIndex = connectorMatch.index ?? -1;
+      if (matchIndex < 0) continue;
 
-    const fromPart = normalized.slice(0, matchIndex).trim();
-    const toPart = normalized
-      .slice(matchIndex + connectorMatch[0].length)
-      .trim();
+      const fromPart = normalized.slice(0, matchIndex).trim();
+      const toPart = normalized
+        .slice(matchIndex + connectorMatch[0].length)
+        .trim();
 
-    if (!fromPart || !toPart) {
-      continue;
-    }
+      if (!fromPart || !toPart) {
+        continue;
+      }
 
-    const fromAlias = resolveAlias(index, fromPart);
-    if (!fromAlias) {
-      continue;
-    }
+      const fromAlias = resolveAlias(index, fromPart);
+      if (!fromAlias) {
+        continue;
+      }
 
-    const toAlias = resolveAlias(index, toPart);
-    if (!toAlias) {
-      continue;
-    }
+      const toAlias = resolveAlias(index, toPart);
+      if (!toAlias) {
+        continue;
+      }
 
-    if (fromAlias && toAlias && fromAlias.category === toAlias.category) {
-      return {
-        ok: true,
-        kind: 'unit',
-        value,
-        fromUnit: fromAlias.symbol,
-        toUnit: toAlias.symbol,
-        category: fromAlias.category,
-      };
-    }
+      if (fromAlias && toAlias && fromAlias.category === toAlias.category) {
+        return {
+          ok: true,
+          kind: 'unit',
+          value,
+          fromUnit: fromAlias.symbol,
+          toUnit: toAlias.symbol,
+          category: fromAlias.category,
+          valueStrategy: defaultValueStrategy,
+        };
+      }
 
-    const prefixResult = tryParseSiPrefixes(fromPart, toPart, value);
-    if (prefixResult) {
-        return prefixResult;
+      if (hasSiDirective) {
+        const prefixResult = tryParseSiPrefixes(fromPart, toPart, value, defaultValueStrategy);
+        if (prefixResult) {
+          return prefixResult;
+        }
       }
     }
+  }
 
-  const loosePrefixResult = tryParseSiPrefixesWithoutConnector(normalized, value);
-  if (loosePrefixResult) {
-    return loosePrefixResult;
+  if (hasSiDirective) {
+    const loosePrefixResult = tryParseSiPrefixesWithoutConnector(normalized, value, defaultValueStrategy);
+    if (loosePrefixResult) {
+      return loosePrefixResult;
+    }
+  }
+
+  const singleUnitResult = tryParseSingleUnitQuery(
+    normalized,
+    value,
+    hasExplicitValue,
+    index,
+  );
+  if (singleUnitResult) {
+    return singleUnitResult;
+  }
+
+  const categoryResult = tryParseCategoryQuery(normalized);
+  if (categoryResult) {
+    return categoryResult;
   }
 
   return { ok: false, error: 'Missing unit information' };
@@ -467,7 +532,12 @@ export function getAliasesForUnit(unit: Unit): string[] {
   return buildAliasesForUnit(unit);
 }
 
-function tryParseSiPrefixes(fromToken: string, toToken: string, value: number): SiPrefixParseSuccess | null {
+function tryParseSiPrefixes(
+  fromToken: string,
+  toToken: string,
+  value: number,
+  valueStrategy: ValueStrategy,
+): SiPrefixParseSuccess | null {
   const fromPrefix = matchSiPrefixToken(fromToken);
   const toPrefix = matchSiPrefixToken(toToken);
   if (!fromPrefix || !toPrefix) {
@@ -481,10 +551,15 @@ function tryParseSiPrefixes(fromToken: string, toToken: string, value: number): 
     fromPrefixSymbol: fromPrefix.symbol,
     toPrefixSymbol: toPrefix.symbol,
     inputText: `${fromToken} to ${toToken}`,
+    valueStrategy,
   };
 }
 
-function tryParseSiPrefixesWithoutConnector(normalized: string, value: number): SiPrefixParseSuccess | null {
+function tryParseSiPrefixesWithoutConnector(
+  normalized: string,
+  value: number,
+  valueStrategy: ValueStrategy,
+): SiPrefixParseSuccess | null {
   const tokens = normalized
     .split(/\s+/)
     .map((token) => token.trim())
@@ -496,15 +571,85 @@ function tryParseSiPrefixesWithoutConnector(normalized: string, value: number): 
   for (let i = 1; i < tokens.length; i += 1) {
     const fromToken = tokens.slice(0, i).join(' ');
     const toToken = tokens.slice(i).join(' ');
-    const result = tryParseSiPrefixes(fromToken, toToken, value || 1);
+    const result = tryParseSiPrefixes(fromToken, toToken, value || 1, valueStrategy);
     if (result) {
       return {
         ...result,
         inputText: normalized,
         value: Number.isFinite(value) ? value : 1,
+        valueStrategy,
       };
     }
   }
 
   return null;
+}
+
+function tryParseSingleUnitQuery(
+  normalized: string,
+  value: number,
+  hasExplicitValue: boolean,
+  index: AliasIndex,
+): UnitParseSuccess | null {
+  if (!normalized) {
+    return null;
+  }
+
+  const sanitized = normalized.replace(CONNECTOR_GLOBAL_REGEX, ' ').trim();
+  if (!sanitized) {
+    return null;
+  }
+
+  const alias = resolveAlias(index, sanitized);
+  if (!alias) {
+    return null;
+  }
+
+  const units = ((unitData[alias.category]?.units ?? []) as Unit[]).map((unit) => unit.symbol);
+  const defaultPair = getCategoryDefaultPair(alias.category);
+  const candidateTargets: string[] = [];
+
+  if (defaultPair) {
+    candidateTargets.push(defaultPair.toUnit);
+    candidateTargets.push(defaultPair.fromUnit);
+  }
+
+  units
+    .filter((symbol) => symbol !== alias.symbol)
+    .forEach((symbol) => candidateTargets.push(symbol));
+
+  const toUnit =
+    candidateTargets.find((symbol) => symbol && symbol !== alias.symbol) ??
+    alias.symbol;
+
+  return {
+    ok: true,
+    kind: 'unit',
+    value: hasExplicitValue ? value : 1,
+    fromUnit: alias.symbol,
+    toUnit,
+    category: alias.category,
+    valueStrategy: hasExplicitValue ? 'explicit' : 'preserve-existing',
+  };
+}
+
+function tryParseCategoryQuery(normalized: string): CategoryParseSuccess | null {
+  const aliasMap = getCategoryAliasMap();
+  const stripped = normalized
+    .replace(/\b(conversions?|conversion|converter|unit|units)\b/gi, ' ')
+    .replace(CONNECTOR_GLOBAL_REGEX, ' ')
+    .trim();
+  if (!stripped) {
+    return null;
+  }
+  const key = stripped.toLowerCase();
+  const match = aliasMap.get(key);
+  if (!match) {
+    return null;
+  }
+  return {
+    ok: true,
+    kind: 'category',
+    category: match,
+  };
 }

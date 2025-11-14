@@ -60,6 +60,8 @@ import { getAliasesForUnit } from '@/lib/conversion-query-parser';
 import type { ParsedConversionPayload } from '@/lib/conversion-query-parser';
 import { ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { getConversionSources } from '@/lib/conversion-sources';
+import { getCategoryDefaultPair } from '@/lib/category-defaults';
+import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -97,22 +99,6 @@ export interface UnitConverterHandle {
   handlePresetSelect: (preset: Preset | FavoriteItem) => void;
   applyHistorySelect: (item: ConversionHistoryItem) => void;
 }
-
-const CATEGORY_SEARCH_KEYWORDS: Partial<Record<UnitCategory, string[]>> = {
-  Length: ['distance', 'height', 'width', 'depth', 'span'],
-  Mass: ['weight', 'heaviness'],
-  Temperature: ['heat', 'cold', 'climate', 'weather'],
-  Time: ['duration', 'interval', 'schedule'],
-  Pressure: ['barometric', 'atm', 'compression'],
-  Area: ['surface', 'sq', 'square'],
-  Volume: ['capacity', 'cubic', 'liters', 'gallons'],
-  Energy: ['power', 'joules', 'calories'],
-  Speed: ['velocity', 'pace', 'rate'],
-  'Fuel Economy': ['fuel', 'mpg', 'efficiency', 'consumption', 'ev'],
-  'Data Storage': ['storage', 'memory', 'drive', 'disk', 'files'],
-  'Data Transfer Rate': ['bandwidth', 'network', 'internet', 'upload', 'download'],
-  Bitcoin: ['crypto', 'cryptocurrency', 'btc', 'satoshi'],
-};
 
 const CATEGORY_TILE_TITLES: Partial<Record<UnitCategory, string>> = {
   'Fuel Economy': 'Fuel efficiency',
@@ -349,7 +335,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         const keywords = new Set<string>();
         keywords.add(unitData[category].name.toLowerCase());
         keywords.add(category.toLowerCase());
-        (CATEGORY_SEARCH_KEYWORDS[category] ?? []).forEach((keyword) =>
+        (CATEGORY_KEYWORDS[category] ?? []).forEach((keyword) =>
           keywords.add(keyword.toLowerCase()),
         );
         units.forEach((unit) => {
@@ -469,6 +455,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
               `${fromUnit.name} ${toUnit.name}`,
             ]);
 
+            (CATEGORY_KEYWORDS[category] ?? []).forEach((keyword) =>
+              keywordSet.add(keyword.toLowerCase()),
+            );
+
             getAliasesForUnit(fromUnit).forEach((alias) => keywordSet.add(alias));
             getAliasesForUnit(toUnit).forEach((alias) => keywordSet.add(alias));
 
@@ -554,67 +544,16 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       const toValid = availableUnits.some((unit) => unit.symbol === newToUnitSymbol);
 
       if (forceDefaults || !fromValid || !toValid) {
-        switch (category) {
-          case 'Length':
-            newFromUnitSymbol = 'm';
-            newToUnitSymbol = 'ft';
-            break;
-          case 'Mass':
-            newFromUnitSymbol = 'kg';
-            newToUnitSymbol = 'g';
-            break;
-          case 'Temperature':
-            newFromUnitSymbol = '°C';
-            newToUnitSymbol = '°F';
-            break;
-          case 'Time':
-            newFromUnitSymbol = 's';
-            newToUnitSymbol = 'ms';
-            break;
-          case 'Pressure':
-            newFromUnitSymbol = 'Pa';
-            newToUnitSymbol = 'atm';
-            break;
-          case 'Area':
-            newFromUnitSymbol = 'm²';
-            newToUnitSymbol = 'ft²';
-            break;
-          case 'Volume':
-            newFromUnitSymbol = 'L';
-            newToUnitSymbol = 'mL';
-            break;
-          case 'Energy':
-            newFromUnitSymbol = 'J';
-            newToUnitSymbol = 'kJ';
-            break;
-          case 'Speed':
-            newFromUnitSymbol = 'm/s';
-            newToUnitSymbol = 'km/h';
-            break;
-          case 'Fuel Economy':
-            newFromUnitSymbol = 'km/L';
-            newToUnitSymbol = 'MPG (US)';
-            break;
-          case 'Data Storage':
-            newFromUnitSymbol = 'GB';
-            newToUnitSymbol = 'MB';
-            break;
-          case 'Data Transfer Rate':
-            newFromUnitSymbol = 'Mbps';
-            newToUnitSymbol = 'MB/s';
-            break;
-          case 'Bitcoin':
-            newFromUnitSymbol = 'BTC';
-            newToUnitSymbol = 'sat';
-            break;
-          default: {
-            newFromUnitSymbol = availableUnits[0]?.symbol || '';
-            const alternateUnit = availableUnits.find(
-              (unit) => unit.symbol !== newFromUnitSymbol,
-            );
-            newToUnitSymbol = alternateUnit?.symbol || availableUnits[1]?.symbol || newFromUnitSymbol;
-            break;
-          }
+        const defaultPair = getCategoryDefaultPair(category);
+        if (defaultPair) {
+          newFromUnitSymbol = defaultPair.fromUnit;
+          newToUnitSymbol = defaultPair.toUnit;
+        } else {
+          newFromUnitSymbol = availableUnits[0]?.symbol || '';
+          const alternateUnit = availableUnits.find(
+            (unit) => unit.symbol !== newFromUnitSymbol,
+          );
+          newToUnitSymbol = alternateUnit?.symbol || availableUnits[1]?.symbol || newFromUnitSymbol;
         }
       }
 
@@ -680,8 +619,47 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         requestAnimationFrame(() => resultInputRef.current?.focus());
       };
 
+      if (payload.kind === 'category') {
+        setIsSwapped(false);
+        applyCategoryDefaults(payload.category, { forceDefaults: true });
+        focusResultField();
+        return;
+      }
+
+      const resolveValueFromStrategy = (): number => {
+        if (payload.valueStrategy === 'explicit') {
+          return Number.isFinite(payload.value) ? payload.value : 1;
+        }
+
+        if (payload.valueStrategy === 'force-default') {
+          return 1;
+        }
+
+        const currentValueRaw = getValues().value;
+        const trimmed =
+          typeof currentValueRaw === 'string'
+            ? currentValueRaw.trim()
+            : String(currentValueRaw ?? '').trim();
+        const numericValue =
+          typeof currentValueRaw === 'number'
+            ? currentValueRaw
+            : Number(currentValueRaw);
+
+        if (
+          trimmed &&
+          trimmed !== '-' &&
+          Number.isFinite(numericValue) &&
+          numericValue !== 1
+        ) {
+          return numericValue;
+        }
+
+        return 1;
+      };
+
+      const resolvedValue = resolveValueFromStrategy();
+
       if (payload.kind === 'si-prefix') {
-        const parsedValue = Number.isFinite(payload.value) ? payload.value : 1;
         setValue('category', 'SI Prefixes', { shouldValidate: true, shouldDirty: true });
         setSelectedCategoryLocal('SI Prefixes');
         setIsSwapped(false);
@@ -689,14 +667,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         Promise.resolve().then(() => {
           setValue('fromUnit', payload.fromPrefixSymbol, { shouldValidate: true, shouldDirty: true });
           setValue('toUnit', payload.toPrefixSymbol, { shouldValidate: true, shouldDirty: true });
-          setValue('value', parsedValue, { shouldValidate: true, shouldDirty: true });
-          setLastValidInputValue(parsedValue);
+          setValue('value', resolvedValue, { shouldValidate: true, shouldDirty: true });
+          setLastValidInputValue(resolvedValue);
 
           const conversion = convertUnits({
             category: 'SI Prefixes',
             fromUnit: payload.fromPrefixSymbol,
             toUnit: payload.toPrefixSymbol,
-            value: parsedValue,
+            value: resolvedValue,
           });
 
           setConversionResult(conversion);
@@ -705,21 +683,21 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         return;
       }
 
-      const { category, fromUnit, toUnit, value: parsedValue } = payload;
+      const { category, fromUnit, toUnit } = payload;
       setValue('category', category, { shouldValidate: true, shouldDirty: true });
       setSelectedCategoryLocal(category);
 
       Promise.resolve().then(() => {
         setValue('fromUnit', fromUnit, { shouldValidate: true, shouldDirty: true });
         setValue('toUnit', toUnit, { shouldValidate: true, shouldDirty: true });
-        setValue('value', parsedValue, { shouldValidate: true, shouldDirty: true });
-        setLastValidInputValue(parsedValue);
+        setValue('value', resolvedValue, { shouldValidate: true, shouldDirty: true });
+        setLastValidInputValue(resolvedValue);
 
         const conversion = convertUnits({
           category,
           fromUnit,
           toUnit,
-          value: parsedValue,
+          value: resolvedValue,
         });
 
         setConversionResult(conversion);
@@ -727,7 +705,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       });
     },
     [
+      applyCategoryDefaults,
       convertUnits,
+      getValues,
       setValue,
       setSelectedCategoryLocal,
       setLastValidInputValue,
