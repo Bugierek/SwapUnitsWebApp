@@ -139,6 +139,21 @@ function normalizeInput(value: string): string {
   return withSpacing.replace(/\s+/g, ' ').trim();
 }
 
+function isPureNumericQuery(query: string): boolean {
+  if (!query) return false;
+  const withoutCommas = query.replace(/,/g, '').trim();
+  if (!withoutCommas) {
+    return false;
+  }
+
+  if (LETTER_REGEX.test(withoutCommas.replace(CONNECTOR_TOKEN_REGEX, ' '))) {
+    return false;
+  }
+
+  const compact = withoutCommas.replace(/\s+/g, '');
+  return /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/.test(compact);
+}
+
 export function ConversionCombobox({
   items,
   value,
@@ -404,6 +419,15 @@ export function ConversionCombobox({
       onChange(selectedValue);
       setCommittedInput(match.label ?? '');
       setSearch(match.label ?? '');
+      onParsedConversion?.({
+        ok: true,
+        kind: 'unit',
+        category: match.category as UnitCategory,
+        fromUnit: match.fromSymbol,
+        toUnit: match.toSymbol,
+        value: 1,
+        valueStrategy: 'preserve-existing',
+      });
       closeDropdown();
     },
     [closeDropdown, items, onChange, onParsedConversion],
@@ -436,9 +460,10 @@ export function ConversionCombobox({
       );
 
       if (matchingItem) {
-        handleSelect(matchingItem.value);
+        setAutoHighlightedValue(matchingItem.value);
         setCommittedInput(typedQuery);
         setSearch(typedQuery);
+        closeDropdown();
         return;
       }
 
@@ -446,7 +471,7 @@ export function ConversionCombobox({
       setSearch(typedQuery);
       closeDropdown();
     },
-    [closeDropdown, handleSelect, items, onParsedConversion],
+    [closeDropdown, items, onParsedConversion],
   );
 
   React.useEffect(() => {
@@ -630,6 +655,19 @@ export function ConversionCombobox({
           return;
         }
 
+        if (query && handleNumericCommit && isPureNumericQuery(query)) {
+          event.preventDefault();
+          const numericValue = Number(query.replace(/\s+/g, ''));
+          if (Number.isFinite(numericValue)) {
+            handleNumericCommit(numericValue);
+            setSearch('');
+            setCommittedInput('');
+            setAutoHighlightedValue(null);
+            closeDropdown();
+          }
+          return;
+        }
+
         if (displayItems.length > 0) {
           const targetItem = hasHighlight
             ? displayItems[highlightedIndex]
@@ -638,19 +676,6 @@ export function ConversionCombobox({
             event.preventDefault();
             handleSelect(targetItem.value);
             return;
-          }
-        }
-
-        if (query && handleNumericCommit && isPureNumericQuery(query)) {
-          event.preventDefault();
-          const numericValue = Number(query.replace(/\s+/g, ''));
-          if (Number.isFinite(numericValue)) {
-            handleNumericCommit(numericValue);
-            setSearch('');
-            setCommittedInput('');
-            setOpen(false);
-            setAutoHighlightedValue(null);
-            setHighlightedIndex(-1);
           }
         }
       }
@@ -690,6 +715,11 @@ export function ConversionCombobox({
         onChange={(event) => {
           setSearch(event.target.value);
           setOpen(true);
+        }}
+        onClick={() => {
+          if (!open && !disabled) {
+            setOpen(true);
+          }
         }}
         onKeyDown={handleKeyDown}
         className="h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"

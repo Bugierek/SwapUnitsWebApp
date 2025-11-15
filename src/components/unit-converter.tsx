@@ -307,6 +307,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
   const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
   const finderAutoFocusRequestedRef = React.useRef(false);
+  const pendingFinderSelectionRef = React.useRef(false);
   const finderExamples = React.useMemo(() => {
     const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
     return {
@@ -779,14 +780,19 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
   const handleParsedConversion = React.useCallback(
     (payload: ParsedConversionPayload) => {
+      pendingFinderSelectionRef.current = true;
       const focusResultField = () => {
         requestAnimationFrame(() => resultInputRef.current?.focus());
+      };
+      const finalizeFinderSelection = () => {
+        pendingFinderSelectionRef.current = false;
+        focusResultField();
       };
 
       if (payload.kind === 'category') {
         setIsSwapped(false);
         applyCategoryDefaults(payload.category, { forceDefaults: true });
-        focusResultField();
+        finalizeFinderSelection();
         return;
       }
 
@@ -828,22 +834,25 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         setSelectedCategoryLocal('SI Prefixes');
         setIsSwapped(false);
 
-        Promise.resolve().then(() => {
-          setValue('fromUnit', payload.fromPrefixSymbol, { shouldValidate: true, shouldDirty: true });
-          setValue('toUnit', payload.toPrefixSymbol, { shouldValidate: true, shouldDirty: true });
-          setValue('value', resolvedValue, { shouldValidate: true, shouldDirty: true });
-          setLastValidInputValue(resolvedValue);
+        Promise.resolve()
+          .then(() => {
+            setValue('fromUnit', payload.fromPrefixSymbol, { shouldValidate: true, shouldDirty: true });
+            setValue('toUnit', payload.toPrefixSymbol, { shouldValidate: true, shouldDirty: true });
+            setValue('value', resolvedValue, { shouldValidate: true, shouldDirty: true });
+            setLastValidInputValue(resolvedValue);
 
-          const conversion = convertUnits({
-            category: 'SI Prefixes',
-            fromUnit: payload.fromPrefixSymbol,
-            toUnit: payload.toPrefixSymbol,
-            value: resolvedValue,
+            const conversion = convertUnits({
+              category: 'SI Prefixes',
+              fromUnit: payload.fromPrefixSymbol,
+              toUnit: payload.toPrefixSymbol,
+              value: resolvedValue,
+            });
+
+            setConversionResult(conversion);
+          })
+          .finally(() => {
+            finalizeFinderSelection();
           });
-
-          setConversionResult(conversion);
-          focusResultField();
-        });
         return;
       }
 
@@ -851,22 +860,25 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setValue('category', category, { shouldValidate: true, shouldDirty: true });
       setSelectedCategoryLocal(category);
 
-      Promise.resolve().then(() => {
-        setValue('fromUnit', fromUnit, { shouldValidate: true, shouldDirty: true });
-        setValue('toUnit', toUnit, { shouldValidate: true, shouldDirty: true });
-        setValue('value', resolvedValue, { shouldValidate: true, shouldDirty: true });
-        setLastValidInputValue(resolvedValue);
+      Promise.resolve()
+        .then(() => {
+          setValue('fromUnit', fromUnit, { shouldValidate: true, shouldDirty: true });
+          setValue('toUnit', toUnit, { shouldValidate: true, shouldDirty: true });
+          setValue('value', resolvedValue, { shouldValidate: true, shouldDirty: true });
+          setLastValidInputValue(resolvedValue);
 
-        const conversion = convertUnits({
-          category,
-          fromUnit,
-          toUnit,
-          value: resolvedValue,
+          const conversion = convertUnits({
+            category,
+            fromUnit,
+            toUnit,
+            value: resolvedValue,
+          });
+
+          setConversionResult(conversion);
+        })
+        .finally(() => {
+          finalizeFinderSelection();
         });
-
-        setConversionResult(conversion);
-        focusResultField();
-      });
     },
     [
       applyCategoryDefaults,
@@ -877,6 +889,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setLastValidInputValue,
       setConversionResult,
       setIsSwapped,
+      pendingFinderSelectionRef,
+      resultInputRef,
     ],
   );
 
@@ -915,6 +929,44 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     setShouldAutoFocusFinder(false);
   }, []);
 
+  const handleFinderNumericValue = React.useCallback(
+    (numericValue: number) => {
+      if (!Number.isFinite(numericValue)) {
+        return;
+      }
+
+      const normalizedValue = normalizeNumericInputValue(numericValue);
+      setValue('value', normalizedValue, { shouldValidate: true, shouldDirty: true });
+      setLastValidInputValue(numericValue);
+
+      const currentValues = getValues();
+      const currentCategory = (currentValues.category as UnitCategory) || '';
+      const currentFromUnit = typeof currentValues.fromUnit === 'string' ? currentValues.fromUnit : '';
+      const currentToUnit = typeof currentValues.toUnit === 'string' ? currentValues.toUnit : '';
+
+      if (currentCategory && currentFromUnit && currentToUnit) {
+        const conversion = convertUnits({
+          category: currentCategory,
+          fromUnit: currentFromUnit,
+          toUnit: currentToUnit,
+          value: numericValue,
+        });
+        setConversionResult(conversion);
+      }
+
+      focusFromValueInput();
+    },
+    [
+      convertUnits,
+      focusFromValueInput,
+      getValues,
+      normalizeNumericInputValue,
+      setConversionResult,
+      setLastValidInputValue,
+      setValue,
+    ],
+  );
+
 
   const handleActualFormatChange = React.useCallback((
     actualFormat: NumberFormat,
@@ -933,6 +985,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
 
   React.useEffect(() => {
+    if (pendingFinderSelectionRef.current) {
+      return;
+    }
+
     const categoryToProcess = rhfCategory as UnitCategory;
     if (!categoryToProcess) return;
 
@@ -980,6 +1036,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     selectedCategoryLocal,
     setConversionResult,
     setLastValidInputValue,
+    pendingFinderSelectionRef,
   ]);
 
 
@@ -1481,13 +1538,8 @@ return (
                             key={finderVersion}
                             items={conversionPairs}
                             value={selectedConversionPairValue}
-                            onChange={(nextValue: string) => {
-                              const [category, from, to] = nextValue.split(':');
-                              if (category && from && to) {
-                                setValue('category', category as UnitCategory);
-                                setValue('fromUnit', from);
-                                setValue('toUnit', to);
-                              }
+                            onChange={() => {
+                              // Selection is handled via onParsedConversion; no-op here.
                             }}
                             placeholder={"Type '100 kg to g', unit(s), or a category"}
                             inputId="conversion-search"
@@ -1496,6 +1548,7 @@ return (
                             presetQuery={finderPresetQuery}
                             autoFocusOnMount={shouldAutoFocusFinder}
                             onAutoFocusComplete={handleFinderAutoFocusComplete}
+                            onNumericValue={handleFinderNumericValue}
                           />
                         ) : (
                           <Button
