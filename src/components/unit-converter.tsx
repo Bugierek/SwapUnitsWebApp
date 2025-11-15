@@ -102,6 +102,7 @@ interface UnitConverterProps {
 export interface UnitConverterHandle {
   handlePresetSelect: (preset: Preset | FavoriteItem) => void;
   applyHistorySelect: (item: ConversionHistoryItem) => void;
+  focusFinder: () => void;
 }
 
 const CATEGORY_TILE_TITLES: Partial<Record<UnitCategory, string>> = {
@@ -910,6 +911,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 );
 
   const handleFinderAutoFocusComplete = React.useCallback(() => {
+    finderAutoFocusRequestedRef.current = false;
     setShouldAutoFocusFinder(false);
   }, []);
 
@@ -1129,9 +1131,15 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   }, [setValue, reset, getValues, convertUnits, resetFinderInput]);
 
 
+  const focusFinderInput = React.useCallback(() => {
+    finderAutoFocusRequestedRef.current = true;
+    setShouldAutoFocusFinder(true);
+  }, []);
+
   useImperativeHandle(ref, () => ({
     handlePresetSelect: internalHandlePresetSelect,
     applyHistorySelect: internalApplyHistorySelect,
+    focusFinder: focusFinderInput,
   }));
 
 

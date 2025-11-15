@@ -505,7 +505,7 @@ export function ConversionCombobox({
     }
 
     if (!shouldAttemptParsing(normalizedSearch)) {
-      setAutoHighlightedValue(null);
+      setAutoHighlightedValue(value ?? null);
       return;
     }
 
@@ -554,7 +554,7 @@ export function ConversionCombobox({
         item.toSymbol === parsed.toUnit,
     );
     setAutoHighlightedValue(match?.value ?? null);
-  }, [normalizedSearch, open, shouldAttemptParsing, sortedItems]);
+  }, [normalizedSearch, open, shouldAttemptParsing, sortedItems, value]);
 
   React.useEffect(() => {
     if (!open || highlightedIndex < 0) return;
@@ -630,10 +630,15 @@ export function ConversionCombobox({
           return;
         }
 
-        if (hasHighlight) {
-          event.preventDefault();
-          handleSelect(displayItems[highlightedIndex].value);
-          return;
+        if (displayItems.length > 0) {
+          const targetItem = hasHighlight
+            ? displayItems[highlightedIndex]
+            : displayItems[0];
+          if (targetItem) {
+            event.preventDefault();
+            handleSelect(targetItem.value);
+            return;
+          }
         }
 
         if (query && handleNumericCommit && isPureNumericQuery(query)) {

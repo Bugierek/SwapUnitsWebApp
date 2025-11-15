@@ -161,6 +161,7 @@ export default function Home() {
         timestamp: Date.now(),
       };
       unitConverterRef.current.applyHistorySelect(resetItem);
+      unitConverterRef.current.focusFinder();
     }
   }, []);
 
