@@ -281,6 +281,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
   const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
   const finderAutoFocusRequestedRef = React.useRef(false);
+  const focusFromValueInput = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    requestAnimationFrame(() => {
+      const input = document.getElementById('value-input') as HTMLInputElement | null;
+      input?.focus();
+      input?.select?.();
+    });
+  }, []);
+
   const resetFinderInput = React.useCallback(() => {
     setFinderPresetQuery(null);
     setFinderVersion((prev) => prev + 1);
@@ -960,9 +969,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
             const currentVals = getValues();
             const result = convertUnits({...currentVals, value: valToSet, category: presetCategory, fromUnit: finalFromUnit, toUnit: finalToUnit });
             setConversionResult(result);
+            focusFromValueInput();
         });
     });
-  }, [setValue, getValues, convertUnits, lastValidInputValue, resetFinderInput]);
+  }, [setValue, getValues, convertUnits, lastValidInputValue, resetFinderInput, focusFromValueInput]);
 
   const internalApplyHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
     resetFinderInput();
@@ -1003,9 +1013,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         Promise.resolve().then(() => {
            const newResult = convertUnits({...getValues(), category });
            setConversionResult(newResult);
-        });
+           focusFromValueInput();
+          });
     });
-  }, [setValue, reset, getValues, convertUnits, resetFinderInput]);
+  }, [setValue, reset, getValues, convertUnits, resetFinderInput, focusFromValueInput]);
 
 
   useImperativeHandle(ref, () => ({
