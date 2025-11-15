@@ -255,6 +255,8 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           {/* Input with inline unit at the end */}
           <div className="flex h-12 items-center rounded-xl border border-border/60 bg-background">
             <Input
+              id="pair-converter-value"
+              name="pair-converter-value"
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               placeholder={`Enter ${activeFrom.symbol}`}

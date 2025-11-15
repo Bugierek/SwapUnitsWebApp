@@ -42,6 +42,7 @@ export interface ConversionComboboxProps {
   presetQuery?: string | null;
   autoFocusOnMount?: boolean;
   onAutoFocusComplete?: () => void;
+  onNumericValue?: (value: number) => void;
 }
 
 const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;

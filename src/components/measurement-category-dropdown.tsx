@@ -171,7 +171,11 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
     };
   }, [ref]);
 
-  const { className: triggerClassNameProp, ...restTriggerProps } = triggerProps;
+  const {
+    className: triggerClassNameProp,
+    id: forwardedTriggerId,
+    ...restTriggerProps
+  } = triggerProps;
 
   const popoverWidth = contentWidth;
   const scrollableHeight = gridHeight;
@@ -182,6 +186,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
         <button
           ref={mergedTriggerRef}
           type="button"
+          id={forwardedTriggerId}
           className={cn(
             'flex w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-2.5 text-left text-sm font-medium text-foreground transition hover:border-primary/50 focus:outline-none focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20',
             triggerClassNameProp,
@@ -231,6 +236,7 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
               className="sticky top-0 z-10 border-b border-border/60 bg-[hsl(var(--control-background))] px-3 pb-2 pt-3"
             >
               <Input
+                data-filter-input
                 placeholder="Filter measurement types..."
                 value={search}
                 onChange={(event) => {
@@ -277,7 +283,6 @@ export const MeasurementCategoryDropdown = React.forwardRef<HTMLButtonElement, M
                 }}
                 className="h-9 rounded-lg border border-border/50 bg-[hsl(var(--control-background))] px-3 text-sm"
                 autoFocus={false}
-                data-filter-input
               />
             </div>
             <div

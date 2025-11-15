@@ -11,6 +11,7 @@ import {
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import {
@@ -1390,9 +1391,9 @@ return (
                           </Button>
                         )}
                       </div>
-                      <Label htmlFor="category-select" className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                      <FormLabel className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
                         Measurement Category
-                      </Label>
+                      </FormLabel>
                       <FormControl>
                         <MeasurementCategoryDropdown
                           options={categoryOptions}
@@ -1429,6 +1430,7 @@ return (
                                 <FormControl>
                                   <Input
                                     id="value-input"
+                                    name="from-value"
                                     type="text"
                                     inputMode="decimal"
                                     placeholder="Enter value"
@@ -1471,6 +1473,7 @@ return (
                             render={({ field }) => (
                               <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
                                 <Select
+                                  name="fromUnit"
                                   onValueChange={(value) => {
                                     resetFinderInput();
                                     field.onChange(value);
@@ -1570,6 +1573,8 @@ return (
                         <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
                           <div className="flex-1">
                             <Input
+                              id="conversion-result"
+                              name="conversion-result"
                               ref={resultInputRef}
                               readOnly
                               value={showPlaceholder ? '-' : formattedResultString}
@@ -1586,6 +1591,7 @@ return (
                             render={({ field }) => (
                               <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
                                 <Select
+                                  name="toUnit"
                                   onValueChange={(value) => {
                                     resetFinderInput();
                                     field.onChange(value);
@@ -1730,9 +1736,10 @@ return (
                 )}
 
                 <fieldset className="pt-1">
-                   <Label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</Label>
+                   <legend className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</legend>
                    <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3">
                    <RadioGroup
+                     name="result-format"
                      value={numberFormat}
                      onValueChange={(value: string) => {
                          setNumberFormat(value as NumberFormat);
@@ -1750,8 +1757,8 @@ return (
                        <Label
                          htmlFor="format-normal"
                          className={cn(
-                           "cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition",
-                            isNormalFormatDisabled && "text-muted-foreground cursor-not-allowed"
+                           'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition',
+                           isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary',
                          )}
                        >
                          Normal (e.g., 1,234.56)

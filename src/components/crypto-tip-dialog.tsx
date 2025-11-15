@@ -119,7 +119,13 @@ export function CryptoTipDialog() {
             {Object.entries(CRYPTO_ADDRESSES).map(([type, address]) => (
               <div key={type} className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Input value={address} readOnly className="pr-8" />
+                  <Input
+                    id={`crypto-${type.toLowerCase()}-address`}
+                    name={`crypto-${type.toLowerCase()}-address`}
+                    value={address}
+                    readOnly
+                    className="pr-8"
+                  />
                   {type === 'ETH' && (
                     <TooltipProvider>
                       <Tooltip>

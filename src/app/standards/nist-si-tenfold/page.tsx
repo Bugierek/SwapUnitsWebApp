@@ -62,6 +62,9 @@ export default function NistSiTenfoldPage() {
       ? '—'
       : inputValue.trim();
   const formattedOutput = computed !== null && isValueValid ? formatNumber(computed) : '—';
+  const fromValueFieldId = React.useId();
+  const fromPrefixTriggerId = React.useId();
+  const toPrefixTriggerId = React.useId();
 
   React.useEffect(() => {
     setCopyState('idle');
@@ -159,22 +162,34 @@ export default function NistSiTenfoldPage() {
             </p>
             <div className="mt-4 grid items-end gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">From</label>
+                <label
+                  htmlFor={fromValueFieldId}
+                  className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  From
+                </label>
                 <div className="flex h-12 items-center rounded-xl border border-border/60 bg-background">
                   <Input
+                    id={fromValueFieldId}
+                    name="si-prefix-value"
                     value={inputValue}
                     onChange={(event) => setInputValue(event.target.value)}
                     placeholder="Enter number"
                     className="h-full flex-1 min-w-[160px] border-0 bg-transparent px-4 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
                   <Select
+                    name="si-prefix-from"
                     value={fromPrefix.symbol}
                     onValueChange={(symbol) => {
                       const match = prefixOptions.find((opt) => opt.symbol === symbol);
                       if (match) setFromPrefix(match);
                     }}
                   >
-                    <SelectTrigger className="h-full min-w-[140px] rounded-none border-l border-border/60 bg-transparent px-4 text-sm font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0">
+                    <SelectTrigger
+                      id={fromPrefixTriggerId}
+                      className="h-full min-w-[140px] rounded-none border-l border-border/60 bg-transparent px-4 text-sm font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label="Select the starting SI prefix"
+                    >
                       <SelectValue placeholder="Prefix" />
                     </SelectTrigger>
                     <SelectContent>
@@ -203,19 +218,29 @@ export default function NistSiTenfoldPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">To</label>
+                <label
+                  htmlFor={toPrefixTriggerId}
+                  className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  To
+                </label>
                 <div className="flex h-12 items-center rounded-xl border border-border/60 bg-secondary/60">
                   <div className="flex-1 min-w-[160px] px-4 text-base font-semibold text-foreground">
                     {formattedOutput}
                   </div>
                   <Select
+                    name="si-prefix-to"
                     value={toPrefix.symbol}
                     onValueChange={(symbol) => {
                       const match = prefixOptions.find((opt) => opt.symbol === symbol);
                       if (match) setToPrefix(match);
                     }}
                   >
-                    <SelectTrigger className="h-full min-w-[140px] rounded-none border-l border-border/60 bg-transparent px-4 text-sm font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0">
+                    <SelectTrigger
+                      id={toPrefixTriggerId}
+                      className="h-full min-w-[140px] rounded-none border-l border-border/60 bg-transparent px-4 text-sm font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                      aria-label="Select the target SI prefix"
+                    >
                       <SelectValue placeholder="Prefix" />
                     </SelectTrigger>
                     <SelectContent>

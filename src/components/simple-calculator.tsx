@@ -288,6 +288,8 @@ const SimpleCalculator: React.FC<SimpleCalculatorProps> = ({ onSendValue, onClos
       {/* Removed DialogClose and X icon button from here */}
       <Separator className="mb-3 mt-1" /> {/* Slightly increased spacing so divider clears close button */}
       <Input
+        id="calculator-display"
+        name="calculator-display"
         type="text"
         value={displayValue}
         readOnly
