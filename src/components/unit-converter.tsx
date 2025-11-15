@@ -130,8 +130,11 @@ const shouldAbbreviateUnit = (unit: { name: string; symbol: string }) => {
   );
 };
 
-const FINDER_CONVERSION_EXAMPLES = ['12 kg in mg', 'mile to meter', '250 Wh/km to Wh/mi'];
-const FINDER_CATEGORY_EXAMPLES = ['energy', 'fuel economy'];
+const FINDER_VALUE_EXAMPLES = ['12 kg in mg', '5 kPa to atm', '100 L in mL', '3 h in s'];
+
+const FINDER_UNIT_EXAMPLES = ['mile to meter', 'cm to ft', 'psi to kPa', '°C to °F', 'micro to milli', 'mph to km/h'];
+
+const FINDER_CATEGORY_EXAMPLES = ['energy', 'pressure', 'length', 'bitcoin', 'bandwidth', 'speed'];
 
 const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     formattedString: string;
@@ -303,6 +306,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
   const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
   const finderAutoFocusRequestedRef = React.useRef(false);
+  const finderExamples = React.useMemo(() => {
+    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+    return {
+      value: pick(FINDER_VALUE_EXAMPLES),
+      units: pick(FINDER_UNIT_EXAMPLES),
+      category: pick(FINDER_CATEGORY_EXAMPLES),
+    };
+  }, []);
   const focusFromValueInput = React.useCallback(() => {
     if (typeof window === 'undefined') return;
     requestAnimationFrame(() => {
@@ -1418,17 +1429,22 @@ return (
                                     TRY CONVERSIONS EG.
                                   </p>
                                   <div className="flex flex-wrap gap-1.5">
-                                    {FINDER_CONVERSION_EXAMPLES.map((example) => (
-                                      <button
-                                        type="button"
-                                        key={example}
-                                        onClick={() => handleFinderExampleSelect(example)}
-                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                        aria-label={`Use ${example} in the conversion finder`}
-                                      >
-                                        {example}
-                                      </button>
-                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleFinderExampleSelect(finderExamples.value)}
+                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                      aria-label={`Use ${finderExamples.value} in the conversion finder`}
+                                    >
+                                      {finderExamples.value}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleFinderExampleSelect(finderExamples.units)}
+                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                      aria-label={`Use ${finderExamples.units} in the conversion finder`}
+                                    >
+                                      {finderExamples.units}
+                                    </button>
                                   </div>
                                 </div>
                                 <div>
@@ -1436,17 +1452,14 @@ return (
                                     OR FIND CATEGORY EG.
                                   </p>
                                   <div className="flex flex-wrap gap-1.5">
-                                    {FINDER_CATEGORY_EXAMPLES.map((example) => (
-                                      <button
-                                        type="button"
-                                        key={example}
-                                        onClick={() => handleFinderExampleSelect(example)}
-                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                        aria-label={`Use ${example} as the category`}
-                                      >
-                                        {example}
-                                      </button>
-                                    ))}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleFinderExampleSelect(finderExamples.category)}
+                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                      aria-label={`Use ${finderExamples.category} as the category`}
+                                    >
+                                      {finderExamples.category}
+                                    </button>
                                   </div>
                                 </div>
                               </div>
