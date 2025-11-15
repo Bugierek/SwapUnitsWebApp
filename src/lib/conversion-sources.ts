@@ -31,7 +31,7 @@ const DOE_AFDC_FUEL_PROPERTIES: ConversionSource = {
   id: 'doe-afdc-fuel-properties',
   title: 'Alternative Fuels Data Center: Fuel Properties Comparison',
   organization: 'U.S. Department of Energy',
-  url: 'https://afdc.energy.gov/fuels/fuel_properties',
+  url: 'https://afdc.energy.gov/fuels/properties',
   summary:
     'Lists gasoline lower heating value (about 32 MJ/gal, which is roughly 9.5 kWh per liter), letting the app convert between liquid-fuel efficiency (km/L) and EV metrics (km/kWh, kWh/100 km).',
   appliesToUnits: ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi'],
