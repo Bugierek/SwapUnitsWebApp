@@ -16,6 +16,8 @@ import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types
 // Bitcoin: Bitcoin (BTC)
 
 const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // DOE AFDC gasoline energy equivalent (kWh/L)
+const WH_PER_KM_FACTOR = LITER_GASOLINE_KWH_EQUIVALENCE * 1000; // converts Wh/km to km/L via inverse relationship
+const MILES_TO_KILOMETERS = 1.609344;
 
 const fuelEconomyUnits: Unit[] = [
   { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1, unitType: 'direct_efficiency' },
@@ -26,11 +28,13 @@ const fuelEconomyUnits: Unit[] = [
   { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.609344 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
   { name: 'kWh per 100 km', symbol: 'kWh/100km', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'inverse_consumption' }, 
   { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: (100 * LITER_GASOLINE_KWH_EQUIVALENCE) / 1.609344 , unitType: 'inverse_consumption' }, 
+  { name: 'Watt-hour per kilometer', symbol: 'Wh/km', factor: WH_PER_KM_FACTOR, unitType: 'inverse_consumption' },
+  { name: 'Watt-hour per mile', symbol: 'Wh/mi', factor: WH_PER_KM_FACTOR * MILES_TO_KILOMETERS, unitType: 'inverse_consumption' },
 ];
 
 fuelEconomyUnits.sort((a, b) => {
   const preferredOrderICE = ['km/L', 'L/100km', 'MPG (US)', 'MPG (UK)'];
-  const preferredOrderEV = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi'];
+  const preferredOrderEV = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi', 'Wh/km', 'Wh/mi'];
 
   const getUnitRank = (unit: Unit) => {
     let rank = 100;
@@ -242,6 +246,8 @@ export const allPresets: Preset[] = [
   { category: 'Fuel Economy', fromUnit: 'km/L', toUnit: 'MPG (UK)', name: 'km/L to MPG (UK)'},
   { category: 'Fuel Economy', fromUnit: 'kWh/100km', toUnit: 'mi/kWh', name: 'kWh/100km to mi/kWh (EV)' },
   { category: 'Fuel Economy', fromUnit: 'mi/kWh', toUnit: 'kWh/100km', name: 'mi/kWh to kWh/100km (EV)' },
+  { category: 'Fuel Economy', fromUnit: 'Wh/km', toUnit: 'Wh/mi', name: 'Wh/km to Wh/mi (EV)' },
+  { category: 'Fuel Economy', fromUnit: 'Wh/mi', toUnit: 'Wh/km', name: 'Wh/mi to Wh/km (EV)' },
   { category: 'Data Storage', fromUnit: 'GB', toUnit: 'MB', name: 'Gigabytes to Megabytes' },
   { category: 'Data Storage', fromUnit: 'TB', toUnit: 'GB', name: 'Terabytes to Gigabytes' },
   { category: 'Data Transfer Rate', fromUnit: 'Mbps', toUnit: 'MB/s', name: 'Mbps to MB/s' },

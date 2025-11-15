@@ -121,6 +121,31 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
   'mm\u00B3': ['cubic millimeter', 'cubic millimeters', 'cubic millimetre', 'cubic millimetres', 'mm3'],
   'ft\u00B3': ['cubic foot', 'cubic feet', 'ft3', 'cu ft'],
   t: ['metric ton', 'metric tons', 'tonne', 'tonnes', 'ton', 'tons'],
+  'Wh/km': [
+    'wh per km',
+    'wh per kilometer',
+    'wh per kilometre',
+    'watt hour per km',
+    'watt hours per km',
+    'watt-hour per kilometer',
+    'watt-hours per kilometer',
+    'watt hour per kilometer',
+    'watt hour per kilometre',
+    'watt hours per kilometre',
+  ],
+  'Wh/mi': [
+    'wh per mi',
+    'wh per mile',
+    'watt hour per mile',
+    'watt hours per mile',
+    'watt-hour per mile',
+    'watt-hours per mile',
+  ],
+};
+
+const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
+  'Wh/km': ['Wh/mi', 'mi/kWh'],
+  'Wh/mi': ['Wh/km', 'km/kWh'],
 };
 
 const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
@@ -608,6 +633,11 @@ function tryParseSingleUnitQuery(
   const units = ((unitData[alias.category]?.units ?? []) as Unit[]).map((unit) => unit.symbol);
   const defaultPair = getCategoryDefaultPair(alias.category);
   const candidateTargets: string[] = [];
+
+  const specificTargets = UNIT_SPECIFIC_TARGETS[alias.symbol];
+  if (specificTargets) {
+    specificTargets.forEach((target) => candidateTargets.push(target));
+  }
 
   if (defaultPair) {
     candidateTargets.push(defaultPair.toUnit);

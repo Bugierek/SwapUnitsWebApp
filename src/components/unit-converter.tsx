@@ -114,8 +114,8 @@ const CATEGORY_TILE_SECONDARY_LIMIT: Partial<Record<UnitCategory, number>> = {
   'Data Transfer Rate': 2,
 };
 
-const FINDER_CONVERSION_EXAMPLES = ['12 kg in mg', 'mile to meter'];
-const FINDER_CATEGORY_EXAMPLES = ['energy'];
+const FINDER_CONVERSION_EXAMPLES = ['12 kg in mg', 'mile to meter', '250 Wh/km to Wh/mi'];
+const FINDER_CATEGORY_EXAMPLES = ['energy', 'fuel economy'];
 
 const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
     formattedString: string;
