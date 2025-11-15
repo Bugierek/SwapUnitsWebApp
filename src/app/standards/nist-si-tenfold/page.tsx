@@ -17,6 +17,7 @@ import { Footer } from '@/components/footer';
 import { useConversionHistory } from '@/hooks/use-conversion-history';
 import type { ConversionHistoryItem } from '@/types';
 import { SI_MULTIPLES, SI_SUBMULTIPLES, ALL_SI_PREFIXES } from '@/lib/si-prefixes';
+import { getConversionSources } from '@/lib/conversion-sources';
 
 const formatValue = (exp: number) => `10${exp >= 0 ? `^${exp}` : `^(${exp})`}`;
 
@@ -50,6 +51,10 @@ export default function NistSiTenfoldPage() {
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
   const numericValue = Number(inputValue);
   const isValueValid = Number.isFinite(numericValue);
+  const conversionSources = React.useMemo(
+    () => getConversionSources('SI Prefixes', fromPrefix.symbol, toPrefix.symbol),
+    [fromPrefix.symbol, toPrefix.symbol],
+  );
   const computed = React.useMemo(() => {
     if (!isValueValid) return null;
     const factor = Math.pow(10, fromPrefix.exponent - toPrefix.exponent);
@@ -296,6 +301,47 @@ export default function NistSiTenfoldPage() {
                 </button>
               </div>
             </div>
+            {conversionSources.length > 0 && (
+              <details className="mt-5 rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
+                <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold text-foreground">
+                  Conversion sources
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Tap or click to view references
+                  </span>
+                </summary>
+                <ul className="mt-3 space-y-3">
+                  {conversionSources.map((source) => (
+                    <li key={source.id} className="leading-relaxed">
+                      <p className="text-sm font-semibold text-foreground">{source.title}</p>
+                      <p className="mt-1">
+                        <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+                        {source.summary}{' '}
+                        <a
+                          href={source.url}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="font-semibold text-primary underline-offset-2 hover:underline"
+                        >
+                          View source
+                        </a>
+                        {source.id === 'nist-guide-si' && (
+                          <>
+                            {' '}
+                            ·{' '}
+                            <Link
+                              href="/standards/nist-si-tenfold"
+                              className="font-semibold text-primary underline-offset-2 hover:underline"
+                            >
+                              View SI table
+                            </Link>
+                          </>
+                        )}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </section>
 
           <section className="rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-sm">
