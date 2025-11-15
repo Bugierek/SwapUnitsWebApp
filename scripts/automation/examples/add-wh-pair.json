@@ -1,0 +1,43 @@
+{
+  "category": "Fuel Economy",
+  "units": [
+    {
+      "name": "Watt-hour per kilometer",
+      "symbol": "Wh/km",
+      "factorExpression": "WH_PER_KM_FACTOR",
+      "unitType": "inverse_consumption"
+    },
+    {
+      "name": "Watt-hour per mile",
+      "symbol": "Wh/mi",
+      "factorExpression": "WH_PER_KM_FACTOR * 1.609344",
+      "unitType": "inverse_consumption"
+    }
+  ],
+  "presets": [
+    { "category": "Fuel Economy", "fromUnit": "Wh/km", "toUnit": "Wh/mi", "name": "Wh/km to Wh/mi (EV)" },
+    { "category": "Fuel Economy", "fromUnit": "Wh/mi", "toUnit": "Wh/km", "name": "Wh/mi to Wh/km (EV)" }
+  ],
+  "keywordAdditions": ["watt-hour", "watt hour", "wh/km", "wh/mi", "wh per km", "wh per mile"],
+  "synonyms": {
+    "Wh/km": ["wh per km", "watt hour per kilometer", "watt-hour per km", "watt hours per kilometer"],
+    "Wh/mi": ["wh per mile", "watt hour per mile", "watt-hour per mile", "watt hours per mile"]
+  },
+  "unitTargets": {
+    "Wh/km": ["Wh/mi", "mi/kWh"],
+    "Wh/mi": ["Wh/km", "km/kWh"]
+  },
+  "tooltipExamples": ["250 Wh/km to Wh/mi"],
+  "conversionSourceUpdates": [
+    {
+      "constantName": "DOE_AFDC_FUEL_PROPERTIES",
+      "units": ["Wh/km", "Wh/mi"]
+    }
+  ],
+  "references": [
+    {
+      "description": "DOE AFDC – Fuel Properties Comparison",
+      "url": "https://afdc.energy.gov/fuels/properties"
+    }
+  ]
+}
