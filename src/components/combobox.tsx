@@ -40,6 +40,8 @@ export interface ConversionComboboxProps {
   onParsedConversion?: (payload: ParsedConversionPayload) => void;
   onParseError?: (message: string) => void;
   presetQuery?: string | null;
+  autoFocusOnMount?: boolean;
+  onAutoFocusComplete?: () => void;
 }
 
 const CONNECTOR_REGEX = /\b(to|into|in)\b/i;
@@ -148,6 +150,8 @@ export function ConversionCombobox({
   onParsedConversion,
   onParseError,
   presetQuery = null,
+  autoFocusOnMount = false,
+  onAutoFocusComplete,
 }: ConversionComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -161,6 +165,8 @@ export function ConversionCombobox({
   const listId = React.useId();
   const generatedInputId = React.useId();
   const resolvedInputId = inputId ?? generatedInputId;
+
+  const autoFocusTriggeredRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!presetQuery) return;
@@ -184,6 +190,19 @@ export function ConversionCombobox({
       }
     });
   }, [presetQuery, onParsedConversion, onParseError]);
+
+  React.useEffect(() => {
+    if (!autoFocusOnMount || autoFocusTriggeredRef.current) {
+      return;
+    }
+    const handle = requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      autoFocusTriggeredRef.current = true;
+      onAutoFocusComplete?.();
+    });
+    return () => cancelAnimationFrame(handle);
+  }, [autoFocusOnMount, onAutoFocusComplete]);
 
   const trimmedSearch = search.trim();
   const normalizedSearch = React.useMemo(() => normalizeInput(trimmedSearch), [trimmedSearch]);
@@ -622,7 +641,6 @@ export function ConversionCombobox({
         placeholder={placeholder}
         disabled={disabled}
         onFocus={() => {
-          setOpen(true);
           setSearch(committedInput);
           requestAnimationFrame(() => inputRef.current?.select());
         }}

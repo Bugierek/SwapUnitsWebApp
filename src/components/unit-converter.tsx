@@ -40,6 +40,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsCoarsePointer } from '@/hooks/use-pointer-capabilities';
 import { cn } from '@/lib/utils';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useImperativeHandle, forwardRef } from 'react';
@@ -231,6 +232,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal');
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
   const isMobile = useIsMobile();
+  const prefersTouch = useIsCoarsePointer();
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
@@ -277,6 +279,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const hasAppliedHighlightRef = React.useRef(false);
   const [finderVersion, setFinderVersion] = React.useState(0);
   const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
+  const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
+  const finderAutoFocusRequestedRef = React.useRef(false);
   const resetFinderInput = React.useCallback(() => {
     setFinderPresetQuery(null);
     setFinderVersion((prev) => prev + 1);
@@ -334,6 +338,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const params = new URLSearchParams({ value: trimmedValue });
     return `${baseUrl}?${params.toString()}`;
   }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue]);
+
+  React.useEffect(() => {
+    if (!prefersTouch && ComboboxComponent && !finderAutoFocusRequestedRef.current) {
+      finderAutoFocusRequestedRef.current = true;
+      setShouldAutoFocusFinder(true);
+    }
+  }, [prefersTouch, ComboboxComponent]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -770,13 +781,17 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
       const parsed = parseConversionQuery(normalized);
       if (parsed.ok) {
-        handleParsedConversion(parsed);
-      } else {
-        handleParseError(parsed.error);
-      }
-    },
-    [handleParsedConversion, handleParseError],
-  );
+      handleParsedConversion(parsed);
+    } else {
+      handleParseError(parsed.error);
+    }
+  },
+  [handleParsedConversion, handleParseError],
+);
+
+  const handleFinderAutoFocusComplete = React.useCallback(() => {
+    setShouldAutoFocusFinder(false);
+  }, []);
 
 
   const handleActualFormatChange = React.useCallback((
@@ -1348,6 +1363,8 @@ return (
                             onParsedConversion={handleParsedConversion}
                             onParseError={handleParseError}
                             presetQuery={finderPresetQuery}
+                            autoFocusOnMount={shouldAutoFocusFinder}
+                            onAutoFocusComplete={handleFinderAutoFocusComplete}
                           />
                         ) : (
                           <Button
