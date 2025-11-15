@@ -57,7 +57,7 @@ import {
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
 import { getCategorySlug } from '@/lib/category-info';
-import { convertUnitsDetailed } from '@/lib/conversion-math';
+import { convertNumericValue, convertUnitsDetailed } from '@/lib/conversion-math';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { getAliasesForUnit, parseConversionQuery } from '@/lib/conversion-query-parser';
 import type { ParsedConversionPayload } from '@/lib/conversion-query-parser';
@@ -66,6 +66,7 @@ import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AccordionTabs, type AccordionTabItem } from '@/components/accordion-tabs';
 import {
   formatConversionValue,
   formatScientificValue,
@@ -646,6 +647,18 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     );
   }, [rhfCategory, rhfFromUnit, rhfToUnit]);
 
+  const multiplier = React.useMemo(() => {
+    if (!rhfCategory || !currentFromUnit || !currentToUnit) {
+      return null;
+    }
+    return convertNumericValue(
+      rhfCategory as UnitCategory,
+      currentFromUnit.symbol,
+      currentToUnit.symbol,
+      1,
+    );
+  }, [rhfCategory, currentFromUnit, currentToUnit]);
+
   const selectedConversionPairValue = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return undefined;
@@ -1191,6 +1204,22 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   };
 
   const showPlaceholder = rhfValue === undefined || rhfFromUnit === '' || !conversionResult || String(rhfValue).trim() === '' || String(rhfValue) === '-';
+  const inputNumericValue = React.useMemo(() => {
+    if (rhfValue === undefined || rhfValue === null) {
+      return null;
+    }
+    const trimmed = String(rhfValue).trim();
+    if (trimmed === '' || trimmed === '-' || trimmed === '.' || trimmed === '-.') {
+      return null;
+    }
+    const numeric = Number(trimmed);
+    return Number.isFinite(numeric) ? numeric : null;
+  }, [rhfValue]);
+  const formatFormulaValue = React.useCallback(
+    (value: number | null) =>
+      formatConversionValue(value, { precisionBoost: 0, precisionMode }).formatted,
+    [precisionMode],
+  );
   React.useEffect(() => {
     if (!showPlaceholder) return;
     if (textCopyState !== 'idle') {
@@ -1224,6 +1253,164 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     setTextCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
+  const generalFormula = React.useMemo(() => {
+    if (!currentFromUnit || !currentToUnit || multiplier === null) {
+      return null;
+    }
+
+    const fromSymbol = currentFromUnit.symbol;
+    const toSymbol = currentToUnit.symbol;
+
+    if (rhfCategory === 'Temperature') {
+      if (fromSymbol === '°C' && toSymbol === '°F') {
+        return '°F = °C × 9/5 + 32';
+      } else if (fromSymbol === '°F' && toSymbol === '°C') {
+        return '°C = (°F - 32) × 5/9';
+      } else if (fromSymbol === '°C' && toSymbol === 'K') {
+        return 'K = °C + 273.15';
+      } else if (fromSymbol === 'K' && toSymbol === '°C') {
+        return '°C = K - 273.15';
+      } else if (fromSymbol === '°F' && toSymbol === 'K') {
+        return 'K = (°F - 32) × 5/9 + 273.15';
+      } else if (fromSymbol === 'K' && toSymbol === '°F') {
+        return '°F = (K - 273.15) × 9/5 + 32';
+      }
+    }
+
+    if (rhfCategory === 'Data Storage') {
+      if (fromSymbol && toSymbol) {
+        const power = Math.log(multiplier) / Math.log(1024);
+        if (Number.isInteger(power)) {
+          return `${toSymbol} = ${fromSymbol} × 1024${power > 1 ? '^' + power : ''}`;
+        }
+      }
+    }
+
+    if (rhfCategory === 'Data Transfer Rate') {
+      if (
+        (fromSymbol.includes('bps') && toSymbol.includes('/s')) ||
+        (fromSymbol.includes('/s') && toSymbol.includes('bps'))
+      ) {
+        const base = multiplier / 8;
+        if (base === 1) {
+          return `${toSymbol} = ${fromSymbol} × 8`;
+        } else if (base < 1) {
+          return `${toSymbol} = ${fromSymbol} ÷ ${formatFormulaValue(1 / base)}`;
+        }
+        return `${toSymbol} = ${fromSymbol} × ${formatFormulaValue(multiplier)}`;
+      }
+    }
+
+    if (rhfCategory === 'Fuel Economy') {
+      if (
+        (fromSymbol.includes('/100') && !toSymbol.includes('/100')) ||
+        (!fromSymbol.includes('/100') && toSymbol.includes('/100'))
+      ) {
+        return `${toSymbol} = 100 ÷ (${fromSymbol} × ${formatFormulaValue(multiplier)})`;
+      }
+    }
+
+    if (multiplier !== null) {
+      if (multiplier === 1) {
+        return `${toSymbol} = ${fromSymbol}`;
+      } else if (multiplier < 1) {
+        const inverse = multiplier === 0 ? Infinity : 1 / multiplier;
+        return `${toSymbol} = ${fromSymbol} ÷ ${formatFormulaValue(inverse)}`;
+      }
+      return `${toSymbol} = ${fromSymbol} × ${formatFormulaValue(multiplier)}`;
+    }
+
+    return null;
+  }, [rhfCategory, currentFromUnit, currentToUnit, multiplier, formatFormulaValue]);
+
+  const dynamicFormula = React.useMemo(() => {
+    if (
+      showPlaceholder ||
+      !conversionResult ||
+      !currentFromUnit ||
+      !currentToUnit ||
+      inputNumericValue === null
+    ) {
+      return null;
+    }
+
+    const inputFormatted = formatFromValue(inputNumericValue, precisionMode);
+    if (multiplier !== null) {
+      return `${inputFormatted} ${currentFromUnit.symbol} × ${formatFormulaValue(multiplier)} = ${formattedResultString} ${currentToUnit.symbol}`;
+    }
+    return `${inputFormatted} ${currentFromUnit.symbol} = ${formattedResultString} ${currentToUnit.symbol}`;
+  }, [
+    showPlaceholder,
+    conversionResult,
+    currentFromUnit,
+    currentToUnit,
+    inputNumericValue,
+    multiplier,
+    precisionMode,
+    formattedResultString,
+    formatFormulaValue,
+  ]);
+  const referenceTabs = React.useMemo<AccordionTabItem[]>(() => {
+    const tabs: AccordionTabItem[] = [];
+    if (generalFormula || dynamicFormula) {
+      tabs.push({
+        id: 'formula',
+        label: 'Formula',
+        content: (
+          <div className="space-y-2 text-xs text-muted-foreground">
+            {generalFormula && (
+              <p className="text-sm font-semibold text-foreground">{generalFormula}</p>
+            )}
+            {dynamicFormula && (
+              <p className="text-xs text-muted-foreground">{dynamicFormula}</p>
+            )}
+          </div>
+        ),
+      });
+    }
+
+    if (conversionSources.length > 0) {
+      tabs.push({
+        id: 'sources',
+        label: 'Sources',
+        content: (
+          <ul className="space-y-3 text-xs text-muted-foreground">
+            {conversionSources.map((source) => (
+              <li key={source.id} className="leading-relaxed">
+                <p className="text-sm font-semibold text-foreground">{source.title}</p>
+                <p className="mt-1">
+                  <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+                  {source.summary}{' '}
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    View source
+                  </a>
+                  {source.id === 'nist-guide-si' && (
+                    <>
+                      {' '}
+                      ·{' '}
+                      <Link
+                        href="/standards/nist-si-tenfold"
+                        className="font-semibold text-primary underline-offset-2 hover:underline"
+                      >
+                        View SI table
+                      </Link>
+                    </>
+                  )}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ),
+      });
+    }
+
+    return tabs;
+  }, [generalFormula, dynamicFormula, conversionSources]);
   const handlePrecisionToggle = React.useCallback(() => {
     setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
   }, []);
@@ -1909,46 +2096,12 @@ return (
                   </div>
                 )}
 
-                {conversionSources.length > 0 && (
-                  <details className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
-                    <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm font-semibold text-foreground">
-                      Conversion sources
-                      <span className="text-xs font-normal text-muted-foreground">
-                        Tap or click to view references
-                      </span>
-                    </summary>
-                    <ul className="mt-3 space-y-3">
-                      {conversionSources.map((source) => (
-                        <li key={source.id} className="leading-relaxed">
-                          <p className="text-sm font-semibold text-foreground">{source.title}</p>
-                          <p className="mt-1">
-                            <span className="font-medium text-foreground">{source.organization}</span>.{' '}
-                      {source.summary}{' '}
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="font-semibold text-primary underline-offset-2 hover:underline"
-                      >
-                        View source
-                      </a>
-                      {source.id === 'nist-guide-si' && (
-                        <>
-                          {' '}
-                          ·{' '}
-                          <Link
-                            href="/standards/nist-si-tenfold"
-                            className="font-semibold text-primary underline-offset-2 hover:underline"
-                          >
-                            View SI table
-                          </Link>
-                        </>
-                      )}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
+                {referenceTabs.length > 0 && (
+                  <AccordionTabs
+                    tabs={referenceTabs}
+                    initiallyOpen={false}
+                    className="mt-2"
+                  />
                 )}
 
                 <fieldset className="pt-1">
