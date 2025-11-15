@@ -313,7 +313,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     const fixed = value.toFixed(7);
     const trimmed = fixed.replace(/\.?0+$/, '');
-    const [intPartRaw, fracPartRaw = ''] = trimmed.split('.');
+    const [intPartRaw] = trimmed.split('.');
     if (intPartRaw.replace('-', '').length > 8) {
       const scientific = value.toExponential(7);
       return scientific.replace(/(\.\d*?[1-9])0+(e.*)/i, '$1$2').replace(/\.0+(e.*)/i, '$1');

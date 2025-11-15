@@ -44,7 +44,6 @@ export interface ConversionComboboxProps {
   onAutoFocusComplete?: () => void;
 }
 
-const CONNECTOR_REGEX = /\b(to|into|in)\b/i;
 const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;
 const LETTER_REGEX = /[a-zA-Z°µμ]/;
 const INITIAL_VISIBLE_ITEMS = 50;
@@ -152,6 +151,7 @@ export function ConversionCombobox({
   presetQuery = null,
   autoFocusOnMount = false,
   onAutoFocusComplete,
+  onNumericValue,
 }: ConversionComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -167,6 +167,12 @@ export function ConversionCombobox({
   const resolvedInputId = inputId ?? generatedInputId;
 
   const autoFocusTriggeredRef = React.useRef(false);
+  const handleNumericCommit = React.useCallback(
+    (value: number) => {
+      onNumericValue?.(value);
+    },
+    [onNumericValue],
+  );
 
   React.useEffect(() => {
     if (!presetQuery) return;
@@ -195,6 +201,21 @@ export function ConversionCombobox({
     if (!autoFocusOnMount || autoFocusTriggeredRef.current) {
       return;
     }
+
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const coarseQuery = window.matchMedia('(pointer: coarse)');
+    const prefersTouch =
+      coarseQuery.matches || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0);
+
+    if (prefersTouch) {
+      autoFocusTriggeredRef.current = true;
+      onAutoFocusComplete?.();
+      return;
+    }
+
     const handle = requestAnimationFrame(() => {
       inputRef.current?.focus();
       inputRef.current?.select();
@@ -611,6 +632,20 @@ export function ConversionCombobox({
         if (hasHighlight) {
           event.preventDefault();
           handleSelect(displayItems[highlightedIndex].value);
+          return;
+        }
+
+        if (query && handleNumericCommit && isPureNumericQuery(query)) {
+          event.preventDefault();
+          const numericValue = Number(query.replace(/\s+/g, ''));
+          if (Number.isFinite(numericValue)) {
+            handleNumericCommit(numericValue);
+            setSearch('');
+            setCommittedInput('');
+            setOpen(false);
+            setAutoHighlightedValue(null);
+            setHighlightedIndex(-1);
+          }
         }
       }
     },
@@ -622,8 +657,10 @@ export function ConversionCombobox({
       highlightedIndex,
       open,
       tryParse,
+      handleNumericCommit,
     ],
   );
+
 
   const activeDescendant =
     highlightedIndex >= 0 && highlightedIndex < displayItems.length
