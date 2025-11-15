@@ -1013,10 +1013,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         Promise.resolve().then(() => {
            const newResult = convertUnits({...getValues(), category });
            setConversionResult(newResult);
-           focusFromValueInput();
           });
     });
-  }, [setValue, reset, getValues, convertUnits, resetFinderInput, focusFromValueInput]);
+  }, [setValue, reset, getValues, convertUnits, resetFinderInput]);
 
 
   useImperativeHandle(ref, () => ({
