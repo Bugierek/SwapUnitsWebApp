@@ -20,7 +20,7 @@ type AccordionTabsProps = {
 
 export function AccordionTabs({
   tabs,
-  defaultTabId,
+  defaultTabId = 'formula',
   initiallyOpen = true,
   className,
 }: AccordionTabsProps) {
@@ -35,16 +35,35 @@ export function AccordionTabs({
     return availableTabs[0]?.id ?? null;
   });
   const [isOpen, setIsOpen] = React.useState<boolean>(initiallyOpen);
+  const availableTabIds = React.useMemo(
+    () => availableTabs.map((tab) => tab.id),
+    [availableTabs],
+  );
+  const hasAvailableTabs = availableTabIds.length > 0;
+  const preferredTab = React.useMemo(() => {
+    if (!hasAvailableTabs) {
+      return null;
+    }
+    if (defaultTabId && availableTabIds.includes(defaultTabId)) {
+      return defaultTabId;
+    }
+    return availableTabIds[0];
+  }, [availableTabIds, defaultTabId, hasAvailableTabs]);
+  const activeTabMissing = React.useMemo(
+    () => !activeTab || !availableTabIds.includes(activeTab),
+    [activeTab, availableTabIds],
+  );
 
   React.useEffect(() => {
-    if (!availableTabs.length) {
+    if (!hasAvailableTabs) {
       setActiveTab(null);
       return;
     }
-    if (!activeTab || !availableTabs.some((tab) => tab.id === activeTab)) {
-      setActiveTab(availableTabs[0].id);
+    if (!activeTabMissing) {
+      return;
     }
-  }, [availableTabs, activeTab]);
+    setActiveTab(preferredTab);
+  }, [hasAvailableTabs, activeTabMissing, preferredTab]);
 
   const activeContent = availableTabs.find((tab) => tab.id === activeTab);
   const contentId = React.useId();

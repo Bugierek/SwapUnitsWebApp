@@ -1350,24 +1350,34 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     formattedResultString,
     formatFormulaValue,
   ]);
+
+  const formulaContentNode = React.useMemo(() => {
+    if (!generalFormula && !dynamicFormula) {
+      return (
+        <p className="text-xs text-muted-foreground">
+          Formula is not available for this conversion.
+        </p>
+      );
+    }
+    return (
+      <div className="space-y-2 text-xs text-muted-foreground">
+        {generalFormula && (
+          <p className="text-sm font-semibold text-foreground">{generalFormula}</p>
+        )}
+        {dynamicFormula && (
+          <p>{dynamicFormula}</p>
+        )}
+      </div>
+    );
+  }, [generalFormula, dynamicFormula]);
   const referenceTabs = React.useMemo<AccordionTabItem[]>(() => {
-    const tabs: AccordionTabItem[] = [];
-    if (generalFormula || dynamicFormula) {
-      tabs.push({
+    const tabs: AccordionTabItem[] = [
+      {
         id: 'formula',
         label: 'Formula',
-        content: (
-          <div className="space-y-2 text-xs text-muted-foreground">
-            {generalFormula && (
-              <p className="text-sm font-semibold text-foreground">{generalFormula}</p>
-            )}
-            {dynamicFormula && (
-              <p className="text-xs text-muted-foreground">{dynamicFormula}</p>
-            )}
-          </div>
-        ),
-      });
-    }
+        content: formulaContentNode,
+      },
+    ];
 
     if (conversionSources.length > 0) {
       tabs.push({
@@ -1410,7 +1420,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
 
     return tabs;
-  }, [generalFormula, dynamicFormula, conversionSources]);
+  }, [formulaContentNode, conversionSources]);
   const showPrecisionControls = false;
   const handlePrecisionToggle = React.useCallback(() => {
     setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
