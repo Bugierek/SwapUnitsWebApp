@@ -21,8 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { BookmarkButton } from '@/components/bookmark-button';
 import { UnitIcon } from '@/components/unit-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { unitData } from '@/lib/unit-data';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { ResponsiveFavoriteLabel } from '@/components/responsive-favorite-label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -81,8 +80,6 @@ export function SiteTopbar({
   const [isFavoritesConfirmOpen, setIsFavoritesConfirmOpen] = React.useState(false);
   const LABEL_CHAR_LIMIT = 36;
 
-  const isMobile = useIsMobile();
-
   const handleConfirmClearHistory = React.useCallback(() => {
     clearHistory?.();
     setIsHistoryConfirmOpen(false);
@@ -95,30 +92,12 @@ export function SiteTopbar({
     setIsSheetOpen(false);
   }, [onClearAllFavorites]);
 
-  const getUnitName = React.useCallback((category: UnitCategory, symbol: string) => {
-    const units = unitData[category]?.units ?? [];
-    return units.find((unit) => unit.symbol === symbol)?.name ?? symbol;
+  const getFavoriteLabels = React.useCallback((fav: FavoriteItem) => {
+    const trimmed = fav.name?.trim() ?? '';
+    const full = trimmed.length > 0 ? trimmed : `${fav.fromUnit} → ${fav.toUnit}`;
+    const compact = `${fav.fromUnit} → ${fav.toUnit}`;
+    return { full, compact };
   }, []);
-
-  const formatFavoriteLabel = React.useCallback(
-    (fav: FavoriteItem) => {
-      const trimmedName = fav.name?.trim() ?? '';
-      if (trimmedName && trimmedName.length <= LABEL_CHAR_LIMIT) {
-        return trimmedName;
-      }
-      if (isMobile) {
-        return `${fav.fromUnit} → ${fav.toUnit}`;
-      }
-      const fromName = getUnitName(fav.category, fav.fromUnit);
-      const toName = getUnitName(fav.category, fav.toUnit);
-      const fullLabel = `${fromName} to ${toName}`;
-      if (fullLabel.length > LABEL_CHAR_LIMIT) {
-        return `${fav.fromUnit} → ${fav.toUnit}`;
-      }
-      return fullLabel;
-    },
-    [getUnitName, isMobile],
-  );
 
   const formatPresetLabel = React.useCallback(
     (preset: Preset) => {
@@ -287,7 +266,7 @@ export function SiteTopbar({
                     ) : (
                       <ul className="space-y-1.5">
                         {favorites.map((fav) => {
-                          const displayLabel = formatFavoriteLabel(fav);
+                          const labels = getFavoriteLabels(fav);
                           return (
                           <li
                             key={fav.id}
@@ -299,12 +278,17 @@ export function SiteTopbar({
                                 variant="ghost"
                                 className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-left text-sm font-semibold text-foreground transition hover:bg-primary/10 group-hover/fav-item:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
                                 onClick={() => onFavoriteSelect?.(fav)}
+                                aria-label={`Select favorite: ${labels.full}`}
+                                title={labels.full}
                               >
                                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
                                   <UnitIcon category={fav.category} className="h-3.5 w-3.5" aria-hidden="true" />
                                 </span>
-                                <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                                  {displayLabel}
+                                <span className="min-w-0 flex-1">
+                                  <ResponsiveFavoriteLabel
+                                    fullLabel={labels.full}
+                                    compactLabel={labels.compact}
+                                  />
                                 </span>
                               </Button>
                             </SheetClose>
@@ -316,7 +300,8 @@ export function SiteTopbar({
                                 e.stopPropagation();
                                 onRemoveFavorite?.(fav.id);
                               }}
-                              aria-label={`Remove favorite ${displayLabel}`}
+                              aria-label={`Remove favorite ${labels.full}`}
+                              title={`Remove ${labels.full}`}
                             >
                               <X className="h-4 w-4" />
                             </Button>

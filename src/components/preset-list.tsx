@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import type { Preset, FavoriteItem } from '@/types'; 
 import { List, Star, X } from 'lucide-react'; // Added Star and X icons
 import { UnitIcon } from './unit-icon';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
+import { ResponsiveFavoriteLabel } from '@/components/responsive-favorite-label';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,7 +41,6 @@ export const PresetList = React.memo(function PresetListComponent({
     className,
     isLoadingFavorites 
 }: PresetListProps) {
-    const isMobile = useIsMobile();
     const [isClearFavoritesDialogOpen, setIsClearFavoritesDialogOpen] = React.useState(false);
     const maxCommonVisible = React.useMemo(() => Math.max(0, 10 - favorites.length), [favorites.length]);
     const visibleCommonPresets = React.useMemo(() => presetsToDisplay.slice(0, maxCommonVisible), [presetsToDisplay, maxCommonVisible]);
@@ -49,16 +48,12 @@ export const PresetList = React.memo(function PresetListComponent({
     // Removed: const displayPresets = getFilteredAndSortedPresets(); 
 
     const LABEL_CHAR_LIMIT = 36;
-    const formatFavoriteLabel = React.useCallback((fav: FavoriteItem) => {
-        if (isMobile) {
-            return `${fav.fromUnit} → ${fav.toUnit}`;
-        }
+    const getFavoriteLabels = React.useCallback((fav: FavoriteItem) => {
         const trimmed = fav.name?.trim() ?? '';
-        if (trimmed.length > 0 && trimmed.length <= LABEL_CHAR_LIMIT) {
-            return trimmed;
-        }
-        return `${fav.fromUnit} → ${fav.toUnit}`;
-    }, [isMobile]);
+        const full = trimmed.length > 0 ? trimmed : `${fav.fromUnit} → ${fav.toUnit}`;
+        const compact = `${fav.fromUnit} → ${fav.toUnit}`;
+        return { full, compact };
+    }, []);
     const formatPresetLabel = (preset: Preset) => {
         const trimmed = preset.name.trim();
         return trimmed.length <= LABEL_CHAR_LIMIT ? trimmed : `${preset.fromUnit} → ${preset.toUnit}`;
@@ -130,7 +125,7 @@ export const PresetList = React.memo(function PresetListComponent({
                     <div className="space-y-2.5">
                         <ul className="space-y-2.5">
                             {favorites.map((fav) => {
-                                const displayLabel = formatFavoriteLabel(fav);
+                                const labels = getFavoriteLabels(fav);
                                 return (
                                 <li key={fav.id} className="w-full">
                                     <div className="group/fav-item flex items-center gap-2 rounded-xl px-1 py-1 transition-colors">
@@ -139,13 +134,17 @@ export const PresetList = React.memo(function PresetListComponent({
                                             variant="ghost"
                                             className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-semibold text-foreground transition hover:bg-primary/10 group-hover/fav-item:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
                                             onClick={() => onFavoriteSelect(fav)}
-                                            aria-label={`Select favorite: ${displayLabel}`}
+                                            aria-label={`Select favorite: ${labels.full}`}
+                                            title={labels.full}
                                         >
                                             <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                                                 <UnitIcon category={fav.category} className="h-4 w-4" aria-hidden="true" />
                                             </span>
-                                            <span className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                                                {displayLabel}
+                                            <span className="min-w-0 flex-1">
+                                                <ResponsiveFavoriteLabel
+                                                    fullLabel={labels.full}
+                                                    compactLabel={labels.compact}
+                                                />
                                             </span>
                                         </Button>
                                         <Button
@@ -156,7 +155,8 @@ export const PresetList = React.memo(function PresetListComponent({
                                                 e.stopPropagation(); 
                                                 onRemoveFavorite(fav.id);
                                             }}
-                                            aria-label={`Remove favorite ${displayLabel}`}
+                                            aria-label={`Remove favorite ${labels.full}`}
+                                            title={`Remove ${labels.full}`}
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>

@@ -114,6 +114,22 @@ const CATEGORY_TILE_SECONDARY_LIMIT: Partial<Record<UnitCategory, number>> = {
   'Data Transfer Rate': 2,
 };
 
+const LONG_UNIT_NAMES = new Set([
+  'Watt-hour per kilometer',
+  'Watt-hour per mile',
+  'Kilometer per kilowatt-hour',
+  'Mile per kilowatt-hour',
+  'Kilocalorie (food)',
+]);
+
+const MAX_UNIT_LABEL_LENGTH = 24;
+const shouldAbbreviateUnit = (unit: { name: string; symbol: string }) => {
+  return (
+    unit.name.length > MAX_UNIT_LABEL_LENGTH ||
+    LONG_UNIT_NAMES.has(unit.name)
+  );
+};
+
 const FINDER_CONVERSION_EXAMPLES = ['12 kg in mg', 'mile to meter', '250 Wh/km to Wh/mi'];
 const FINDER_CATEGORY_EXAMPLES = ['energy', 'fuel economy'];
 
@@ -234,6 +250,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
   const isMobile = useIsMobile();
   const prefersTouch = useIsCoarsePointer();
+  const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const fromTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const toTriggerRef = React.useRef<HTMLButtonElement | null>(null);
+  const [abbreviateFromTrigger, setAbbreviateFromTrigger] = React.useState(false);
+  const [abbreviateToTrigger, setAbbreviateToTrigger] = React.useState(false);
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
@@ -374,7 +395,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     };
   }, [setComboboxComponent]);
 
-  const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
+const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return categoryDisplayOrder
       .filter((category) => unitData[category])
       .map((category) => {
@@ -430,6 +451,84 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!rhfCategory) return [];
     return getUnitsForCategory(rhfCategory);
   }, [rhfCategory]);
+
+  const currentFromUnit = React.useMemo(
+    () => currentUnitsForCategory.find((unit) => unit.symbol === rhfFromUnit),
+    [currentUnitsForCategory, rhfFromUnit],
+  );
+
+  const currentToUnit = React.useMemo(
+    () => currentUnitsForCategory.find((unit) => unit.symbol === rhfToUnit),
+    [currentUnitsForCategory, rhfToUnit],
+  );
+
+  const measureLabelWidth = React.useCallback(
+    (trigger: HTMLButtonElement | null, text: string) => {
+      if (typeof window === 'undefined') return 0;
+      if (!trigger || !text) return 0;
+      if (!measurementCanvasRef.current) {
+        measurementCanvasRef.current = document.createElement('canvas');
+      }
+      const context = measurementCanvasRef.current.getContext('2d');
+      if (!context) {
+        return 0;
+      }
+      const computed = window.getComputedStyle(trigger);
+      const fontWeight = computed.fontWeight || '400';
+      const fontSize = computed.fontSize || '14px';
+      const fontFamily = computed.fontFamily || 'sans-serif';
+      context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
+      const metrics = context.measureText(text);
+      return metrics.width;
+    },
+    [],
+  );
+
+  const evaluateLabelWidths = React.useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (currentFromUnit && fromTriggerRef.current) {
+      const triggerWidth = fromTriggerRef.current.clientWidth;
+      if (triggerWidth > 0) {
+        const labelText = `${currentFromUnit.name} (${currentFromUnit.symbol})`;
+        const measuredWidth = measureLabelWidth(fromTriggerRef.current, labelText);
+        setAbbreviateFromTrigger(
+          measuredWidth > triggerWidth * 0.5 || shouldAbbreviateUnit(currentFromUnit),
+        );
+      } else {
+        setAbbreviateFromTrigger(false);
+      }
+    } else {
+      setAbbreviateFromTrigger(false);
+    }
+
+    if (currentToUnit && toTriggerRef.current) {
+      const triggerWidth = toTriggerRef.current.clientWidth;
+      if (triggerWidth > 0) {
+        const labelText = `${currentToUnit.name} (${currentToUnit.symbol})`;
+        const measuredWidth = measureLabelWidth(toTriggerRef.current, labelText);
+        setAbbreviateToTrigger(
+          measuredWidth > triggerWidth * 0.5 || shouldAbbreviateUnit(currentToUnit),
+        );
+      } else {
+        setAbbreviateToTrigger(false);
+      }
+    } else {
+      setAbbreviateToTrigger(false);
+    }
+  }, [currentFromUnit, currentToUnit, measureLabelWidth]);
+
+  React.useLayoutEffect(() => {
+    evaluateLabelWidths();
+  }, [evaluateLabelWidths, rhfFromUnit, rhfToUnit]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const handleResize = () => evaluateLabelWidths();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [evaluateLabelWidths]);
 
   const unitConversionPairs = React.useMemo(() => {
     const orderedCategories: UnitCategory[] = [
@@ -1482,18 +1581,19 @@ return (
                                   disabled={!rhfCategory}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0">
-                                      {field.value && currentUnitsForCategory.find((u) => u.symbol === field.value) ? (
-                                        <>
-                                          {isMobile ? (
-                                            <span>({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})</span>
-                                          ) : (
-                                            <span>
-                                              {currentUnitsForCategory.find((u) => u.symbol === field.value)!.name}{' '}
-                                              ({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})
-                                            </span>
-                                          )}
-                                        </>
+                                    <SelectTrigger
+                                      ref={fromTriggerRef}
+                                      className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                    >
+                                      {field.value && currentFromUnit ? (
+                                        (isMobile || abbreviateFromTrigger || shouldAbbreviateUnit(currentFromUnit)) ? (
+                                          <span>({currentFromUnit.symbol})</span>
+                                        ) : (
+                                          <span>
+                                            {currentFromUnit.name}{' '}
+                                            ({currentFromUnit.symbol})
+                                          </span>
+                                        )
                                       ) : (
                                         <SelectValue placeholder="Unit" />
                                       )}
@@ -1600,18 +1700,19 @@ return (
                                   disabled={!rhfCategory}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0">
-                                      {field.value && currentUnitsForCategory.find((u) => u.symbol === field.value) ? (
-                                        <>
-                                          {isMobile ? (
-                                            <span>({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})</span>
-                                          ) : (
-                                            <span>
-                                              {currentUnitsForCategory.find((u) => u.symbol === field.value)!.name}{' '}
-                                              ({currentUnitsForCategory.find((u) => u.symbol === field.value)!.symbol})
-                                            </span>
-                                          )}
-                                        </>
+                                    <SelectTrigger
+                                      ref={toTriggerRef}
+                                      className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                    >
+                                      {field.value && currentToUnit ? (
+                                        (isMobile || abbreviateToTrigger || shouldAbbreviateUnit(currentToUnit)) ? (
+                                          <span>({currentToUnit.symbol})</span>
+                                        ) : (
+                                          <span>
+                                            {currentToUnit.name}{' '}
+                                            ({currentToUnit.symbol})
+                                          </span>
+                                        )
                                       ) : (
                                         <SelectValue placeholder="Unit" />
                                       )}
