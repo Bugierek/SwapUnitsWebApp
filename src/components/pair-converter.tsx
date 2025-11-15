@@ -2,14 +2,23 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeftRight, Copy, Check } from 'lucide-react';
+import { ArrowLeftRight, Copy, Check, Info } from 'lucide-react';
 
 import type { UnitCategory, ConversionHistoryItem } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { convertNumericValue } from '@/lib/conversion-math';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { useToast } from '@/hooks/use-toast';
+import {
+  formatConversionValue,
+  getDecimalPrecisionFromInput,
+  precisionBoostFromDecimalPlaces,
+  type FormatConversionValueOptions,
+  type FormattedConversionValue,
+  type PrecisionMode,
+} from '@/lib/number-format';
 
 interface PairConverterProps {
   category: UnitCategory;
@@ -30,18 +39,6 @@ export interface PairConverterHandle {
   applyHistorySelect: (item: ConversionHistoryItem) => boolean;
 }
 
-const formatResult = (value: number | null): string => {
-  if (value === null || Number.isNaN(value)) return '—';
-  if (!Number.isFinite(value)) return '∞';
-  const abs = Math.abs(value);
-  if (abs !== 0 && (abs < 0.0001 || abs > 1_000_000)) {
-    return value.toExponential(6).replace('e', '×10^');
-  }
-  return Intl.NumberFormat('en-US', {
-    maximumFractionDigits: abs < 1 ? 8 : 6,
-  }).format(value);
-};
-
 export const PairConverter = React.forwardRef<PairConverterHandle, PairConverterProps>(function PairConverter(
   {
     category,
@@ -56,12 +53,24 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
+  const [precisionMode, setPrecisionMode] = React.useState<PrecisionMode>('rounded');
+  const isFullPrecision = precisionMode === 'full';
 
   const activeFrom = isSwapped ? toUnit : fromUnit;
   const activeTo = isSwapped ? fromUnit : toUnit;
   const conversionSources = React.useMemo(
     () => getConversionSources(category, activeFrom.symbol, activeTo.symbol),
     [category, activeFrom.symbol, activeTo.symbol],
+  );
+  const precisionBoost = React.useMemo(() => {
+    const decimalPlaces = getDecimalPrecisionFromInput(inputValue);
+    return precisionBoostFromDecimalPlaces(decimalPlaces);
+  }, [inputValue]);
+
+  const formatValue = React.useCallback(
+    (value: number | null, extraOptions?: FormatConversionValueOptions): FormattedConversionValue =>
+      formatConversionValue(value, { precisionBoost, precisionMode, ...extraOptions }),
+    [precisionBoost, precisionMode],
   );
 
   const parsedInput = React.useMemo(() => {
@@ -93,12 +102,21 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   }, [baseMultiplier, isSwapped]);
 
 
+  const handlePrecisionToggle = React.useCallback(() => {
+    setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
+  }, []);
+
+  const formattedResult = React.useMemo(() => formatValue(result), [formatValue, result]);
+  const precisionToggleDisabled = formattedResult?.usedScientificNotation ?? false;
+  const precisionTooltip = isFullPrecision
+    ? 'Full precision shows more decimal places using the exact unit factors from our standards-backed database (NIST Guide to SI, ASTM, IEC, etc.).'
+    : 'Rounded results show up to four digits after the decimal for readability. Switch to full precision to inspect the raw calculation.';
 
   const { toast } = useToast();
 
   const handleCopy = React.useCallback(async () => {
-    if (parsedInput === null || result === null) return;
-    const formatted = formatResult(result);
+    if (parsedInput === null || result === null || !formattedResult) return;
+    const formatted = formattedResult.formatted;
     try {
       await navigator.clipboard.writeText(`${formatted} ${activeTo.symbol}`);
       setCopyState('success');
@@ -117,7 +135,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         duration: 2000, // Show for 2 seconds
       });
     }
-  }, [parsedInput, result, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
+  }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
 
   React.useEffect(() => {
     setCopyState('idle');
@@ -189,9 +207,9 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         if (base === 1) {
           return `${activeTo.symbol} = ${activeFrom.symbol} × 8`;
         } else if (base < 1) {
-          return `${activeTo.symbol} = ${activeFrom.symbol} ÷ ${formatResult(1/base)}`;
-        } else {
-          return `${activeTo.symbol} = ${activeFrom.symbol} × ${formatResult(multiplier)}`;
+        return `${activeTo.symbol} = ${activeFrom.symbol} ÷ ${formatValue(1 / base, { precisionBoost: 0 }).formatted}`;
+      } else {
+          return `${activeTo.symbol} = ${activeFrom.symbol} × ${formatValue(multiplier, { precisionBoost: 0 }).formatted}`;
         }
       }
     }
@@ -203,7 +221,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         (!activeFrom.symbol.includes('/100') && activeTo.symbol.includes('/100'))
       ) {
         // For conversions between direct and inverse units
-        return `${activeTo.symbol} = 100 ÷ (${activeFrom.symbol} × ${formatResult(multiplier)})`;
+        return `${activeTo.symbol} = 100 ÷ (${activeFrom.symbol} × ${formatValue(multiplier, { precisionBoost: 0 }).formatted})`;
       }
     }
 
@@ -212,13 +230,13 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
       if (multiplier === 1) {
         return `${activeTo.symbol} = ${activeFrom.symbol}`;
       } else if (multiplier < 1) {
-        return `${activeTo.symbol} = ${activeFrom.symbol} ÷ ${formatResult(1/multiplier)}`;
+        return `${activeTo.symbol} = ${activeFrom.symbol} ÷ ${formatValue(1 / multiplier, { precisionBoost: 0 }).formatted}`;
       }
-      return `${activeTo.symbol} = ${activeFrom.symbol} × ${formatResult(multiplier)}`;
+      return `${activeTo.symbol} = ${activeFrom.symbol} × ${formatValue(multiplier, { precisionBoost: 0 }).formatted}`;
     }
     
     return null;
-  }, [category, activeTo.symbol, activeFrom.symbol, multiplier]);
+  }, [category, activeTo.symbol, activeFrom.symbol, multiplier, formatValue]);
 
   const dynamicFormula = React.useMemo(() => {
     if (parsedInput === null || result === null) {
@@ -227,12 +245,15 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     
     // For simple multiplier-based conversions, show the actual calculation
     if (multiplier !== null) {
-      return `${formatResult(parsedInput)} ${activeFrom.symbol} × ${formatResult(multiplier)} = ${formatResult(result)} ${activeTo.symbol}`;
+      const multiplierFormatted = formatValue(multiplier, { precisionBoost: 0 }).formatted;
+      const inputFormatted = formatValue(parsedInput).formatted;
+      return `${inputFormatted} ${activeFrom.symbol} × ${multiplierFormatted} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
     }
     
     // For complex conversions (like temperature), show the actual values
-    return `${formatResult(parsedInput)} ${activeFrom.symbol} = ${formatResult(result)} ${activeTo.symbol}`;
-  }, [parsedInput, result, activeFrom.symbol, activeTo.symbol, multiplier]);
+    const inputFormatted = formatValue(parsedInput).formatted;
+    return `${inputFormatted} ${activeFrom.symbol} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
+  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result]);
 
   return (
     <div className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg">
@@ -290,7 +311,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           <div className="flex h-12 items-center gap-2">
             <div className="flex h-full flex-1 items-center rounded-xl border border-border/60 bg-background">
               <div className="flex-1 px-3 text-lg font-semibold text-foreground">
-                {parsedInput === null ? '—' : formatResult(result)}
+                {parsedInput === null ? '—' : formattedResult?.formatted ?? '—'}
               </div>
               <div className="flex items-center justify-center px-3 text-sm font-semibold text-muted-foreground border-l border-border/60">
                 {activeTo.symbol}
@@ -314,6 +335,45 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           </div>
         </div>
       </div>
+
+      {parsedInput !== null && (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                    aria-label="How precision is calculated"
+                  >
+                    <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  align="start"
+                  sideOffset={6}
+                  className="max-w-xs text-xs text-muted-foreground"
+                >
+                  {precisionTooltip}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <span>{isFullPrecision ? 'Full precision result' : 'Rounded result (4 decimals max)'}</span>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7"
+            onClick={handlePrecisionToggle}
+            disabled={precisionToggleDisabled}
+          >
+            {isFullPrecision ? 'Show rounded' : 'Show full precision'}
+          </Button>
+        </div>
+      )}
 
       {(dynamicFormula || generalFormula) && (
         <div className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">

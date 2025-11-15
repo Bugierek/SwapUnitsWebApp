@@ -66,6 +66,13 @@ import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  formatConversionValue,
+  formatScientificValue,
+  getDecimalPrecisionFromInput,
+  precisionBoostFromDecimalPlaces,
+  type PrecisionMode,
+} from '@/lib/number-format';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -137,81 +144,54 @@ const FINDER_UNIT_EXAMPLES = ['mile to meter', 'cm to ft', 'psi to kPa', '°C to
 
 const FINDER_CATEGORY_EXAMPLES = ['energy', 'pressure', 'length', 'bitcoin', 'bandwidth', 'speed'];
 
-const formatNumber = (num: number, requestedFormat: NumberFormat = 'normal'): {
-    formattedString: string;
-    actualFormatUsed: NumberFormat;
-    scientificReason: 'magnitude' | 'user_choice' | null;
+const formatNumber = (
+  num: number,
+  requestedFormat: NumberFormat = 'normal',
+  precisionHint?: number | null,
+  precisionMode: PrecisionMode = 'rounded',
+): {
+  formattedString: string;
+  actualFormatUsed: NumberFormat;
+  scientificReason: 'magnitude' | 'user_choice' | null;
+  roundedValue: number | undefined;
 } => {
-    if (!isFinite(num)) {
-        return { formattedString: '-', actualFormatUsed: requestedFormat, scientificReason: null };
-    }
+  if (!isFinite(num)) {
+    return { formattedString: '-', actualFormatUsed: requestedFormat, scientificReason: null, roundedValue: undefined };
+  }
 
-    let actualFormatUsed: NumberFormat = requestedFormat;
-    let formattedString: string;
-    let scientificReason: 'magnitude' | 'user_choice' | null = null;
+  if (requestedFormat === 'scientific') {
+    return {
+      formattedString: formatScientificValue(num, 7, 'e'),
+      actualFormatUsed: 'scientific',
+      scientificReason: 'user_choice',
+      roundedValue: num,
+    };
+  }
 
-    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || (Math.abs(num) < 1e-7 && num !== 0));
+  const precisionBoost = precisionBoostFromDecimalPlaces(precisionHint, 3);
+  const { formatted, usedScientificNotation, roundedValue } = formatConversionValue(num, {
+    precisionBoost,
+    scientificStyle: 'e',
+    precisionMode,
+  });
 
-    if (requestedFormat === 'scientific' || useScientificDueToMagnitude) {
-        actualFormatUsed = 'scientific';
-        scientificReason = useScientificDueToMagnitude ? 'magnitude' : (requestedFormat === 'scientific' ? 'user_choice' : null);
-
-        const exponential = num.toExponential(7).replace('e', 'E');
-        const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
-        if (match) {
-            let coefficient = match[1];
-            const exponent = match[3];
-            if (coefficient.includes('.')) {
-                coefficient = coefficient.replace(/0+$/, '');
-                coefficient = coefficient.replace(/\.$/, '');
-            }
-            formattedString = coefficient + exponent;
-        } else {
-            formattedString = exponential;
-        }
-    } else {
-        const numRoundedForCheck = parseFloat(num.toFixed(7));
-        if (numRoundedForCheck % 1 === 0) {
-            formattedString = numRoundedForCheck.toLocaleString(undefined, { maximumFractionDigits: 0 });
-        } else {
-            let fixedStr = num.toFixed(7);
-            fixedStr = fixedStr.replace(/(\.[0-9]*[1-9])0+$|\.0+$/, '$1');
-            formattedString = parseFloat(fixedStr).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 7});
-        }
-         actualFormatUsed = 'normal';
-    }
-
-    return { formattedString, actualFormatUsed, scientificReason };
+  return {
+    formattedString: formatted,
+    actualFormatUsed: usedScientificNotation ? 'scientific' : 'normal',
+    scientificReason: usedScientificNotation ? 'magnitude' : null,
+    roundedValue: roundedValue ?? num,
+  };
 };
 
-const formatFromValue = (num: number | undefined): string => {
-    if (num === undefined || !isFinite(num)) {
-        return '-';
-    }
-    const useScientificDueToMagnitude = (Math.abs(num) > 1e9 || (Math.abs(num) < 1e-7 && num !== 0));
-
-    if (useScientificDueToMagnitude) {
-        const exponential = num.toExponential(7).replace('e', 'E');
-        const match = exponential.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
-        if (match) {
-            let coefficient = match[1];
-            const exponent = match[3];
-            if (coefficient.includes('.')) {
-                coefficient = coefficient.replace(/0+$/, '');
-                coefficient = coefficient.replace(/\.$/, '');
-            }
-            return coefficient + exponent;
-        }
-        return exponential;
-    }
-    const numRoundedForCheck = parseFloat(num.toFixed(7));
-     if (numRoundedForCheck % 1 === 0) {
-        return numRoundedForCheck.toLocaleString(undefined, { maximumFractionDigits: 0 });
-    } else {
-        let fixedStr = num.toFixed(7);
-        fixedStr = fixedStr.replace(/(\.[0-9]*[1-9])0+$|\.0+$/, '$1');
-        return parseFloat(fixedStr).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 7});
-    }
+const formatFromValue = (num: number | undefined, precisionMode: PrecisionMode): string => {
+  if (num === undefined || !isFinite(num)) {
+    return '-';
+  }
+  return formatConversionValue(num, {
+    precisionBoost: 0,
+    scientificStyle: 'e',
+    precisionMode,
+  }).formatted;
 };
 
 
@@ -251,7 +231,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [conversionResult, setConversionResult] = React.useState<ConversionResult | null>(initialConversion);
   const [lastValidInputValue, setLastValidInputValue] = React.useState<number | undefined>(resolvedValue);
   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal');
+  const [precisionMode, setPrecisionMode] = React.useState<PrecisionMode>('rounded');
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
+  const isFullPrecision = precisionMode === 'full';
   const isMobile = useIsMobile();
   const prefersTouch = useIsCoarsePointer();
   const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -298,6 +280,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     );
   }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
   const rhfValue = watch("value");
+  const inputPrecisionHint = React.useMemo(
+    () => getDecimalPrecisionFromInput(rhfValue),
+    [rhfValue],
+  );
   const [resultCopyState, setResultCopyState] = React.useState<'idle' | 'success'>('idle');
   const [resultHighlightPulse, setResultHighlightPulse] = React.useState(false);
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -1200,33 +1186,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   }));
 
 
- const handleSwapClick = React.useCallback(() => {
-    const currentFromUnit = getValues("fromUnit");
-    const currentToUnit = getValues("toUnit");
-    const currentFromValueString = String(getValues("value"));
-    let newInputValue: number | undefined = undefined;
-
-    if (conversionResult && isFinite(conversionResult.value)) {
-        newInputValue = conversionResult.value;
-    } else if (currentFromValueString.trim() !== '' && !isNaN(Number(currentFromValueString))) {
-        newInputValue = Number(currentFromValueString);
-    } else {
-        newInputValue = lastValidInputValue;
-    }
-    
-    const normalizedValue = normalizeNumericInputValue(newInputValue);
-    setValue("value", normalizedValue, { shouldValidate: true, shouldDirty: true });
-    if (newInputValue !== undefined) {
-      setLastValidInputValue(newInputValue);
-    }
-    setValue("fromUnit", currentToUnit, { shouldValidate: true });
-    setValue("toUnit", currentFromUnit, { shouldValidate: true });
-
-    setIsSwapped((prev) => !prev); 
-
-  }, [setValue, getValues, conversionResult, lastValidInputValue, normalizeNumericInputValue]);
-
-
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
   };
@@ -1242,9 +1201,16 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
   }, [showPlaceholder, textCopyState, resultCopyState]);
 
-  const { formattedString: formattedResultString, actualFormatUsed, scientificReason } = React.useMemo(() => {
-    return showPlaceholder || !conversionResult ? { formattedString: '-', actualFormatUsed: numberFormat, scientificReason: null } : formatNumber(conversionResult.value, numberFormat);
-  }, [showPlaceholder, conversionResult, numberFormat]);
+  const {
+    formattedString: formattedResultString,
+    actualFormatUsed,
+    scientificReason,
+    roundedValue: roundedResultValue,
+  } = React.useMemo(() => {
+    return showPlaceholder || !conversionResult
+      ? { formattedString: '-', actualFormatUsed: numberFormat, scientificReason: null, roundedValue: undefined }
+      : formatNumber(conversionResult.value, numberFormat, inputPrecisionHint, precisionMode);
+  }, [showPlaceholder, conversionResult, numberFormat, inputPrecisionHint, precisionMode]);
 
   React.useEffect(() => {
       handleActualFormatChange(actualFormatUsed, scientificReason);
@@ -1257,6 +1223,38 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   React.useEffect(() => {
     setTextCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
+
+  const handlePrecisionToggle = React.useCallback(() => {
+    setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
+  }, []);
+
+ const handleSwapClick = React.useCallback(() => {
+    const currentFromUnit = getValues("fromUnit");
+    const currentToUnit = getValues("toUnit");
+    const currentFromValueString = String(getValues("value"));
+    let newInputValue: number | undefined;
+
+    if (conversionResult && isFinite(conversionResult.value)) {
+      newInputValue =
+        roundedResultValue !== undefined && isFinite(roundedResultValue)
+          ? roundedResultValue
+          : conversionResult.value;
+    } else if (currentFromValueString.trim() !== '' && !Number.isNaN(Number(currentFromValueString))) {
+      newInputValue = Number(currentFromValueString);
+    } else {
+      newInputValue = lastValidInputValue;
+    }
+
+    const normalizedValue = normalizeNumericInputValue(newInputValue);
+    setValue("value", normalizedValue, { shouldValidate: true, shouldDirty: true });
+    if (newInputValue !== undefined) {
+      setLastValidInputValue(newInputValue);
+    }
+    setValue("fromUnit", currentToUnit, { shouldValidate: true });
+    setValue("toUnit", currentFromUnit, { shouldValidate: true });
+
+    setIsSwapped((prev) => !prev);
+  }, [getValues, conversionResult, roundedResultValue, lastValidInputValue, normalizeNumericInputValue, setValue]);
 
   React.useEffect(() => {
     if (!hasAppliedHighlightRef.current) {
@@ -1325,7 +1323,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
     const textToCopy = showPlaceholder || !conversionResult 
         ? '' 
-        : `${formatFromValue(numericFromValue)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
+        : `${formatFromValue(numericFromValue, precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
     
     if (!textToCopy) return;
 
@@ -1354,7 +1352,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             variant: "destructive",
         });
     }
-  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, rhfFromUnit, getValues, toast, onResultCopied, rhfCategory]);
+  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, rhfFromUnit, getValues, toast, onResultCopied, rhfCategory, precisionMode]);
 
 
   const handleSaveToFavoritesInternal = React.useCallback(() => {
@@ -1410,8 +1408,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   }, [onToggleFavorite, rhfCategory, rhfFromUnit, rhfToUnit, handleSaveToFavoritesInternal, getUnitDisplayName]);
 
   const screenReaderText = showPlaceholder
-    ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue))} ${rhfFromUnit}` : 'Enter a value and select units to convert')
-    : `${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
+    ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit}` : 'Enter a value and select units to convert')
+    : `${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
 
   const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
   const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
@@ -1827,6 +1825,49 @@ return (
                     </div>
                   </div>
                 )}
+
+                {!showPlaceholder && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider delayDuration={150}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                              aria-label="How precision is calculated"
+                            >
+                              <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            align="start"
+                            sideOffset={6}
+                            className="max-w-sm text-xs text-muted-foreground"
+                          >
+                            {actualFormatUsed === 'scientific'
+                              ? 'Scientific notation already shows the exact value computed from our unit factors.'
+                              : isFullPrecision
+                                ? 'Full precision shows additional decimal places using the exact conversion factors from our standards-backed sources (NIST Guide to SI, ASTM, IEC, etc.).'
+                                : 'Rounded results show up to four digits after the decimal for readability. Switch to full precision to inspect the raw calculation.'}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <span>{isFullPrecision ? 'Full precision result' : 'Rounded result (4 decimals max)'}</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7"
+                      onClick={handlePrecisionToggle}
+                      disabled={actualFormatUsed === 'scientific'}
+                    >
+                      {isFullPrecision ? 'Show rounded' : 'Show full precision'}
+                    </Button>
+                  </div>
+                )}
                 
                  {/* Textual Conversion Result Display */}
                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
@@ -1840,7 +1881,7 @@ return (
                     >
                       <div className="flex flex-1 items-center gap-2 text-left">
                         <span className="truncate">
-                          {`${formatFromValue(Number(rhfValue))} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+                          {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
                         </span>
                         <button
                           type="button"

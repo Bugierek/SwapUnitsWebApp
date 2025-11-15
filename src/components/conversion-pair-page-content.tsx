@@ -24,6 +24,7 @@ import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { useConversionHistory } from '@/hooks/use-conversion-history';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useToast } from '@/hooks/use-toast';
+import { formatConversionValue } from '@/lib/number-format';
 
 type ExampleRow = {
   input: number;
@@ -49,20 +50,8 @@ type ConversionPairPageContentProps = {
   initialValue?: number;
 };
 
-const formatNumber = (value: number): string => {
-  if (!Number.isFinite(value)) {
-    return '∞';
-  }
-
-  const abs = Math.abs(value);
-  if (abs !== 0 && (abs < 0.0001 || abs > 1_000_000)) {
-    return value.toExponential(4).replace('e', '×10^');
-  }
-
-  return Intl.NumberFormat('en-US', {
-    maximumFractionDigits: abs < 1 ? 6 : 4,
-  }).format(value);
-};
+const formatNumber = (value: number): string =>
+  formatConversionValue(value, { precisionBoost: 0 }).formatted;
 
 const formatHistoryNumber = (num: number): string => {
   if (!isFinite(num)) return '-';

@@ -18,23 +18,12 @@ import { useConversionHistory } from '@/hooks/use-conversion-history';
 import type { ConversionHistoryItem } from '@/types';
 import { SI_MULTIPLES, SI_SUBMULTIPLES, ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { getConversionSources } from '@/lib/conversion-sources';
+import { formatConversionValue } from '@/lib/number-format';
 
 const formatValue = (exp: number) => `10${exp >= 0 ? `^${exp}` : `^(${exp})`}`;
 
-const formatNumber = (value: number): string => {
-  if (!Number.isFinite(value)) {
-    return '∞';
-  }
-
-  const abs = Math.abs(value);
-  if (abs !== 0 && (abs < 0.0001 || abs > 1_000_000)) {
-    return value.toExponential(4).replace('e', '×10^');
-  }
-
-  return Intl.NumberFormat('en-US', {
-    maximumFractionDigits: abs < 1 ? 6 : 4,
-  }).format(value);
-};
+const formatNumber = (value: number): string =>
+  formatConversionValue(value, { precisionBoost: 0 }).formatted;
 
 export default function NistSiTenfoldPage() {
   const prefixOptions = React.useMemo(() => [...ALL_SI_PREFIXES].sort((a, b) => b.exponent - a.exponent), []);
