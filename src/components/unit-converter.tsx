@@ -1693,9 +1693,9 @@ return (
                         <DialogTrigger asChild>
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="icon"
-                            className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary"
+                            className="h-11 w-11 shrink-0 rounded-xl border-0 bg-transparent text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                             aria-label="Open calculator"
                           >
                             <Calculator className="h-5 w-5" />
@@ -1724,13 +1724,13 @@ return (
                             <span className="hidden md:inline">Swap units</span>
                         </Button>
 
-                       {(onSaveFavoriteProp || hasToggleFavorites) && (
+                         {(onSaveFavoriteProp || hasToggleFavorites) && (
                           <Button
                               type="button"
-                              variant="outline" 
+                              variant="ghost" 
                               onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
                               disabled={finalSaveDisabled || showPlaceholder}
-                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition  hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
+                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent text-sm font-medium transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                               aria-label={favoriteButtonLabel}
                             >
                               <Star className={cn("h-4 w-4", activeFavorite ? "fill-primary text-primary" : (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
@@ -1810,10 +1810,10 @@ return (
                       </div>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         onClick={handleCopy}
                         disabled={showPlaceholder}
-                        className="h-11 w-11 shrink-0 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-foreground transition hover:border-primary/60 hover:text-primary disabled:bg-muted"
+                        className="h-11 w-11 shrink-0 rounded-xl border-0 bg-transparent text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         aria-label="Copy result to clipboard"
                       >
                         {resultCopyState === 'success' ? (
