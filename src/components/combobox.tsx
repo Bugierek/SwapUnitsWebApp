@@ -649,13 +649,17 @@ export function ConversionCombobox({
       if (event.key === 'Enter') {
         const hasHighlight =
           highlightedIndex >= 0 && highlightedIndex < displayItems.length;
-
-        if (query && tryParse(query)) {
+        if (!hasHighlight && query && tryParse(query)) {
           event.preventDefault();
           return;
         }
 
-        if (query && handleNumericCommit && isPureNumericQuery(query)) {
+        if (
+          !hasHighlight &&
+          query &&
+          handleNumericCommit &&
+          isPureNumericQuery(query)
+        ) {
           event.preventDefault();
           const numericValue = Number(query.replace(/\s+/g, ''));
           if (Number.isFinite(numericValue)) {
