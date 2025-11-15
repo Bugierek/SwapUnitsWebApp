@@ -10,6 +10,28 @@ import { UnitIcon } from './unit-icon';
 import { parseConversionQuery, type ParsedConversionPayload } from '@/lib/conversion-query-parser';
 import { categoryDisplayOrder } from '@/lib/unit-data';
 
+const LEXER_NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
+const findLeadingNumericValue = (value: string): number => {
+  const sanitized = value.replace(/,/g, '').trim();
+  const match = sanitized.match(LEXER_NUMBER_RE);
+  return match ? Number(match[0]) : NaN;
+};
+
+const extractNumericPrefix = (value: string): string => {
+  const sanitized = value.replace(/,/g, '').trim();
+  const match = sanitized.match(LEXER_NUMBER_RE);
+  return match ? match[0] : '';
+};
+
+const stripAppendedLabel = (value: string, label: string): string => {
+  const trimmed = value.trim();
+  if (!label) return trimmed;
+  if (trimmed.endsWith(label)) {
+    return trimmed.slice(0, trimmed.length - label.length).trim();
+  }
+  return trimmed;
+};
+
 type ConversionComboboxItem = {
   value: string;
   category: UnitCategory;
@@ -173,6 +195,8 @@ export function ConversionCombobox({
   const [search, setSearch] = React.useState('');
   const [committedInput, setCommittedInput] = React.useState('');
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
+  const [currentAppendedLabel, setCurrentAppendedLabel] = React.useState('');
+  const [finderBaseValue, setFinderBaseValue] = React.useState('');
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -417,8 +441,32 @@ export function ConversionCombobox({
       }
 
       onChange(selectedValue);
-      setCommittedInput(match.label ?? '');
-      setSearch(match.label ?? '');
+      const sanitizedInput = committedInput || search;
+      const numericPrefix = finderBaseValue || extractNumericPrefix(sanitizedInput);
+      if (!numericPrefix) {
+        setCommittedInput('');
+        setSearch('');
+        setCurrentAppendedLabel('');
+        setFinderBaseValue('');
+        closeDropdown();
+        return;
+      }
+      const label = match.label ?? '';
+      const composedInput = [
+        numericPrefix,
+        label,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      setCommittedInput(composedInput);
+      setSearch(composedInput);
+      setCurrentAppendedLabel(label);
+      setFinderBaseValue(numericPrefix);
+      const numericCandidate = findLeadingNumericValue(numericPrefix);
+      if (handleNumericCommit && Number.isFinite(numericCandidate)) {
+        handleNumericCommit(numericCandidate);
+      }
       onParsedConversion?.({
         ok: true,
         kind: 'unit',
@@ -430,12 +478,25 @@ export function ConversionCombobox({
       });
       closeDropdown();
     },
-    [closeDropdown, items, onChange, onParsedConversion],
+    [
+      closeDropdown,
+      committedInput,
+      finderBaseValue,
+      handleNumericCommit,
+      items,
+      onChange,
+      onParsedConversion,
+      search,
+    ],
   );
 
   const handleParsedSelection = React.useCallback(
     (parsed: ParsedConversionPayload, typedQuery: string) => {
       onParsedConversion?.(parsed);
+
+      const baseFromQuery = stripAppendedLabel(typedQuery, currentAppendedLabel);
+      setFinderBaseValue(baseFromQuery);
+      setCurrentAppendedLabel('');
 
       if (parsed.kind === 'category') {
         setCommittedInput(typedQuery);
@@ -471,7 +532,7 @@ export function ConversionCombobox({
       setSearch(typedQuery);
       closeDropdown();
     },
-    [closeDropdown, items, onParsedConversion],
+    [closeDropdown, currentAppendedLabel, items, onParsedConversion],
   );
 
   React.useEffect(() => {
@@ -717,7 +778,15 @@ export function ConversionCombobox({
           requestAnimationFrame(() => inputRef.current?.select());
         }}
         onChange={(event) => {
-          setSearch(event.target.value);
+          const updated = event.target.value;
+          if (!updated.trim()) {
+            setCommittedInput('');
+            setFinderBaseValue('');
+            setCurrentAppendedLabel('');
+          }
+          setFinderBaseValue(extractNumericPrefix(updated));
+          setSearch(updated);
+          setCurrentAppendedLabel('');
           setOpen(true);
         }}
         onClick={() => {
