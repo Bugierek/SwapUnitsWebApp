@@ -19,10 +19,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack(config, { dev }) {
-    if (dev) {
-      config.devtool = 'source-map';
-    }
+  webpack(config) {
     return config;
   },
 };
