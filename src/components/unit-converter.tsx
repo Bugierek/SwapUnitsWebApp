@@ -1379,6 +1379,7 @@ return (
                         ) : (
                           <Button
                             type="button"
+                            id="conversion-search"
                             variant="outline"
                             disabled
                             className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
