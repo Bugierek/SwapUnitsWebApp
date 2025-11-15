@@ -1790,7 +1790,7 @@ return (
                     {/* From Input Row */}
                     <div className="flex flex-wrap items-stretch gap-3">
                       <div className="flex min-w-0 flex-1">
-                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 border-solid bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
                           <FormField
                             control={form.control}
                             name="value"
@@ -1940,7 +1940,7 @@ return (
                     {/* To Result Row */}
                     <div className="flex flex-wrap items-stretch gap-3">
                       <div className="flex min-w-0 flex-1">
-                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 border-solid bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
                           <div className="flex-1">
                             <Input
                               id="conversion-result"

@@ -86,18 +86,18 @@ export function AccordionTabs({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border/60 bg-background text-sm text-muted-foreground',
+        'rounded-2xl border border-border/60 bg-background text-sm text-muted-foreground border-solid',
         !isOpen && 'rounded-b-none',
         className,
       )}
     >
-      <div className="grid grid-cols-2 border-b border-border/60 text-[0.72rem]">
+      <div className="grid grid-cols-2 border-b border-border/60 text-[0.72rem] border-solid">
         {availableTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             className={cn(
-              'h-10 font-semibold transition',
+              'h-10 font-semibold transition border-solid',
               tab.id === activeTab
                 ? 'border-b-2 border-primary bg-primary/5 text-primary'
                 : 'border-b-2 border-transparent hover:text-primary hover:border-muted-foreground/40',

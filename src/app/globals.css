@@ -119,7 +119,14 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border border-dotted;
+  }
+  input,
+  textarea,
+  select,
+  button,
+  [role='button'] {
+    border-style: solid;
   }
   body {
     font-family: var(--font-inter, "Inter"), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
