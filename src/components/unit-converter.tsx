@@ -1411,6 +1411,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
     return tabs;
   }, [generalFormula, dynamicFormula, conversionSources]);
+  const showPrecisionControls = false;
   const handlePrecisionToggle = React.useCallback(() => {
     setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
   }, []);
@@ -2013,7 +2014,7 @@ return (
                   </div>
                 )}
 
-                {!showPlaceholder && (
+                {showPrecisionControls && !showPlaceholder && (
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <TooltipProvider delayDuration={150}>
