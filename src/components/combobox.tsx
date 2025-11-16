@@ -424,13 +424,14 @@ export function ConversionCombobox({
       }
 
       onChange(selectedValue);
-      const sanitizedInput = (committedInput || search).trim();
+      const rawInput = inputRef.current?.value ?? search ?? committedInput;
+      const sanitizedInput = rawInput.trim();
       const numericCandidate = findLeadingNumericValue(sanitizedInput);
       if (handleNumericCommit && Number.isFinite(numericCandidate)) {
         handleNumericCommit(numericCandidate);
       }
-      setCommittedInput(sanitizedInput);
-      setSearch(sanitizedInput);
+      setCommittedInput(rawInput);
+      setSearch(rawInput);
       const hasNumeric = Number.isFinite(numericCandidate);
       onParsedConversion?.({
         ok: true,
