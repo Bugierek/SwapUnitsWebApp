@@ -1674,7 +1674,7 @@ return (
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
-                                className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                                className="hidden h-5 w-5 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
                                 aria-label="How the conversion finder understands your input"
                               >
                                 <Info className="h-3.5 w-3.5" aria-hidden="true" />
@@ -2032,7 +2032,7 @@ return (
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary"
+                              className="hidden h-6 w-6 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary lg:inline-flex"
                               aria-label="How precision is calculated"
                             >
                               <Info className="h-3.5 w-3.5" aria-hidden="true" />
