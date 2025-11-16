@@ -17,21 +17,6 @@ const findLeadingNumericValue = (value: string): number => {
   return match ? Number(match[0]) : NaN;
 };
 
-const extractNumericPrefix = (value: string): string => {
-  const sanitized = value.replace(/,/g, '').trim();
-  const match = sanitized.match(LEXER_NUMBER_RE);
-  return match ? match[0] : '';
-};
-
-const stripAppendedLabel = (value: string, label: string): string => {
-  const trimmed = value.trim();
-  if (!label) return trimmed;
-  if (trimmed.endsWith(label)) {
-    return trimmed.slice(0, trimmed.length - label.length).trim();
-  }
-  return trimmed;
-};
-
 type ConversionComboboxItem = {
   value: string;
   category: UnitCategory;
@@ -195,8 +180,6 @@ export function ConversionCombobox({
   const [search, setSearch] = React.useState('');
   const [committedInput, setCommittedInput] = React.useState('');
   const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
-  const [currentAppendedLabel, setCurrentAppendedLabel] = React.useState('');
-  const [finderBaseValue, setFinderBaseValue] = React.useState('');
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -441,47 +424,28 @@ export function ConversionCombobox({
       }
 
       onChange(selectedValue);
-      const sanitizedInput = committedInput || search;
-      const numericPrefix = finderBaseValue || extractNumericPrefix(sanitizedInput);
-      if (!numericPrefix) {
-        setCommittedInput('');
-        setSearch('');
-        setCurrentAppendedLabel('');
-        setFinderBaseValue('');
-        closeDropdown();
-        return;
-      }
-      const label = match.label ?? '';
-      const composedInput = [
-        numericPrefix,
-        label,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
-      setCommittedInput(composedInput);
-      setSearch(composedInput);
-      setCurrentAppendedLabel(label);
-      setFinderBaseValue(numericPrefix);
-      const numericCandidate = findLeadingNumericValue(numericPrefix);
+      const sanitizedInput = (committedInput || search).trim();
+      const numericCandidate = findLeadingNumericValue(sanitizedInput);
       if (handleNumericCommit && Number.isFinite(numericCandidate)) {
         handleNumericCommit(numericCandidate);
       }
+      setCommittedInput(sanitizedInput);
+      setSearch(sanitizedInput);
+      const hasNumeric = Number.isFinite(numericCandidate);
       onParsedConversion?.({
         ok: true,
         kind: 'unit',
         category: match.category as UnitCategory,
         fromUnit: match.fromSymbol,
         toUnit: match.toSymbol,
-        value: 1,
-        valueStrategy: 'preserve-existing',
+        value: hasNumeric ? numericCandidate : 1,
+        valueStrategy: hasNumeric ? 'explicit' : 'preserve-existing',
       });
       closeDropdown();
     },
     [
       closeDropdown,
       committedInput,
-      finderBaseValue,
       handleNumericCommit,
       items,
       onChange,
@@ -494,20 +458,16 @@ export function ConversionCombobox({
     (parsed: ParsedConversionPayload, typedQuery: string) => {
       onParsedConversion?.(parsed);
 
-      const baseFromQuery = stripAppendedLabel(typedQuery, currentAppendedLabel);
-      setFinderBaseValue(baseFromQuery);
-      setCurrentAppendedLabel('');
+      const trimmed = typedQuery.trim();
+      setCommittedInput(trimmed);
+      setSearch(trimmed);
 
       if (parsed.kind === 'category') {
-        setCommittedInput(typedQuery);
-        setSearch(typedQuery);
         closeDropdown();
         return;
       }
 
       if (parsed.kind === 'si-prefix') {
-        setCommittedInput(typedQuery);
-        setSearch(typedQuery);
         closeDropdown();
         return;
       }
@@ -522,17 +482,13 @@ export function ConversionCombobox({
 
       if (matchingItem) {
         setAutoHighlightedValue(matchingItem.value);
-        setCommittedInput(typedQuery);
-        setSearch(typedQuery);
         closeDropdown();
         return;
       }
 
-      setCommittedInput(typedQuery);
-      setSearch(typedQuery);
       closeDropdown();
     },
-    [closeDropdown, currentAppendedLabel, items, onParsedConversion],
+    [closeDropdown, items, onParsedConversion],
   );
 
   React.useEffect(() => {
@@ -779,14 +735,8 @@ export function ConversionCombobox({
         }}
         onChange={(event) => {
           const updated = event.target.value;
-          if (!updated.trim()) {
-            setCommittedInput('');
-            setFinderBaseValue('');
-            setCurrentAppendedLabel('');
-          }
-          setFinderBaseValue(extractNumericPrefix(updated));
+          setCommittedInput(updated);
           setSearch(updated);
-          setCurrentAppendedLabel('');
           setOpen(true);
         }}
         onClick={() => {
