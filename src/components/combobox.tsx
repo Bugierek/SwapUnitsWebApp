@@ -430,8 +430,12 @@ export function ConversionCombobox({
       if (handleNumericCommit && Number.isFinite(numericCandidate)) {
         handleNumericCommit(numericCandidate);
       }
-      setCommittedInput(rawInput);
-      setSearch(rawInput);
+      const shouldAppendLabel = sanitizedInput !== '' && isPureNumericQuery(sanitizedInput);
+      const displayText = shouldAppendLabel && match.label
+        ? `${sanitizedInput} ${match.label}`.trim()
+        : rawInput;
+      setCommittedInput(displayText);
+      setSearch(displayText);
       const hasNumeric = Number.isFinite(numericCandidate);
       onParsedConversion?.({
         ok: true,
