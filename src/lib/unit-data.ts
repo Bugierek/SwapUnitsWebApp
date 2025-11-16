@@ -14,6 +14,7 @@ import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types
 // Data Storage: Byte (B)
 // Data Transfer Rate: Bits per second (bps)
 // Bitcoin: Bitcoin (BTC)
+// Currency: Currency (dynamic rates)
 
 const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // DOE AFDC gasoline energy equivalent (kWh/L)
 const WH_PER_KM_FACTOR = LITER_GASOLINE_KWH_EQUIVALENCE * 1000; // converts Wh/km to km/L via inverse relationship
@@ -57,6 +58,23 @@ fuelEconomyUnits.sort((a, b) => {
 });
 
 export const unitData: Record<UnitCategory, UnitData> = {
+  Currency: {
+    name: 'Currency',
+    units: [
+      { name: 'Euro', symbol: 'EUR', factor: 1 },
+      { name: 'US Dollar', symbol: 'USD', factor: 1 },
+      { name: 'British Pound', symbol: 'GBP', factor: 1 },
+      { name: 'Swiss Franc', symbol: 'CHF', factor: 1 },
+      { name: 'Japanese Yen', symbol: 'JPY', factor: 1 },
+      { name: 'Polish Zloty', symbol: 'PLN', factor: 1 },
+      { name: 'Canadian Dollar', symbol: 'CAD', factor: 1 },
+      { name: 'Australian Dollar', symbol: 'AUD', factor: 1 },
+      { name: 'New Zealand Dollar', symbol: 'NZD', factor: 1 },
+      { name: 'Swedish Krona', symbol: 'SEK', factor: 1 },
+      { name: 'Norwegian Krone', symbol: 'NOK', factor: 1 },
+      { name: 'Danish Krone', symbol: 'DKK', factor: 1 },
+    ],
+  },
   Length: {
     name: 'Length',
     units: [
@@ -265,7 +283,7 @@ export const allPresets: Preset[] = [
 export const categoryDisplayOrder: UnitCategory[] = [
   'Length', 'Mass', 'Temperature', 'Time', 'Pressure',
   'Area', 'Volume', 'Energy', 'Speed', 'Fuel Economy',
-  'Data Storage', 'Data Transfer Rate', 'Bitcoin', 'SI Prefixes',
+  'Data Storage', 'Data Transfer Rate', 'Bitcoin', 'Currency', 'SI Prefixes',
   // Removed: 'Ethereum', 'EM Frequency', 'Sound Frequency',
 ];
 

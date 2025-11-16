@@ -87,6 +87,18 @@ const SUPERSCRIPT_DIGIT_MAP: Record<string, string> = {
 };
 
 const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
+  USD: ['usd', 'us dollar', 'us dollars', 'dollar', 'dollars'],
+  EUR: ['eur', 'euro', 'euros'],
+  GBP: ['gbp', 'pound', 'pounds', 'british pound', 'sterling'],
+  CHF: ['chf', 'swiss franc', 'swiss francs'],
+  JPY: ['jpy', 'yen', 'japanese yen'],
+  PLN: ['pln', 'zloty', 'złoty', 'zł'],
+  CAD: ['cad', 'canadian dollar', 'canadian dollars'],
+  AUD: ['aud', 'australian dollar', 'australian dollars'],
+  NZD: ['nzd', 'new zealand dollar', 'new zealand dollars'],
+  SEK: ['sek', 'swedish krona', 'swedish kronor'],
+  NOK: ['nok', 'norwegian krone', 'norwegian kroner'],
+  DKK: ['dkk', 'danish krone', 'danish kroner'],
   kg: ['kilogram', 'kilograms', 'kilo', 'kilos'],
   g: ['gram', 'grams'],
   mg: ['milligram', 'milligrams'],

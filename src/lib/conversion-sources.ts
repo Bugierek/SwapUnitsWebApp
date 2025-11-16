@@ -55,6 +55,15 @@ const BITCOIN_CORE_DENOMINATION: ConversionSource = {
     'States that one bitcoin equals 100,000,000 satoshis, so BTC/Satoshi conversions follow the official Bitcoin Core denomination.',
 };
 
+const FRANKFURTER_ECB_RATES: ConversionSource = {
+  id: 'frankfurter-ecb',
+  title: 'Frankfurter.dev (ECB reference rates)',
+  organization: 'Line of Flight / European Central Bank',
+  url: 'https://www.frankfurter.dev',
+  summary:
+    'Open-source API that republishes the ECB daily FX reference rates (EUR base, updated once per business day around 16:00 CET). The app fetches these rates once per day for currency conversions.',
+};
+
 const categorySources: Record<UnitCategory, ConversionSource[]> = {
   Length: [NIST_GUIDE_SOURCE],
   Mass: [NIST_GUIDE_SOURCE],
@@ -70,6 +79,7 @@ const categorySources: Record<UnitCategory, ConversionSource[]> = {
   'Data Transfer Rate': [IEC_80000_13],
   Bitcoin: [BITCOIN_CORE_DENOMINATION],
   'SI Prefixes': [NIST_GUIDE_SOURCE],
+  Currency: [FRANKFURTER_ECB_RATES],
 };
 
 export function getConversionSources(

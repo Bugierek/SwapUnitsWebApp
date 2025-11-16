@@ -66,6 +66,7 @@ import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
 import { AccordionTabs, type AccordionTabItem } from '@/components/accordion-tabs';
 import {
   formatConversionValue,
@@ -116,6 +117,7 @@ export interface UnitConverterHandle {
 const CATEGORY_TILE_TITLES: Partial<Record<UnitCategory, string>> = {
   'Fuel Economy': 'Fuel efficiency',
   'Data Transfer Rate': 'Bandwidth',
+  Currency: 'Currency',
 };
 
 const CATEGORY_TILE_SECONDARY_LIMIT: Partial<Record<UnitCategory, number>> = {
@@ -234,6 +236,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [numberFormat, setNumberFormat] = React.useState<NumberFormat>('normal');
   const [precisionMode, setPrecisionMode] = React.useState<PrecisionMode>('rounded');
   const [isNormalFormatDisabled, setIsNormalFormatDisabled] = React.useState<boolean>(false);
+  const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
+  const [isFetchingFx, setIsFetchingFx] = React.useState(false);
+  const fxErrorRef = React.useRef<string | null>(null);
+  const fxLastAttemptRef = React.useRef<number | null>(null);
+  const FX_RETRY_COOLDOWN_MS = 5000;
   const isFullPrecision = precisionMode === 'full';
   const isMobile = useIsMobile();
   const prefersTouch = useIsCoarsePointer();
@@ -257,9 +264,39 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   });
 
   const { watch, setValue, reset, getValues, formState: { errors } } = form;
+  const maybeApplyCurrencyConversion = React.useCallback((fxData: FxRatesResponse) => {
+    const formValues = getValues();
+    const { category, fromUnit, toUnit, value } = formValues;
+    if (
+      category !== 'Currency' ||
+      !fromUnit ||
+      !toUnit ||
+      value === undefined ||
+      value === null ||
+      String(value).trim() === ''
+    ) {
+      return;
+    }
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return;
+    const result = convertUnitsDetailed({
+      category: 'Currency',
+      fromUnit,
+      toUnit,
+      value: numericValue,
+      fxContext: { base: fxData.base as CurrencyCode, rates: fxData.rates },
+    });
+    setConversionResult(result);
+  }, [getValues]);
   const rhfCategory = watch("category") as UnitCategory | "";
   const rhfFromUnit = watch("fromUnit");
   const rhfToUnit = watch("toUnit");
+  const fxStatusMessage = React.useMemo(() => {
+    if (rhfCategory !== 'Currency') return null;
+    if (fxErrorRef.current) return fxErrorRef.current;
+    if (!fxRates) return 'Loading latest FX rates (Frankfurter, updated daily ~16:00 CET)...';
+    return null;
+  }, [fxRates, rhfCategory]);
   const hasToggleFavorites = typeof onToggleFavorite === 'function';
   const getUnitDisplayName = React.useCallback(
     (category: UnitCategory | "", symbol: string) => {
@@ -651,6 +688,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     if (!rhfCategory || !currentFromUnit || !currentToUnit) {
       return null;
     }
+    if (rhfCategory === 'Currency') {
+      return null;
+    }
     return convertNumericValue(
       rhfCategory as UnitCategory,
       currentFromUnit.symbol,
@@ -658,6 +698,104 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       1,
     );
   }, [rhfCategory, currentFromUnit, currentToUnit]);
+
+  const fetchFxRatesForToday = React.useCallback(() => {
+    if (isFetchingFx) return;
+    if (fxRates) return;
+
+    const now = Date.now();
+    if (fxLastAttemptRef.current && now - fxLastAttemptRef.current < FX_RETRY_COOLDOWN_MS) {
+      return;
+    }
+
+    const currencyUnits = getUnitsForCategory('Currency').map((unit) => unit.symbol);
+    const symbols = currencyUnits.filter((code) => code !== 'EUR').join(',');
+
+    setIsFetchingFx(true);
+    fxErrorRef.current = null;
+    fxLastAttemptRef.current = now;
+
+    const controller = new AbortController();
+
+    fetch(`/api/fx?base=EUR${symbols ? `&symbols=${symbols}` : ''}`, {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
+        const data = (await res.json()) as FxRatesResponse;
+        setFxRates(data);
+        maybeApplyCurrencyConversion(data);
+      })
+      .catch((error) => {
+        if (error?.name === 'AbortError') return;
+        console.error('FX fetch error', error);
+        fxErrorRef.current = 'Live FX rates unavailable';
+      })
+      .finally(() => setIsFetchingFx(false));
+
+    return () => controller.abort();
+  }, [fxRates, isFetchingFx, maybeApplyCurrencyConversion]);
+
+  React.useEffect(() => {
+    if (rhfCategory !== 'Currency') {
+      fxLastAttemptRef.current = null;
+      return;
+    }
+    return fetchFxRatesForToday();
+  }, [fetchFxRatesForToday, rhfCategory]);
+
+  // Prefetch FX rates on initial load so currency queries can resolve immediately.
+  React.useEffect(() => {
+    if (!fxRates) {
+      fetchFxRatesForToday();
+    }
+  }, [fetchFxRatesForToday, fxRates]);
+
+  // When rates arrive (or change) with currency selected and inputs present, apply conversion immediately.
+  React.useEffect(() => {
+    if (!fxRates) return;
+    if (rhfCategory !== 'Currency') return;
+    if (!rhfFromUnit || !rhfToUnit || rhfValue === undefined || rhfValue === null) return;
+    maybeApplyCurrencyConversion(fxRates);
+  }, [fxRates, rhfCategory, rhfFromUnit, rhfToUnit, rhfValue, maybeApplyCurrencyConversion]);
+
+  // Safety net: if we have FX rates and the current currency conversion has no result yet, recompute once.
+  React.useEffect(() => {
+    if (rhfCategory !== 'Currency') return;
+    if (!fxRates) return;
+    if (conversionResult) return;
+    if (!rhfFromUnit || !rhfToUnit) return;
+    const numericValue = Number(rhfValue);
+    if (!Number.isFinite(numericValue)) return;
+    const result = convertUnitsDetailed({
+      category: 'Currency',
+      fromUnit: rhfFromUnit,
+      toUnit: rhfToUnit,
+      value: numericValue,
+      fxContext: { base: fxRates.base as CurrencyCode, rates: fxRates.rates },
+    });
+    if (result) {
+      setConversionResult(result);
+    }
+  }, [conversionResult, fxRates, rhfCategory, rhfFromUnit, rhfToUnit, rhfValue]);
+
+  // Always recompute currency conversions when any input changes and rates are ready.
+  React.useEffect(() => {
+    if (rhfCategory !== 'Currency') return;
+    if (!fxRates) return;
+    if (!rhfFromUnit || !rhfToUnit) return;
+    const numericValue = Number(rhfValue);
+    if (!Number.isFinite(numericValue)) return;
+    const result = convertUnitsDetailed({
+      category: 'Currency',
+      fromUnit: rhfFromUnit,
+      toUnit: rhfToUnit,
+      value: numericValue,
+      fxContext: { base: fxRates.base as CurrencyCode, rates: fxRates.rates },
+    });
+    setConversionResult(result);
+  }, [fxRates, rhfCategory, rhfFromUnit, rhfToUnit, rhfValue]);
 
   const selectedConversionPairValue = React.useMemo(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
@@ -679,15 +817,53 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       return null;
     }
 
+    if (category === 'Currency' && !fxRates) {
+      return null; // avoid spinning while rates are loading
+    }
+
+    const fxContext =
+      category === 'Currency' && fxRates
+        ? { base: fxRates.base as CurrencyCode, rates: fxRates.rates }
+        : undefined;
+
     const result = convertUnitsDetailed({
       category: category as UnitCategory,
       fromUnit,
       toUnit,
       value: Number(value),
+      fxContext,
     });
 
     return result;
-  }, []);
+  }, [fxRates]);
+
+  // Recompute currencies when fresh rates land
+  React.useEffect(() => {
+    if (rhfCategory !== 'Currency') return;
+    if (!fxRates && !isFetchingFx) {
+      fetchFxRatesForToday();
+      return;
+    }
+
+    if (fxRates && rhfFromUnit && rhfToUnit && String(rhfValue ?? '').trim() !== '') {
+      const result = convertUnits({
+        category: rhfCategory,
+        fromUnit: rhfFromUnit,
+        toUnit: rhfToUnit,
+        value: Number(rhfValue),
+      });
+      setConversionResult(result);
+    }
+  }, [
+    fetchFxRatesForToday,
+    fxRates,
+    rhfCategory,
+    rhfFromUnit,
+    rhfToUnit,
+    rhfValue,
+    convertUnits,
+    isFetchingFx,
+  ]);
 
   const applyCategoryDefaults = React.useCallback(
     (category: UnitCategory, { forceDefaults }: { forceDefaults: boolean }) => {
@@ -1203,7 +1379,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     event.preventDefault();
   };
 
-  const showPlaceholder = rhfValue === undefined || rhfFromUnit === '' || !conversionResult || String(rhfValue).trim() === '' || String(rhfValue) === '-';
+  const currencyRatesReady = rhfCategory !== 'Currency' || Boolean(fxRates) || Boolean(fxErrorRef.current);
+  const showPlaceholder = rhfValue === undefined || rhfFromUnit === '' || !conversionResult || String(rhfValue).trim() === '' || String(rhfValue) === '-' || !currencyRatesReady;
   const inputNumericValue = React.useMemo(() => {
     if (rhfValue === undefined || rhfValue === null) {
       return null;
@@ -1253,7 +1430,37 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     setTextCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
+  const resolveCurrencyPairRate = React.useCallback((): number | null => {
+    if (rhfCategory !== 'Currency') return null;
+    if (!fxRates || !rhfFromUnit || !rhfToUnit) return null;
+
+    const base = (fxRates.base ?? 'EUR') as CurrencyCode;
+    const getRate = (symbol: string): number | null => {
+      if (symbol === base) return 1;
+      const rate = fxRates.rates[symbol as CurrencyCode];
+      return typeof rate === 'number' ? rate : null;
+    };
+
+    if (rhfFromUnit === rhfToUnit) return 1;
+
+    const fromRate = getRate(rhfFromUnit);
+    const toRate = getRate(rhfToUnit);
+    if (fromRate === null || toRate === null || fromRate === 0) return null;
+
+    if (rhfFromUnit === base) return toRate;
+    if (rhfToUnit === base) return 1 / fromRate;
+    return toRate / fromRate;
+  }, [fxRates, rhfCategory, rhfFromUnit, rhfToUnit]);
+
   const generalFormula = React.useMemo(() => {
+    if (rhfCategory === 'Currency') {
+      if (!currentFromUnit || !currentToUnit) return null;
+      const pairRate = resolveCurrencyPairRate();
+      if (pairRate === null) return null;
+      const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
+      return `${currentToUnit.symbol} = ${currentFromUnit.symbol} × ${formatFormulaValue(pairRate)}${dateNote}`;
+    }
+
     if (!currentFromUnit || !currentToUnit || multiplier === null) {
       return null;
     }
@@ -1321,7 +1528,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
 
     return null;
-  }, [rhfCategory, currentFromUnit, currentToUnit, multiplier, formatFormulaValue]);
+  }, [rhfCategory, currentFromUnit, currentToUnit, multiplier, formatFormulaValue, resolveCurrencyPairRate, fxRates?.date]);
 
   const dynamicFormula = React.useMemo(() => {
     if (
@@ -1335,6 +1542,15 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
 
     const inputFormatted = formatFromValue(inputNumericValue, precisionMode);
+    if (rhfCategory === 'Currency') {
+      const pairRate = resolveCurrencyPairRate();
+      const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
+      if (pairRate !== null) {
+        return `${inputFormatted} ${currentFromUnit.symbol} × ${formatFormulaValue(pairRate)} = ${formattedResultString} ${currentToUnit.symbol}${dateNote}`;
+      }
+      return `${inputFormatted} ${currentFromUnit.symbol} = ${formattedResultString} ${currentToUnit.symbol}${dateNote}`;
+    }
+
     if (multiplier !== null) {
       return `${inputFormatted} ${currentFromUnit.symbol} × ${formatFormulaValue(multiplier)} = ${formattedResultString} ${currentToUnit.symbol}`;
     }
@@ -1349,6 +1565,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     precisionMode,
     formattedResultString,
     formatFormulaValue,
+    rhfCategory,
+    resolveCurrencyPairRate,
+    fxRates?.date,
   ]);
 
   const formulaContentNode = React.useMemo(() => {
@@ -2068,6 +2287,12 @@ return (
                 )}
                 
                  {/* Textual Conversion Result Display */}
+                {fxStatusMessage && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {fxStatusMessage}
+                  </div>
+                )}
+
                 {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
                   <div className="relative">
                     <div

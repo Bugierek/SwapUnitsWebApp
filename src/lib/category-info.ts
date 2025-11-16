@@ -693,6 +693,53 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       },
     ],
   },
+  Currency: {
+    title: 'Currency Converter & FX Reference',
+    heroTagline: 'Daily ECB reference rates via Frankfurter (EUR base).',
+    description:
+      'Swap between major currencies using the European Central Bank reference rates exposed by the open-source Frankfurter API. Rates update once per business day (around 16:00 CET) and conversions are routed through EUR for consistency.',
+    intro:
+      'Use this converter for quick cross-currency checks without worrying about API keys. The app requests the latest available ECB rates and shows when they were published so you know which day the pricing reflects.',
+    quickTips: [
+      'ECB reference rates update once per working day. If you check outside market hours or on weekends, the latest business day is used.',
+      'Cross conversions (e.g., USD → AUD) go through the EUR base to keep rates consistent across all pairs.',
+      'Always confirm the rate date when quoting prices or budgeting trips—settlement can differ from the displayed reference.',
+    ],
+    useCases: [
+      'Travelers budgeting expenses between EUR, USD, GBP, AUD, and other majors.',
+      'Finance teams reconciling invoices that mix EUR pricing with USD payouts.',
+      'Engineers needing a simple FX reference without running a trading terminal.',
+    ],
+    seo: {
+      title: 'FX Converter (ECB/Frankfurter) | SwapUnits',
+      description:
+        'Convert between USD, EUR, GBP, AUD, CAD, and more using daily ECB reference rates via the open Frankfurter API. No keys required.',
+      keywords: [
+        'currency converter',
+        'EUR to USD rate',
+        'USD to AUD converter',
+        'ECB reference rates',
+        'Frankfurter API FX',
+      ],
+    },
+    faq: [
+      {
+        question: 'How often do the rates update?',
+        answer:
+          'Frankfurter mirrors the ECB feed, which updates once per working day (typically ~16:00 CET). The app fetches fresh data once per day and shows the published date.',
+      },
+      {
+        question: 'Which base currency is used?',
+        answer:
+          'Rates are published with EUR as the base. Cross conversions (e.g., USD → AUD) are computed through EUR to keep every pair internally consistent.',
+      },
+      {
+        question: 'Can I self-host the FX API?',
+        answer:
+          'Yes. Frankfurter provides a Docker image. Point the app’s FX base URL to your self-hosted instance if you need full control or offline capability.',
+      },
+    ],
+  },
 };
 
 const categoryInfoMap: Record<UnitCategory, CategoryInfo> = Object.fromEntries(

@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { convertNumericValue } from '@/lib/conversion-math';
+import { fetchFxRates, type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
+import { getUnitsForCategory } from '@/lib/unit-data';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -54,6 +56,9 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
   const [precisionMode, setPrecisionMode] = React.useState<PrecisionMode>('rounded');
+  const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
+  const [fxError, setFxError] = React.useState<string | null>(null);
+  const [isFetchingFx, setIsFetchingFx] = React.useState(false);
   const isFullPrecision = precisionMode === 'full';
 
   const activeFrom = isSwapped ? toUnit : fromUnit;
@@ -82,13 +87,18 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
 
   const result = React.useMemo(() => {
     if (parsedInput === null) return null;
+    const fxContext =
+      category === 'Currency' && fxRates
+        ? { base: fxRates.base as CurrencyCode, rates: fxRates.rates }
+        : undefined;
     return convertNumericValue(
       category,
       activeFrom.symbol,
       activeTo.symbol,
       parsedInput,
+      fxContext,
     );
-  }, [category, activeFrom.symbol, activeTo.symbol, parsedInput]);
+  }, [category, activeFrom.symbol, activeTo.symbol, parsedInput, fxRates]);
 
   const multiplier = React.useMemo(() => {
     if (baseMultiplier === null || !Number.isFinite(baseMultiplier)) {
@@ -137,6 +147,46 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     }
   }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
 
+  const fetchPairFxRates = React.useCallback(() => {
+    if (isFetchingFx || fxRates) return;
+    setIsFetchingFx(true);
+    setFxError(null);
+    const currencyUnits = getUnitsForCategory('Currency').map((unit) => unit.symbol);
+    const symbols = currencyUnits.filter((code) => code !== 'EUR').join(',');
+    fetch(`/api/fx?base=EUR${symbols ? `&symbols=${symbols}` : ''}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
+        const data = (await res.json()) as FxRatesResponse;
+        setFxRates(data);
+      })
+      .catch((error) => {
+        console.error('FX fetch error (pair page):', error);
+        setFxError('Live FX rates unavailable');
+      })
+      .finally(() => setIsFetchingFx(false));
+  }, [fxRates, isFetchingFx]);
+
+  // Fetch FX when on currency pages
+  React.useEffect(() => {
+    if (category !== 'Currency') return;
+    fetchPairFxRates();
+  }, [category, fetchPairFxRates]);
+
+  // Prefetch once on mount for currency pages
+  React.useEffect(() => {
+    if (category !== 'Currency') return;
+    fetchPairFxRates();
+  }, [category, fetchPairFxRates]);
+
+  // Ensure currency formula/result renders once rates arrive without needing a swap.
+  React.useEffect(() => {
+    if (category !== 'Currency') return;
+    if (!fxRates) return;
+    if (parsedInput === null) return;
+    // trigger formula refresh when rates arrive
+    setInputValue((prev) => prev); // no-op to ensure downstream memo runs with latest fxRates
+  }, [category, fxRates, parsedInput]);
+
   React.useEffect(() => {
     setCopyState('idle');
   }, [parsedInput, activeFrom.symbol, activeTo.symbol]);
@@ -165,7 +215,45 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     applyHistorySelect,
   }), [applyHistorySelect]);
 
+  const resolveCurrencyPairRate = React.useCallback((): number | null => {
+    if (category !== 'Currency') return null;
+    if (!fxRates) return null;
+
+    const base = fxRates.base as CurrencyCode;
+    const getRate = (symbol: string): number | null => {
+      if (symbol === base) return 1;
+      const rate = fxRates.rates[symbol as CurrencyCode];
+      return typeof rate === 'number' ? rate : null;
+    };
+
+    const from = activeFrom.symbol;
+    const to = activeTo.symbol;
+    if (from === to) return 1;
+
+    const fromRate = getRate(from);
+    const toRate = getRate(to);
+    if (!fromRate || !toRate) return null;
+    if (from === base) return toRate;
+    if (to === base) return 1 / fromRate;
+    return toRate / fromRate;
+  }, [category, fxRates, activeFrom.symbol, activeTo.symbol]);
+
   const generalFormula = React.useMemo(() => {
+    if (category === 'Currency') {
+      const derivedRate =
+        resolveCurrencyPairRate() ??
+        (parsedInput !== null && parsedInput !== 0 && result !== null ? result / parsedInput : null);
+
+      if (!fxRates && derivedRate === null) {
+        return fxError ? 'Live FX rates unavailable' : 'Loading live FX rate…';
+      }
+      if (derivedRate === null) return fxError ? 'Live FX rates unavailable' : 'Awaiting live FX rate…';
+
+      const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
+      const formattedRate = formatValue(derivedRate, { precisionBoost: 0 }).formatted;
+      return `${activeTo.symbol} = ${activeFrom.symbol} × ${formattedRate}${dateNote}`;
+    }
+
     // Temperature conversions
     if (category === 'Temperature') {
       if (activeFrom.symbol === '°C' && activeTo.symbol === '°F') {
@@ -236,11 +324,27 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     }
     
     return null;
-  }, [category, activeTo.symbol, activeFrom.symbol, multiplier, formatValue]);
+  }, [
+    category,
+    activeTo.symbol,
+    activeFrom.symbol,
+    multiplier,
+    formatValue,
+    fxRates,
+    fxError,
+    resolveCurrencyPairRate,
+    parsedInput,
+    result,
+  ]);
 
   const dynamicFormula = React.useMemo(() => {
     if (parsedInput === null || result === null) {
       return null;
+    }
+    
+    // Currency: show rate application only (no literal result text)
+    if (category === 'Currency') {
+      return null; // avoid duplicating the general formula
     }
     
     // For simple multiplier-based conversions, show the actual calculation
@@ -253,7 +357,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     // For complex conversions (like temperature), show the actual values
     const inputFormatted = formatValue(parsedInput).formatted;
     return `${inputFormatted} ${activeFrom.symbol} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
-  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result]);
+  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result, category, resolveCurrencyPairRate, fxRates?.date]);
 
   return (
     <div className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg">

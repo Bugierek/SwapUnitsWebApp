@@ -20,7 +20,8 @@ export type UnitCategory =
   | 'Data Storage'
   | 'Data Transfer Rate'
   | 'Bitcoin'
-  | 'SI Prefixes';
+  | 'SI Prefixes'
+  | 'Currency';
   // Removed: | 'Ethereum' | 'EM Frequency' | 'Sound Frequency'
 
 export type UnitData = {

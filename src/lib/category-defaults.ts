@@ -19,6 +19,7 @@ const CATEGORY_DEFAULT_PAIRS: Partial<Record<UnitCategory, CategoryDefaultPair>>
   'Data Storage': { fromUnit: 'GB', toUnit: 'MB' },
   'Data Transfer Rate': { fromUnit: 'Mbps', toUnit: 'MB/s' },
   Bitcoin: { fromUnit: 'BTC', toUnit: 'sat' },
+  Currency: { fromUnit: 'EUR', toUnit: 'USD' },
 };
 
 export function getCategoryDefaultPair(category: UnitCategory): CategoryDefaultPair | null {
