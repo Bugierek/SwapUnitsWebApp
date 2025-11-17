@@ -141,11 +141,19 @@ const shouldAbbreviateUnit = (unit: { name: string; symbol: string }) => {
   );
 };
 
-const FINDER_VALUE_EXAMPLES = ['12 kg in mg', '5 kPa to atm', '100 L in mL', '3 h in s'];
+const FINDER_VALUE_EXAMPLES = ['12 kg in mg', '5 kPa to atm', '100 L in mL', '3 h in s', '110 USD to EUR'];
 
-const FINDER_UNIT_EXAMPLES = ['mile to meter', 'cm to ft', 'psi to kPa', '°C to °F', 'micro to milli', 'mph to km/h'];
+const FINDER_UNIT_EXAMPLES = [
+  'mile to meter',
+  'cm to ft',
+  'psi to kPa',
+  '°C to °F',
+  'micro to milli',
+  'mph to km/h',
+  'EUR to GBP',
+];
 
-const FINDER_CATEGORY_EXAMPLES = ['energy', 'pressure', 'length', 'bitcoin', 'bandwidth', 'speed'];
+const FINDER_CATEGORY_EXAMPLES = ['energy', 'pressure', 'length', 'bitcoin', 'bandwidth', 'speed', 'currency'];
 
 const formatNumber = (
   num: number,
