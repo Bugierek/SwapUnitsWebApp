@@ -87,6 +87,8 @@ const SUPERSCRIPT_DIGIT_MAP: Record<string, string> = {
 };
 
 const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
+  'MPG (US)': ['mpg', 'mpg us', 'mpg (us)', 'mpg-us', 'mpgus'],
+  'MPG (UK)': ['mpg uk', 'mpg(uk)', 'mpg-uk', 'imperial mpg', 'uk mpg', 'mpg'],
   USD: ['usd', 'us dollar', 'us dollars', 'dollar', 'dollars'],
   EUR: ['eur', 'euro', 'euros'],
   GBP: ['gbp', 'pound', 'pounds', 'british pound', 'sterling'],
@@ -158,6 +160,9 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
 const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
   'Wh/km': ['Wh/mi', 'mi/kWh'],
   'Wh/mi': ['Wh/km', 'km/kWh'],
+  'L/100km': ['MPG (US)', 'MPG (UK)', 'km/L'],
+  'MPG (US)': ['L/100km', 'km/L'],
+  'MPG (UK)': ['L/100km', 'km/L'],
 };
 
 const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
@@ -229,6 +234,9 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
   }
 
   let normalized = normalizeQuery(rawQuery);
+  normalized = normalized
+    .replace(/\/\s+([a-zA-Z°µμ])/g, '/$1')
+    .replace(/([a-zA-Z°µμ])\s+\/\s+(\d)/g, '$1/$2');
   const siDirectiveMatch = normalized.match(/^si\b/i);
   const hasSiDirective = Boolean(siDirectiveMatch);
   if (hasSiDirective) {
@@ -249,6 +257,11 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
 
   const defaultValueStrategy: ValueStrategy = hasExplicitValue ? 'explicit' : 'force-default';
 
+  const fuelFallback = tryParseFuelEconomyQuery(normalized, value, defaultValueStrategy);
+  if (fuelFallback) {
+    return fuelFallback;
+  }
+
   const connectorMatches = Array.from(normalized.matchAll(CONNECTOR_GLOBAL_REGEX));
 
   const index = getAliasIndex();
@@ -267,12 +280,18 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
         continue;
       }
 
-      const fromAlias = resolveAlias(index, fromPart);
+      let fromAlias = resolveAlias(index, fromPart);
+      if (!fromAlias) {
+        fromAlias = resolveFuelEconomyShorthand(fromPart);
+      }
       if (!fromAlias) {
         continue;
       }
 
-      const toAlias = resolveAlias(index, toPart);
+      let toAlias = resolveAlias(index, toPart);
+      if (!toAlias) {
+        toAlias = resolveFuelEconomyShorthand(toPart);
+      }
       if (!toAlias) {
         continue;
       }
@@ -360,6 +379,30 @@ function normalizeNumberToken(token: string): number {
   const cleaned = token.replace(/,/g, '');
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : 1;
+}
+
+function resolveFuelEconomyShorthand(raw: string): AliasEntry | null {
+  if (!raw) return null;
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const mpgUsVariants = new Set(['mpg us', 'mpg (us)', 'mpg-us', 'mpgus']);
+  const mpgUkVariants = new Set([
+    'mpg uk',
+    'mpg(uk)',
+    'mpg-uk',
+    'imperial mpg',
+    'uk mpg',
+    'mpg imperial',
+  ]);
+
+  if (mpgUsVariants.has(normalized)) {
+    return { symbol: 'MPG (US)', category: 'Fuel Economy' as UnitCategory };
+  }
+  if (mpgUkVariants.has(normalized)) {
+    return { symbol: 'MPG (UK)', category: 'Fuel Economy' as UnitCategory };
+  }
+  return null;
 }
 
 function resolveAlias(index: AliasIndex, raw: string): AliasEntry | null {
@@ -622,6 +665,33 @@ function tryParseSiPrefixesWithoutConnector(
   return null;
 }
 
+function tryParseFuelEconomyQuery(
+  normalized: string,
+  value: number,
+  valueStrategy: ValueStrategy,
+): UnitParseSuccess | null {
+  const search = normalized.toLowerCase();
+  if (!/l\/100\s*km/.test(search)) {
+    return null;
+  }
+  if (!/\bmpg\b/.test(search)) {
+    return null;
+  }
+
+  const toUnit =
+    /\bmpg\s*(uk|imperial|\(uk\))/i.test(search) ? 'MPG (UK)' : 'MPG (US)';
+
+  return {
+    ok: true,
+    kind: 'unit',
+    value: Number.isFinite(value) ? value : 1,
+    fromUnit: 'L/100km',
+    toUnit,
+    category: 'Fuel Economy' as UnitCategory,
+    valueStrategy,
+  };
+}
+
 function tryParseSingleUnitQuery(
   normalized: string,
   value: number,
@@ -637,7 +707,8 @@ function tryParseSingleUnitQuery(
     return null;
   }
 
-  const alias = resolveAlias(index, sanitized);
+  const alias =
+    resolveAlias(index, sanitized) ?? resolveFuelEconomyShorthand(sanitized);
   if (!alias) {
     return null;
   }

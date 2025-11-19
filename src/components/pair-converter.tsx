@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { convertNumericValue } from '@/lib/conversion-math';
-import { fetchFxRates, type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
+import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
 import { getUnitsForCategory } from '@/lib/unit-data';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { useToast } from '@/hooks/use-toast';

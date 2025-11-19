@@ -143,7 +143,9 @@ function normalizeInput(value: string): string {
       return `${letter} `;
     });
 
-  return withSpacing.replace(/\s+/g, ' ').trim();
+  const rejoinedSlashUnits = withSpacing.replace(/\/\s*(\d+)\s+([A-Za-z°µµ]+)/g, '/$1$2');
+
+  return rejoinedSlashUnits.replace(/\s+/g, ' ').trim();
 }
 
 function isPureNumericQuery(query: string): boolean {
@@ -210,7 +212,8 @@ export function ConversionCombobox({
         inputRef.current.setSelectionRange(position, position);
       }
       if (normalizedPreset) {
-        const parsed = parseConversionQuery(normalizedPreset);
+    const parsed = parseConversionQuery(normalizedPreset);
+    console.log('finder parse', normalizedPreset, parsed);
         if (parsed.ok) {
           onParsedConversion?.(parsed);
         } else {
@@ -416,6 +419,7 @@ export function ConversionCombobox({
           fromPrefixSymbol: match.siPrefixMeta.fromSymbol,
           toPrefixSymbol: match.siPrefixMeta.toSymbol,
           inputText: match.label,
+          valueStrategy: 'force-default',
         });
         setCommittedInput(match.label);
         setSearch(match.label);
@@ -557,6 +561,7 @@ export function ConversionCombobox({
     }
 
     const parsed = parseConversionQuery(normalizedSearch);
+    console.log('finder parse search', normalizedSearch, parsed);
     if (!parsed.ok) {
       setAutoHighlightedValue(null);
       return;
@@ -623,6 +628,7 @@ export function ConversionCombobox({
       if (!LETTER_REGEX.test(normalized.replace(CONNECTOR_TOKEN_REGEX, ' '))) return false;
 
       const parsed = parseConversionQuery(normalized);
+      console.log('finder parse manual', normalized, parsed);
       if (parsed.ok) {
         handleParsedSelection(parsed, normalized);
         return true;
