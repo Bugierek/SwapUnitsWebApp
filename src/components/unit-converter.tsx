@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MeasurementCategoryDropdown, MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
+import type { MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
@@ -32,6 +32,7 @@ import {
   Copy,
   Star,
   Calculator,
+  ChevronRight,
   ChevronsUpDown,
   ArrowUpRight,
   Check,
@@ -40,7 +41,6 @@ import {
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useIsCoarsePointer } from '@/hooks/use-pointer-capabilities';
 import { cn } from '@/lib/utils';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
@@ -66,6 +66,14 @@ import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
 import { AccordionTabs, type AccordionTabItem } from '@/components/accordion-tabs';
 import {
@@ -134,6 +142,7 @@ const LONG_UNIT_NAMES = new Set([
 ]);
 
 const MAX_UNIT_LABEL_LENGTH = 24;
+const PREFER_ABBREVIATED_UNIT_LABELS = true;
 const shouldAbbreviateUnit = (unit: { name: string; symbol: string }) => {
   return (
     unit.name.length > MAX_UNIT_LABEL_LENGTH ||
@@ -250,13 +259,20 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const fxLastAttemptRef = React.useRef<number | null>(null);
   const FX_RETRY_COOLDOWN_MS = 5000;
   const isFullPrecision = precisionMode === 'full';
-  const isMobile = useIsMobile();
   const prefersTouch = useIsCoarsePointer();
   const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const fromTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const toTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const [abbreviateFromTrigger, setAbbreviateFromTrigger] = React.useState(false);
   const [abbreviateToTrigger, setAbbreviateToTrigger] = React.useState(false);
+  const [fromTriggerWidth, setFromTriggerWidth] = React.useState<number | null>(null);
+  const [toTriggerWidth, setToTriggerWidth] = React.useState<number | null>(null);
+  const [fromMenuOpen, setFromMenuOpen] = React.useState(false);
+  const [fromMenuCategory, setFromMenuCategory] = React.useState<UnitCategory | null>(null);
+  const [toMenuOpen, setToMenuOpen] = React.useState(false);
+  const [toMenuCategory, setToMenuCategory] = React.useState<UnitCategory | null>(null);
+  const [fromUnitFilter, setFromUnitFilter] = React.useState('');
+  const [toUnitFilter, setToUnitFilter] = React.useState('');
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
@@ -335,6 +351,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
   const resultHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasAppliedHighlightRef = React.useRef(false);
+  const [fromUnitHighlight, setFromUnitHighlight] = React.useState(false);
+  const [toUnitHighlight, setToUnitHighlight] = React.useState(false);
+  const unitHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [finderVersion, setFinderVersion] = React.useState(0);
   const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
   const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
@@ -492,6 +511,18 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       });
   }, []);
 
+  const menuCategoryOptions = React.useMemo(() => {
+    if (!rhfCategory) {
+      return categoryOptions;
+    }
+    const current = categoryOptions.find((opt) => opt.value === rhfCategory);
+    if (!current) {
+      return categoryOptions;
+    }
+    const rest = categoryOptions.filter((opt) => opt.value !== rhfCategory);
+    return [current, ...rest];
+  }, [categoryOptions, rhfCategory]);
+
   const currentUnitsForCategory = React.useMemo(() => {
     if (!rhfCategory) return [];
     return getUnitsForCategory(rhfCategory);
@@ -529,38 +560,49 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     [],
   );
 
+  const clampTriggerWidth = React.useCallback((textWidth: number) => {
+    const padding = 32; // padding plus caret space
+    const desired = textWidth + padding;
+    const minWidth = 96;
+    const maxWidth = 320;
+    return Math.max(minWidth, Math.min(desired, maxWidth));
+  }, []);
+
   const evaluateLabelWidths = React.useCallback(() => {
     if (typeof window === 'undefined') return;
+
     if (currentFromUnit && fromTriggerRef.current) {
-      const triggerWidth = fromTriggerRef.current.clientWidth;
-      if (triggerWidth > 0) {
-        const labelText = `${currentFromUnit.name} (${currentFromUnit.symbol})`;
-        const measuredWidth = measureLabelWidth(fromTriggerRef.current, labelText);
-        setAbbreviateFromTrigger(
-          measuredWidth > triggerWidth * 0.5 || shouldAbbreviateUnit(currentFromUnit),
-        );
+      const fullLabel = `${currentFromUnit.name} (${currentFromUnit.symbol})`;
+      const displayText = PREFER_ABBREVIATED_UNIT_LABELS ? currentFromUnit.symbol : fullLabel;
+      const measuredWidth = measureLabelWidth(fromTriggerRef.current, displayText);
+      if (measuredWidth > 0) {
+        setFromTriggerWidth(clampTriggerWidth(measuredWidth));
+        setAbbreviateFromTrigger(PREFER_ABBREVIATED_UNIT_LABELS || shouldAbbreviateUnit(currentFromUnit));
       } else {
         setAbbreviateFromTrigger(false);
+        setFromTriggerWidth(null);
       }
     } else {
       setAbbreviateFromTrigger(false);
+      setFromTriggerWidth(null);
     }
 
     if (currentToUnit && toTriggerRef.current) {
-      const triggerWidth = toTriggerRef.current.clientWidth;
-      if (triggerWidth > 0) {
-        const labelText = `${currentToUnit.name} (${currentToUnit.symbol})`;
-        const measuredWidth = measureLabelWidth(toTriggerRef.current, labelText);
-        setAbbreviateToTrigger(
-          measuredWidth > triggerWidth * 0.5 || shouldAbbreviateUnit(currentToUnit),
-        );
+      const fullLabel = `${currentToUnit.name} (${currentToUnit.symbol})`;
+      const displayText = PREFER_ABBREVIATED_UNIT_LABELS ? currentToUnit.symbol : fullLabel;
+      const measuredWidth = measureLabelWidth(toTriggerRef.current, displayText);
+      if (measuredWidth > 0) {
+        setToTriggerWidth(clampTriggerWidth(measuredWidth));
+        setAbbreviateToTrigger(PREFER_ABBREVIATED_UNIT_LABELS || shouldAbbreviateUnit(currentToUnit));
       } else {
         setAbbreviateToTrigger(false);
+        setToTriggerWidth(null);
       }
     } else {
       setAbbreviateToTrigger(false);
+      setToTriggerWidth(null);
     }
-  }, [currentFromUnit, currentToUnit, measureLabelWidth]);
+  }, [clampTriggerWidth, currentFromUnit, currentToUnit, measureLabelWidth]);
 
   React.useLayoutEffect(() => {
     evaluateLabelWidths();
@@ -961,6 +1003,233 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     ],
   );
 
+  const updateUnitsForCategory = React.useCallback(
+    (
+      category: UnitCategory,
+      overrides: {
+        fromUnit?: string;
+        toUnit?: string;
+      },
+    ) => {
+      const availableUnits = getUnitsForCategory(category);
+      if (availableUnits.length === 0) {
+        setSelectedCategoryLocal(category);
+        setValue('category', category, { shouldValidate: true });
+        return;
+      }
+
+      const currentValues = getValues();
+      const availableSymbols = availableUnits.map((unit) => unit.symbol);
+      const defaultPair = getCategoryDefaultPair(category);
+
+      let fromUnitSymbol: string | undefined =
+        overrides.fromUnit && availableSymbols.includes(overrides.fromUnit)
+          ? overrides.fromUnit
+          : (typeof currentValues.fromUnit === 'string' &&
+              availableSymbols.includes(currentValues.fromUnit)
+            ? currentValues.fromUnit
+            : undefined);
+
+      let toUnitSymbol: string | undefined =
+        overrides.toUnit && availableSymbols.includes(overrides.toUnit)
+          ? overrides.toUnit
+          : (typeof currentValues.toUnit === 'string' &&
+              availableSymbols.includes(currentValues.toUnit)
+            ? currentValues.toUnit
+            : undefined);
+
+      // If user explicitly chose the to-unit and it currently matches from,
+      // clear from so we can pick a sensible counterpart (and vice versa).
+      if (overrides.toUnit && fromUnitSymbol === overrides.toUnit) {
+        fromUnitSymbol = undefined;
+      }
+      if (overrides.fromUnit && toUnitSymbol === overrides.fromUnit) {
+        toUnitSymbol = undefined;
+      }
+
+      // Case 1: nothing valid yet -> seed from defaults or first two units.
+      if (!fromUnitSymbol && !toUnitSymbol) {
+        if (
+          defaultPair &&
+          availableSymbols.includes(defaultPair.fromUnit) &&
+          availableSymbols.includes(defaultPair.toUnit)
+        ) {
+          fromUnitSymbol = defaultPair.fromUnit;
+          toUnitSymbol = defaultPair.toUnit;
+        } else {
+          fromUnitSymbol = availableSymbols[0] ?? '';
+          toUnitSymbol =
+            availableSymbols.find((sym) => sym !== fromUnitSymbol) ??
+            fromUnitSymbol;
+        }
+      }
+      // Case 2: from is fixed (possibly by user), choose a matching to.
+      else if (fromUnitSymbol && !toUnitSymbol) {
+        if (defaultPair) {
+          if (
+            fromUnitSymbol === defaultPair.fromUnit &&
+            availableSymbols.includes(defaultPair.toUnit)
+          ) {
+            toUnitSymbol = defaultPair.toUnit;
+          } else if (
+            fromUnitSymbol === defaultPair.toUnit &&
+            availableSymbols.includes(defaultPair.fromUnit)
+          ) {
+            toUnitSymbol = defaultPair.fromUnit;
+          }
+        }
+        if (!toUnitSymbol) {
+          toUnitSymbol =
+            availableSymbols.find((sym) => sym !== fromUnitSymbol) ??
+            fromUnitSymbol;
+        }
+      }
+      // Case 3: to is fixed (possibly by user), choose a matching from.
+      else if (!fromUnitSymbol && toUnitSymbol) {
+        if (defaultPair) {
+          if (
+            toUnitSymbol === defaultPair.toUnit &&
+            availableSymbols.includes(defaultPair.fromUnit)
+          ) {
+            fromUnitSymbol = defaultPair.fromUnit;
+          } else if (
+            toUnitSymbol === defaultPair.fromUnit &&
+            availableSymbols.includes(defaultPair.toUnit)
+          ) {
+            fromUnitSymbol = defaultPair.toUnit;
+          }
+        }
+        if (!fromUnitSymbol) {
+          fromUnitSymbol =
+            availableSymbols.find((sym) => sym !== toUnitSymbol) ??
+            toUnitSymbol;
+        }
+      }
+      // Case 4: both defined but ended up equal -> adjust the non-overridden side.
+      else if (fromUnitSymbol && toUnitSymbol && fromUnitSymbol === toUnitSymbol) {
+        if (overrides.toUnit && !overrides.fromUnit) {
+          // Respect result side; move input side.
+          if (defaultPair) {
+            if (
+              toUnitSymbol === defaultPair.toUnit &&
+              availableSymbols.includes(defaultPair.fromUnit)
+            ) {
+              fromUnitSymbol = defaultPair.fromUnit;
+            } else if (
+              toUnitSymbol === defaultPair.fromUnit &&
+              availableSymbols.includes(defaultPair.toUnit)
+            ) {
+              fromUnitSymbol = defaultPair.toUnit;
+            }
+          }
+          if (fromUnitSymbol === toUnitSymbol) {
+            fromUnitSymbol =
+              availableSymbols.find((sym) => sym !== toUnitSymbol) ??
+              toUnitSymbol;
+          }
+        } else if (overrides.fromUnit && !overrides.toUnit) {
+          // Respect input side; move result side.
+          if (defaultPair) {
+            if (
+              fromUnitSymbol === defaultPair.fromUnit &&
+              availableSymbols.includes(defaultPair.toUnit)
+            ) {
+              toUnitSymbol = defaultPair.toUnit;
+            } else if (
+              fromUnitSymbol === defaultPair.toUnit &&
+              availableSymbols.includes(defaultPair.fromUnit)
+            ) {
+              toUnitSymbol = defaultPair.fromUnit;
+            }
+          }
+          if (toUnitSymbol === fromUnitSymbol) {
+            toUnitSymbol =
+              availableSymbols.find((sym) => sym !== fromUnitSymbol) ??
+              fromUnitSymbol;
+          }
+        } else if (defaultPair) {
+          // No explicit override; fall back to default pair orientation.
+          if (
+            availableSymbols.includes(defaultPair.fromUnit) &&
+            availableSymbols.includes(defaultPair.toUnit)
+          ) {
+            fromUnitSymbol = defaultPair.fromUnit;
+            toUnitSymbol = defaultPair.toUnit;
+          }
+        }
+      }
+
+      // Final safety: ensure we have concrete symbols.
+      let safeFrom = fromUnitSymbol ?? availableSymbols[0] ?? '';
+      let safeTo =
+        toUnitSymbol ??
+        availableSymbols.find((sym) => sym !== safeFrom) ??
+        safeFrom;
+
+      const currentValueRaw = currentValues.value;
+      const numericValue =
+        typeof currentValueRaw === 'number'
+          ? currentValueRaw
+          : Number(currentValueRaw);
+      const shouldResetValue =
+        !Number.isFinite(numericValue) ||
+        String(currentValueRaw ?? '').trim() === '' ||
+        String(currentValueRaw ?? '').trim() === '-';
+
+      const finalValue = shouldResetValue ? 1 : numericValue;
+
+      setSelectedCategoryLocal(category);
+      setValue('category', category, { shouldDirty: true, shouldValidate: true });
+      setValue('fromUnit', safeFrom, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue('toUnit', safeTo, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue('value', finalValue, { shouldDirty: true, shouldValidate: true });
+      setLastValidInputValue(finalValue);
+      setNumberFormat('normal');
+      setIsNormalFormatDisabled(false);
+
+      const conversion = convertUnits({
+        category,
+        fromUnit: safeFrom,
+        toUnit: safeTo,
+        value: finalValue,
+      });
+
+      setConversionResult(conversion);
+    },
+    [
+      convertUnits,
+      getValues,
+      setConversionResult,
+      setIsNormalFormatDisabled,
+      setLastValidInputValue,
+      setNumberFormat,
+      setSelectedCategoryLocal,
+      setValue,
+    ],
+  );
+
+  const handleFromUnitMenuSelect = React.useCallback(
+    (category: UnitCategory, unitSymbol: string) => {
+      resetFinderInput();
+      updateUnitsForCategory(category, { fromUnit: unitSymbol });
+    },
+    [resetFinderInput, updateUnitsForCategory],
+  );
+
+  const handleToUnitMenuSelect = React.useCallback(
+    (category: UnitCategory, unitSymbol: string) => {
+      resetFinderInput();
+      updateUnitsForCategory(category, { toUnit: unitSymbol });
+    },
+    [resetFinderInput, updateUnitsForCategory],
+  );
+
   const handleParsedConversion = React.useCallback(
     (payload: ParsedConversionPayload) => {
       pendingFinderSelectionRef.current = true;
@@ -972,9 +1241,24 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         focusResultField();
       };
 
+      const pulseUnitHighlight = () => {
+        if (unitHighlightTimeoutRef.current) {
+          clearTimeout(unitHighlightTimeoutRef.current);
+          unitHighlightTimeoutRef.current = null;
+        }
+        setFromUnitHighlight(true);
+        setToUnitHighlight(true);
+        unitHighlightTimeoutRef.current = setTimeout(() => {
+          setFromUnitHighlight(false);
+          setToUnitHighlight(false);
+          unitHighlightTimeoutRef.current = null;
+        }, 900);
+      };
+
       if (payload.kind === 'category') {
         setIsSwapped(false);
         applyCategoryDefaults(payload.category, { forceDefaults: true });
+        pulseUnitHighlight();
         finalizeFinderSelection();
         return;
       }
@@ -1034,6 +1318,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             setConversionResult(conversion);
           })
           .finally(() => {
+            pulseUnitHighlight();
             finalizeFinderSelection();
           });
         return;
@@ -1060,6 +1345,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           setConversionResult(conversion);
         })
         .finally(() => {
+          pulseUnitHighlight();
           finalizeFinderSelection();
         });
     },
@@ -1074,6 +1360,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setIsSwapped,
       pendingFinderSelectionRef,
       resultInputRef,
+      unitHighlightTimeoutRef,
     ],
   );
 
@@ -1242,6 +1529,14 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         }
     }
   }, [rhfValue, rhfFromUnit, rhfToUnit, rhfCategory, selectedCategoryLocal, getValues, convertUnits, errors.value]);
+
+  React.useEffect(() => {
+    return () => {
+      if (unitHighlightTimeoutRef.current) {
+        clearTimeout(unitHighlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
    React.useEffect(() => {
@@ -1874,7 +2169,7 @@ return (
             SwapUnits Converter
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            Enter a value, choose your units, and copy the result instantly. History and favorites stay in sync automatically.
+            Enter a value, choose your units, and copy the result instantly.
           </p>
         </CardHeader>
         <CardContent className={cn("flex flex-grow flex-col px-5 py-5")}>
@@ -1987,140 +2282,372 @@ return (
                           </Button>
                         )}
                       </div>
-                      <FormLabel className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                        Measurement Category
-                      </FormLabel>
-                      <FormControl>
-                        <MeasurementCategoryDropdown
-                          options={categoryOptions}
-                          value={(field.value as UnitCategory) ?? ''}
-                          onSelect={(nextCategory) => {
-                            if (typeof nextCategory !== 'string') {
-                              return;
-                            }
-                            const normalizedCategory = nextCategory as UnitCategory;
-                            field.onChange(normalizedCategory);
-                            resetFinderInput();
-                            applyCategoryDefaults(normalizedCategory, { forceDefaults: true });
-                          }}
-                          placeholder="Select a category"
-                          triggerClassName="h-11"
-                        />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
-                    {/* From Input Row */}
-                    <div className="flex flex-wrap items-stretch gap-3">
-                      <div className="flex min-w-0 flex-1">
-                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 border-solid bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <FormField
-                            control={form.control}
-                            name="value"
-                            render={({ field }) => (
-                              <FormItem className="flex-1 space-y-0">
-                                <FormControl>
-                                  <Input
-                                    id="value-input"
-                                    name="from-value"
-                                    type="text"
-                                    inputMode="decimal"
-                                    placeholder="Enter value"
-                                    {...field}
-                                    onChange={(e) => {
-                                      const rawValue = e.target.value;
-                                      if (
-                                        rawValue === '' ||
-                                        rawValue === '-' ||
-                                        /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
-                                        /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
-                                      ) {
-                                        if (/([eE])/.test(rawValue)) {
+                    <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1.5fr)]">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                        <FormField
+                          control={form.control}
+                          name="value"
+                          render={({ field }) => (
+                            <FormItem className="flex items-stretch space-y-0 border-r border-border/60">
+                              <FormControl>
+                                <Input
+                                  id="value-input"
+                                  name="from-value"
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="Enter value"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const rawValue = e.target.value;
+                                    if (
+                                      rawValue === '' ||
+                                      rawValue === '-' ||
+                                      /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
+                                      /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
+                                    ) {
+                                      if (/([eE])/.test(rawValue)) {
+                                        field.onChange(rawValue);
+                                      } else {
+                                        const parts = rawValue.split('.');
+                                        if (
+                                          parts[0].replace('-', '').length <= 8 &&
+                                          (parts[1] === undefined || parts[1].length <= 7)
+                                        ) {
                                           field.onChange(rawValue);
-                                        } else {
-                                          const parts = rawValue.split('.');
-                                          if (
-                                            parts[0].replace('-', '').length <= 8 &&
-                                            (parts[1] === undefined || parts[1].length <= 7)
-                                          ) {
-                                            field.onChange(rawValue);
-                                          } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
-                                            field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
-                                          }
+                                        } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
+                                          field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
                                         }
                                       }
-                                    }}
-                                    value={field.value === undefined ? '' : String(field.value)}
-                                    disabled={!rhfFromUnit || !rhfToUnit}
-                                    aria-required="true"
-                                    className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                  />
-                                </FormControl>
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="fromUnit"
-                            render={({ field }) => (
-                              <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
-                                <Select
-                                  name="fromUnit"
-                                  onValueChange={(value) => {
-                                    resetFinderInput();
-                                    field.onChange(value);
+                                    }
                                   }}
-                                  value={field.value}
-                                  disabled={!rhfCategory}
+                                  value={field.value === undefined ? '' : String(field.value)}
+                                  disabled={!rhfFromUnit || !rhfToUnit}
+                                  aria-required="true"
+                                  className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="fromUnit"
+                          render={() => (
+                            <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
+                              <FormControl>
+                                <DropdownMenu
+                                  open={fromMenuOpen}
+                                  onOpenChange={(open) => {
+                                    setFromMenuOpen(open);
+                                    if (open) {
+                                      setFromUnitFilter('');
+                                      setFromMenuCategory(
+                                        rhfCategory && typeof rhfCategory === 'string'
+                                          ? (rhfCategory as UnitCategory)
+                                          : null,
+                                      );
+                                    } else {
+                                      setFromMenuCategory(null);
+                                      setFromUnitFilter('');
+                                    }
+                                  }}
                                 >
-                                  <FormControl>
-                                    <SelectTrigger
+                                  <DropdownMenuTrigger asChild>
+                                    <button
                                       ref={fromTriggerRef}
-                                      className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                      type="button"
+                                      className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                      style={{
+                                        width: fromTriggerWidth ?? undefined,
+                                      }}
                                     >
-                                      {field.value && currentFromUnit ? (
-                                        (isMobile || abbreviateFromTrigger || shouldAbbreviateUnit(currentFromUnit)) ? (
-                                          <span>({currentFromUnit.symbol})</span>
-                                        ) : (
-                                          <span>
-                                            {currentFromUnit.name}{' '}
-                                            ({currentFromUnit.symbol})
-                                          </span>
-                                        )
+                                      {rhfFromUnit && currentFromUnit ? (
+                                        <span
+                                          className={cn(
+                                            'block',
+                                            fromUnitHighlight &&
+                                              'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                          )}
+                                          title={`${currentFromUnit.name} (${currentFromUnit.symbol})`}
+                                        >
+                                          {abbreviateFromTrigger
+                                            ? currentFromUnit.symbol
+                                            : `${currentFromUnit.name} (${currentFromUnit.symbol})`}
+                                        </span>
                                       ) : (
-                                        <SelectValue placeholder="Unit" />
+                                        <span className="text-muted-foreground">Unit</span>
                                       )}
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent
-                                    side="bottom"
+                                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
                                     align="end"
-                                    avoidCollisions={false}
-                                    className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible"
+                                    className="min-w-[14rem]"
                                   >
-                                    {currentUnitsForCategory.map((unit) => (
-                                      <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                        {unit.name} ({unit.symbol})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormItem>
+                                    <DropdownMenuLabel>From unit</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <div className="px-1 pb-1">
+                                      <Input
+                                        autoFocus
+                                        placeholder="Search units…"
+                                        value={fromUnitFilter}
+                                        onChange={(event) =>
+                                          setFromUnitFilter(event.target.value)
+                                        }
+                                        className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+                                      />
+                                    </div>
+                                    {menuCategoryOptions.map((option) => {
+                                      const isActiveCategory = option.value === rhfCategory;
+                                      const normalizedFilter = fromUnitFilter.trim().toLowerCase();
+                                      const allUnits = getUnitsForCategory(option.value);
+                                      const units =
+                                        normalizedFilter === ''
+                                          ? allUnits
+                                          : allUnits.filter((unit) => {
+                                              const symbol = unit.symbol.toLowerCase();
+                                              const name = unit.name.toLowerCase();
+                                              return (
+                                                symbol.includes(normalizedFilter) ||
+                                                name.includes(normalizedFilter)
+                                              );
+                                            });
+                                      if (units.length === 0) {
+                                        return null;
+                                      }
+                                      const isExpanded =
+                                        fromMenuCategory === option.value ||
+                                        (normalizedFilter !== '' &&
+                                          fromMenuCategory === null);
+                                      return (
+                                        <div key={`from-${option.value}`} className="flex flex-col">
+                                          <DropdownMenuItem
+                                            onSelect={(event) => {
+                                              // Toggle category list without closing the whole menu.
+                                              event.preventDefault();
+                                              setFromMenuCategory((current) =>
+                                                current === option.value ? null : option.value,
+                                              );
+                                            }}
+                                            className={cn(
+                                              'flex items-center justify-between gap-2',
+                                              isActiveCategory && 'font-semibold text-primary',
+                                            )}
+                                          >
+                                            <span>{option.title}</span>
+                                            <ChevronRight
+                                              className={cn(
+                                                'h-4 w-4 transition-transform',
+                                                isExpanded && 'translate-x-0.5',
+                                              )}
+                                              aria-hidden="true"
+                                            />
+                                          </DropdownMenuItem>
+                                          {isExpanded && (
+                                            <div className="ml-3 border-l border-border/60 pl-2">
+                                              {units.map((unit) => (
+                                                <DropdownMenuItem
+                                                  key={unit.symbol}
+                                                  onSelect={() =>
+                                                    handleFromUnitMenuSelect(option.value, unit.symbol)
+                                                  }
+                                                  className="pl-4 text-sm"
+                                                >
+                                                  {unit.name} ({unit.symbol})
+                                                </DropdownMenuItem>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="flex w-full items-center justify-center sm:w-auto">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleSwapClick}
+                          disabled={!rhfFromUnit || !rhfToUnit}
+                          className="h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
+                          aria-label="Swap units"
+                        >
+                          <ArrowRightLeft className={cn('h-4 w-4 transition-transform', isSwapped && 'rotate-180 scale-x-[-1]')} aria-hidden="true" />
+                        </Button>
+                      </div>
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                        <div className="flex items-stretch">
+                          <Input
+                            id="conversion-result"
+                            name="conversion-result"
+                            ref={resultInputRef}
+                            readOnly
+                            value={showPlaceholder ? '-' : formattedResultString}
+                            className={cn(
+                              'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+                              showPlaceholder && 'text-muted-foreground',
                             )}
+                            aria-label="Conversion result"
                           />
                         </div>
+                        <FormField
+                          control={form.control}
+                          name="toUnit"
+                          render={() => (
+                            <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
+                              <FormControl>
+                                <DropdownMenu
+                                  open={toMenuOpen}
+                                  onOpenChange={(open) => {
+                                    setToMenuOpen(open);
+                                    if (open) {
+                                      setToUnitFilter('');
+                                      setToMenuCategory(
+                                        rhfCategory && typeof rhfCategory === 'string'
+                                          ? (rhfCategory as UnitCategory)
+                                          : null,
+                                      );
+                                    } else {
+                                      setToMenuCategory(null);
+                                      setToUnitFilter('');
+                                    }
+                                  }}
+                                >
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      ref={toTriggerRef}
+                                      type="button"
+                                      className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                      style={{
+                                        width: toTriggerWidth ?? undefined,
+                                      }}
+                                    >
+                                      {rhfToUnit && currentToUnit ? (
+                                        <span
+                                          className={cn(
+                                            'block',
+                                            toUnitHighlight &&
+                                              'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                          )}
+                                          title={`${currentToUnit.name} (${currentToUnit.symbol})`}
+                                        >
+                                          {abbreviateToTrigger
+                                            ? currentToUnit.symbol
+                                            : `${currentToUnit.name} (${currentToUnit.symbol})`}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted-foreground">Unit</span>
+                                      )}
+                                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="min-w-[14rem]"
+                                  >
+                                    <DropdownMenuLabel>To unit</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    <div className="px-1 pb-1">
+                                      <Input
+                                        autoFocus
+                                        placeholder="Search units…"
+                                        value={toUnitFilter}
+                                        onChange={(event) =>
+                                          setToUnitFilter(event.target.value)
+                                        }
+                                        className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+                                      />
+                                    </div>
+                                    {menuCategoryOptions.map((option) => {
+                                      const isActiveCategory = option.value === rhfCategory;
+                                      const normalizedFilter = toUnitFilter.trim().toLowerCase();
+                                      const allUnits = getUnitsForCategory(option.value);
+                                      const units =
+                                        normalizedFilter === ''
+                                          ? allUnits
+                                          : allUnits.filter((unit) => {
+                                              const symbol = unit.symbol.toLowerCase();
+                                              const name = unit.name.toLowerCase();
+                                              return (
+                                                symbol.includes(normalizedFilter) ||
+                                                name.includes(normalizedFilter)
+                                              );
+                                            });
+                                      if (units.length === 0) {
+                                        return null;
+                                      }
+                                      const isExpanded =
+                                        toMenuCategory === option.value ||
+                                        (normalizedFilter !== '' && toMenuCategory === null);
+                                      return (
+                                        <div key={`to-${option.value}`} className="flex flex-col">
+                                          <DropdownMenuItem
+                                            onSelect={(event) => {
+                                              event.preventDefault();
+                                              setToMenuCategory((current) =>
+                                                current === option.value ? null : option.value,
+                                              );
+                                            }}
+                                            className={cn(
+                                              'flex items-center justify-between gap-2',
+                                              isActiveCategory && 'font-semibold text-primary',
+                                            )}
+                                          >
+                                            <span>{option.title}</span>
+                                            <ChevronRight
+                                              className={cn(
+                                                'h-4 w-4 transition-transform',
+                                                isExpanded && 'translate-x-0.5',
+                                              )}
+                                              aria-hidden="true"
+                                            />
+                                          </DropdownMenuItem>
+                                          {isExpanded && (
+                                            <div className="ml-3 border-l border-border/60 pl-2">
+                                              {units.map((unit) => (
+                                                <DropdownMenuItem
+                                                  key={unit.symbol}
+                                                  onSelect={() =>
+                                                    handleToUnitMenuSelect(option.value, unit.symbol)
+                                                  }
+                                                  className="pl-4 text-sm"
+                                                >
+                                                  {unit.name} ({unit.symbol})
+                                                </DropdownMenuItem>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
                       </div>
+                    </div>
+                    <div className="order-1 grid w-full gap-3 sm:grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1.5fr)]">
                       <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
                         <DialogTrigger asChild>
                           <Button
                             type="button"
                             variant="ghost"
-                            size="icon"
-                            className="h-11 w-11 shrink-0 rounded-xl border-0 bg-transparent text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            className="h-11 w-full rounded-xl text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                             aria-label="Open calculator"
                           >
                             <Calculator className="h-5 w-5" />
@@ -2133,112 +2660,26 @@ return (
                           <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
                         </DialogContent>
                       </Dialog>
-                    </div>
-
-                   {/* Middle Row - Swap and Favorite Buttons */}
-                   <div className="flex flex-wrap items-stretch gap-3">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleSwapClick}
-                            disabled={!rhfFromUnit || !rhfToUnit}
-                            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
-                            aria-label="Swap from and to units"
-                        >
-                            <ArrowRightLeft className={cn("h-4 w-4 text-primary transition-transform", isSwapped && "rotate-180 scale-x-[-1]")} aria-hidden="true" />
-                            <span className="hidden md:inline">Swap units</span>
-                        </Button>
-
-                         {(onSaveFavoriteProp || hasToggleFavorites) && (
+                      <div className="flex w-full items-center justify-center sm:w-auto">
+                        {(onSaveFavoriteProp || hasToggleFavorites) && (
                           <Button
-                              type="button"
-                              variant="ghost" 
-                              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
-                              disabled={finalSaveDisabled || showPlaceholder}
-                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent text-sm font-medium transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                              aria-label={favoriteButtonLabel}
-                            >
-                              <Star className={cn("h-4 w-4", activeFavorite ? "fill-primary text-primary" : (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
+                            type="button"
+                            variant="ghost"
+                            onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
+                            disabled={finalSaveDisabled || showPlaceholder}
+                            className="h-11 w-full rounded-xl text-sm font-medium text-primary transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-14"
+                            aria-label={favoriteButtonLabel}
+                          >
+                            <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
                           </Button>
                         )}
-                    </div>
-
-
-                    {/* To Result Row */}
-                    <div className="flex flex-wrap items-stretch gap-3">
-                      <div className="flex min-w-0 flex-1">
-                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 border-solid bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <div className="flex-1">
-                            <Input
-                              id="conversion-result"
-                              name="conversion-result"
-                              ref={resultInputRef}
-                              readOnly
-                              value={showPlaceholder ? '-' : formattedResultString}
-                              className={cn(
-                                "h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                                showPlaceholder && 'text-muted-foreground'
-                              )}
-                              aria-label="Conversion result"
-                            />
-                          </div>
-                          <FormField
-                            control={form.control}
-                            name="toUnit"
-                            render={({ field }) => (
-                              <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
-                                <Select
-                                  name="toUnit"
-                                  onValueChange={(value) => {
-                                    resetFinderInput();
-                                    field.onChange(value);
-                                  }}
-                                  value={field.value}
-                                  disabled={!rhfCategory}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger
-                                      ref={toTriggerRef}
-                                      className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                    >
-                                      {field.value && currentToUnit ? (
-                                        (isMobile || abbreviateToTrigger || shouldAbbreviateUnit(currentToUnit)) ? (
-                                          <span>({currentToUnit.symbol})</span>
-                                        ) : (
-                                          <span>
-                                            {currentToUnit.name}{' '}
-                                            ({currentToUnit.symbol})
-                                          </span>
-                                        )
-                                      ) : (
-                                        <SelectValue placeholder="Unit" />
-                                      )}
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent
-                                    side="bottom"
-                                    align="end"
-                                    avoidCollisions={false}
-                                    className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible"
-                                  >
-                                    {currentUnitsForCategory.map((unit) => (
-                                      <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                        {unit.name} ({unit.symbol})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormItem>
-                            )}
-                          />
-                        </div>
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         onClick={handleCopy}
                         disabled={showPlaceholder}
-                        className="h-11 w-11 shrink-0 rounded-xl border-0 bg-transparent text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                        className="h-11 w-full rounded-xl text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                         aria-label="Copy result to clipboard"
                       >
                         {resultCopyState === 'success' ? (
@@ -2250,6 +2691,7 @@ return (
                     </div>
                   </div>
                 )}
+
 
                 {showPrecisionControls && !showPlaceholder && (
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
