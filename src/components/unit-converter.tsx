@@ -19,7 +19,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
 import {
-  FlaskConical,
   Copy,
   Star,
   Calculator,
@@ -267,6 +266,10 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [fromMenuCategory, setFromMenuCategory] = React.useState<UnitCategory | null>(null);
   const [toMenuOpen, setToMenuOpen] = React.useState(false);
   const [toMenuCategory, setToMenuCategory] = React.useState<UnitCategory | null>(null);
+  const [toFieldFocused, setToFieldFocused] = React.useState(false);
+  const [toCopyHover, setToCopyHover] = React.useState(false);
+  const [fromMenuMaxHeight, setFromMenuMaxHeight] = React.useState<number | null>(null);
+  const [toMenuMaxHeight, setToMenuMaxHeight] = React.useState<number | null>(null);
   const [fromUnitFilter, setFromUnitFilter] = React.useState('');
   const [toUnitFilter, setToUnitFilter] = React.useState('');
   const [isSwapped, setIsSwapped] = React.useState(false);
@@ -317,6 +320,34 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!fxRates) return 'Loading latest FX rates (Frankfurter, updated daily ~16:00 CET)...';
     return null;
   }, [fxRates, rhfCategory]);
+  const computeMenuMaxHeight = React.useCallback((triggerEl: HTMLButtonElement | null) => {
+    if (typeof window === 'undefined' || !triggerEl) return null;
+    const rect = triggerEl.getBoundingClientRect();
+    const padding = 16;
+    const availableBelow = window.innerHeight - rect.bottom - padding;
+    const availableAbove = rect.top - padding;
+    const available = Math.max(availableBelow, availableAbove);
+    const clamped = Math.max(240, Math.min(available, 520));
+    return clamped;
+  }, []);
+
+  React.useEffect(() => {
+    if (!fromMenuOpen) {
+      setFromMenuMaxHeight(null);
+      return;
+    }
+    const maxHeight = computeMenuMaxHeight(fromTriggerRef.current);
+    setFromMenuMaxHeight(maxHeight);
+  }, [fromMenuOpen, computeMenuMaxHeight]);
+
+  React.useEffect(() => {
+    if (!toMenuOpen) {
+      setToMenuMaxHeight(null);
+      return;
+    }
+    const maxHeight = computeMenuMaxHeight(toTriggerRef.current);
+    setToMenuMaxHeight(maxHeight);
+  }, [toMenuOpen, computeMenuMaxHeight]);
   const hasToggleFavorites = typeof onToggleFavorite === 'function';
   const getUnitDisplayName = React.useCallback(
     (category: UnitCategory | "", symbol: string) => {
@@ -586,6 +617,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       return emptyState;
     }
 
+    const menuMaxHeight = side === 'from' ? fromMenuMaxHeight : toMenuMaxHeight;
+    const computedMaxHeight =
+      menuMaxHeight !== null ? `${menuMaxHeight}px` : 'min(calc(100vh - 120px), 480px)';
+
     if (!isTouch) {
       return (
       <DropdownMenuContent
@@ -594,6 +629,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         sideOffset={6}
         avoidCollisions={false}
         className="min-w-[16rem] max-h-[60vh] overflow-y-auto"
+        style={{ maxHeight: computedMaxHeight }}
       >
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -623,7 +659,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               >
                 <span>{option.title}</span>
               </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="max-h-64 min-w-[12rem] overflow-y-auto">
+              <DropdownMenuSubContent
+                className="min-w-[12rem] overflow-y-auto max-h-[60vh]"
+                style={{ maxHeight: computedMaxHeight }}
+              >
                 {units.map((unit) => (
                   <DropdownMenuItem
                     key={unit.symbol}
@@ -647,6 +686,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         sideOffset={6}
         avoidCollisions={false}
         className="min-w-[14rem] max-h-[60vh] overflow-y-auto"
+        style={{ maxHeight: computedMaxHeight }}
       >
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -2666,7 +2706,11 @@ return (
                           From
                         </div>
                         <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <div className="flex items-stretch border-r border-border/60">
+                          <div
+                            className="flex items-stretch border-r border-border/60"
+                            onMouseEnter={() => setFromCalcHover(true)}
+                            onMouseLeave={() => setFromCalcHover(false)}
+                          >
                             <FormField
                               control={form.control}
                               name="value"
@@ -2819,7 +2863,11 @@ return (
                           To
                         </div>
                         <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <div className="flex items-stretch border-r border-border/60">
+                          <div
+                            className="flex items-stretch border-r border-border/60"
+                            onMouseEnter={() => setToCopyHover(true)}
+                            onMouseLeave={() => setToCopyHover(false)}
+                          >
                             <Input
                               id="conversion-result"
                               name="conversion-result"
@@ -2830,22 +2878,26 @@ return (
                                 'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
                                 showPlaceholder && 'text-muted-foreground',
                               )}
+                              onFocus={() => setToFieldFocused(true)}
+                              onBlur={() => setToFieldFocused(false)}
                               aria-label="Conversion result"
                             />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={handleCopy}
-                              disabled={showPlaceholder}
-                              className="h-11 w-9 shrink-0 rounded-none text-muted-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
-                              aria-label="Copy numeric result to clipboard"
-                            >
-                              {resultCopyState === 'success' ? (
-                                <Check className="h-4 w-4 text-emerald-500" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </Button>
+                            {(toFieldFocused || toCopyHover) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={handleCopy}
+                                disabled={showPlaceholder}
+                                className="h-11 w-9 shrink-0 rounded-none text-muted-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                                aria-label="Copy numeric result to clipboard"
+                              >
+                                {resultCopyState === 'success' ? (
+                                  <Check className="h-4 w-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                           <FormField
                             control={form.control}
