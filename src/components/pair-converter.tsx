@@ -357,7 +357,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     // For complex conversions (like temperature), show the actual values
     const inputFormatted = formatValue(parsedInput).formatted;
     return `${inputFormatted} ${activeFrom.symbol} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
-  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result, category, resolveCurrencyPairRate, fxRates?.date]);
+  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result, category]);
 
   return (
     <div className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg">

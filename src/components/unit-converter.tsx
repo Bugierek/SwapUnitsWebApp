@@ -262,6 +262,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [fromTriggerWidth, setFromTriggerWidth] = React.useState<number | null>(null);
   const [toTriggerWidth, setToTriggerWidth] = React.useState<number | null>(null);
   const [fromMenuOpen, setFromMenuOpen] = React.useState(false);
+  const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
+  const [fromCalcHover, setFromCalcHover] = React.useState(false);
   const [fromMenuCategory, setFromMenuCategory] = React.useState<UnitCategory | null>(null);
   const [toMenuOpen, setToMenuOpen] = React.useState(false);
   const [toMenuCategory, setToMenuCategory] = React.useState<UnitCategory | null>(null);
@@ -335,6 +337,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         fav.toUnit === rhfToUnit,
     );
   }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
+  const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
+  const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
+  const favoriteButtonLabel = hasToggleFavorites
+    ? activeFavorite
+      ? 'Remove from favorites'
+      : 'Save conversion to favorites'
+    : 'Save conversion to favorites';
   const rhfValue = watch("value");
   const inputPrecisionHint = React.useMemo(
     () => getDecimalPrecisionFromInput(rhfValue),
@@ -2243,68 +2252,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     </div>
   ), [numberFormat, precisionMode, isNormalFormatDisabled, handleActualFormatChange]);
 
-  const resultBanner = React.useMemo(() => {
-    if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
-      return (
-        <div className="rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 text-sm text-muted-foreground">
-          Enter a value and pick both units to see the result.
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative">
-        <div
-          className={cn(
-            "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
-            resultHighlightPulse &&
-              'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
-          )}
-        >
-          <div className="flex flex-1 items-center gap-2 text-left">
-            <span className="truncate">
-              {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
-            </span>
-            <button
-              type="button"
-              onClick={handleCopyTextualResult}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-              aria-label="Copy textual result to clipboard"
-            >
-              {textCopyState === 'success' ? (
-                <Check className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-          {currentConversionPairUrl && (
-            <Link
-              href={currentConversionPairUrl}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-              aria-label="Open detailed conversion page"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          )}
-        </div>
-      </div>
-    );
-  }, [
-    conversionResult,
-    currentConversionPairUrl,
-    formattedResultString,
-    handleCopyTextualResult,
-    precisionMode,
-    resultHighlightPulse,
-    rhfCategory,
-    rhfFromUnit,
-    rhfToUnit,
-    rhfValue,
-    showPlaceholder,
-    textCopyState,
-  ]);
-
   const resultTabs = React.useMemo<AccordionTabItem[]>(() => {
     const tabs: AccordionTabItem[] = [
       {
@@ -2479,17 +2426,90 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     });
   }, [onToggleFavorite, rhfCategory, rhfFromUnit, rhfToUnit, handleSaveToFavoritesInternal, getUnitDisplayName]);
 
+  const resultBanner = React.useMemo(() => {
+    if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return (
+        <div className="rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 text-sm text-muted-foreground">
+          Enter a value and pick both units to see the result.
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
+            resultHighlightPulse &&
+              'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
+          )}
+        >
+          <div className="flex flex-1 items-center gap-2 text-left">
+            <span className="truncate">
+              {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyTextualResult}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+              aria-label="Copy textual result to clipboard"
+            >
+              {textCopyState === 'success' ? (
+                <Check className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          {(onSaveFavoriteProp || hasToggleFavorites) && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
+              disabled={finalSaveDisabled || showPlaceholder}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+              aria-label={favoriteButtonLabel}
+            >
+              <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
+            </Button>
+          )}
+          {currentConversionPairUrl && (
+            <Link
+              href={currentConversionPairUrl}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+              aria-label="Open detailed conversion page"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }, [
+    conversionResult,
+    currentConversionPairUrl,
+    formattedResultString,
+    handleCopyTextualResult,
+    precisionMode,
+    resultHighlightPulse,
+    activeFavorite,
+    favoriteButtonLabel,
+    finalSaveDisabled,
+    handleSaveToFavoritesInternal,
+    handleToggleFavoriteInternal,
+    hasToggleFavorites,
+    onSaveFavoriteProp,
+    rhfCategory,
+    rhfFromUnit,
+    rhfToUnit,
+    rhfValue,
+    showPlaceholder,
+    textCopyState,
+  ]);
+
   const screenReaderText = showPlaceholder
     ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit}` : 'Enter a value and select units to convert')
     : `${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
-
-  const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
-  const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
-  const favoriteButtonLabel = hasToggleFavorites
-    ? activeFavorite
-      ? 'Remove from favorites'
-      : 'Save conversion to favorites'
-    : 'Save conversion to favorites';
 
   const handleCalculatorValueSent = (valueFromCalculator: string) => {
     const numericValue = parseFloat(valueFromCalculator);
@@ -2530,8 +2550,8 @@ return (
             {screenReaderText}
           </div>
           <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-6">
-              <div className="flex flex-1 flex-col gap-6">
+            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-7">
+              <div className="flex flex-1 flex-col gap-7">
                 <FormField
                   control={form.control}
                   name="category"
@@ -2649,108 +2669,126 @@ return (
                           From
                         </div>
                         <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <div className="flex items-stretch border-r border-border/60">
+                            <FormField
+                              control={form.control}
+                              name="value"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-1 items-stretch space-y-0">
+                                  <FormControl>
+                                    <Input
+                                      id="value-input"
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="Enter value"
+                                      {...field}
+                                      onFocus={() => setFromFieldFocused(true)}
+                                      onBlur={() => setFromFieldFocused(false)}
+                                      onChange={(e) => {
+                                        const rawValue = e.target.value;
+                                        if (
+                                          rawValue === '' ||
+                                          rawValue === '-' ||
+                                          /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
+                                          /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
+                                        ) {
+                                          if (/([eE])/.test(rawValue)) {
+                                            field.onChange(rawValue);
+                                          } else {
+                                            const parts = rawValue.split('.');
+                                            if (
+                                              parts[0].replace('-', '').length <= 8 &&
+                                              (parts[1] === undefined || parts[1].length <= 7)
+                                            ) {
+                                              field.onChange(rawValue);
+                                            } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
+                                              field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
+                                            }
+                                          }
+                                        }
+                                      }}
+                                      value={field.value === undefined ? '' : String(field.value)}
+                                      disabled={!rhfFromUnit || !rhfToUnit}
+                                      aria-required="true"
+                                      className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            {(fromFieldFocused || fromCalcHover) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsCalculatorOpen(true)}
+                                onMouseEnter={() => setFromCalcHover(true)}
+                                onMouseLeave={() => setFromCalcHover(false)}
+                                onMouseDown={() => setFromFieldFocused(true)}
+                                className="h-11 w-9 shrink-0 rounded-none text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none disabled:text-muted-foreground disabled:hover:bg-transparent"
+                                aria-label="Open calculator"
+                              >
+                                <Calculator className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                           <FormField
                             control={form.control}
-                            name="value"
-                            render={({ field }) => (
-                              <FormItem className="flex items-stretch space-y-0 border-r border-border/60">
-                              <FormControl>
-                                <Input
-                                  id="value-input"
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="Enter value"
-                                  {...field}
-                                  onChange={(e) => {
-                                    const rawValue = e.target.value;
-                                    if (
-                                      rawValue === '' ||
-                                      rawValue === '-' ||
-                                      /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
-                                      /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
-                                    ) {
-                                      if (/([eE])/.test(rawValue)) {
-                                        field.onChange(rawValue);
+                            name="fromUnit"
+                            render={() => (
+                              <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
+                                <FormControl>
+                                  <DropdownMenu
+                                    open={fromMenuOpen}
+                                    onOpenChange={(open) => {
+                                      setFromMenuOpen(open);
+                                      if (open) {
+                                        setFromUnitFilter('');
+                                        setFromMenuCategory(
+                                          rhfCategory && typeof rhfCategory === 'string'
+                                            ? (rhfCategory as UnitCategory)
+                                            : null,
+                                        );
                                       } else {
-                                        const parts = rawValue.split('.');
-                                        if (
-                                          parts[0].replace('-', '').length <= 8 &&
-                                          (parts[1] === undefined || parts[1].length <= 7)
-                                        ) {
-                                          field.onChange(rawValue);
-                                        } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
-                                          field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
-                                        }
+                                        setFromMenuCategory(null);
+                                        setFromUnitFilter('');
                                       }
-                                    }
-                                  }}
-                                  value={field.value === undefined ? '' : String(field.value)}
-                                  disabled={!rhfFromUnit || !rhfToUnit}
-                                  aria-required="true"
-                                  className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="fromUnit"
-                          render={() => (
-                            <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
-                              <FormControl>
-                                <DropdownMenu
-                                  open={fromMenuOpen}
-                                  onOpenChange={(open) => {
-                                    setFromMenuOpen(open);
-                                    if (open) {
-                                      setFromUnitFilter('');
-                                      setFromMenuCategory(
-                                        rhfCategory && typeof rhfCategory === 'string'
-                                          ? (rhfCategory as UnitCategory)
-                                          : null,
-                                      );
-                                    } else {
-                                      setFromMenuCategory(null);
-                                      setFromUnitFilter('');
-                                    }
-                                  }}
-                                >
-                                  <DropdownMenuTrigger asChild>
-                                    <button
-                                      ref={fromTriggerRef}
-                                      type="button"
-                                      className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                      style={{
-                                        width: fromTriggerWidth ?? undefined,
-                                      }}
-                                    >
-                                      {rhfFromUnit && currentFromUnit ? (
-                                        <span
-                                          className={cn(
-                                            'block',
-                                            fromUnitHighlight &&
-                                              'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
-                                          )}
-                                          title={`${currentFromUnit.name} (${currentFromUnit.symbol})`}
-                                        >
-                                          {abbreviateFromTrigger
-                                            ? currentFromUnit.symbol
-                                            : `${currentFromUnit.name} (${currentFromUnit.symbol})`}
-                                        </span>
-                                      ) : (
-                                        <span className="text-muted-foreground">Unit</span>
-                                      )}
-                                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  {renderUnitMenuContent('from')}
-                                </DropdownMenu>
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                                    }}
+                                  >
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        ref={fromTriggerRef}
+                                        type="button"
+                                        className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                        style={{
+                                          width: fromTriggerWidth ?? undefined,
+                                        }}
+                                      >
+                                        {rhfFromUnit && currentFromUnit ? (
+                                          <span
+                                            className={cn(
+                                              'block',
+                                              fromUnitHighlight &&
+                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                            )}
+                                            title={`${currentFromUnit.name} (${currentFromUnit.symbol})`}
+                                          >
+                                            {abbreviateFromTrigger
+                                              ? currentFromUnit.symbol
+                                              : `${currentFromUnit.name} (${currentFromUnit.symbol})`}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground">Unit</span>
+                                        )}
+                                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    {renderUnitMenuContent('from')}
+                                  </DropdownMenu>
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
                       <div className="flex w-full items-center justify-center pt-6 sm:w-auto">
                         <Button
@@ -2784,135 +2822,107 @@ return (
                           To
                         </div>
                         <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <div className="flex items-stretch">
+                          <div className="flex items-stretch border-r border-border/60">
                             <Input
                               id="conversion-result"
-                            name="conversion-result"
-                            ref={resultInputRef}
-                            readOnly
-                            value={showPlaceholder ? '-' : formattedResultString}
-                            className={cn(
-                              'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
-                              showPlaceholder && 'text-muted-foreground',
+                              name="conversion-result"
+                              ref={resultInputRef}
+                              readOnly
+                              value={showPlaceholder ? '-' : formattedResultString}
+                              className={cn(
+                                'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+                                showPlaceholder && 'text-muted-foreground',
+                              )}
+                              aria-label="Conversion result"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={handleCopy}
+                              disabled={showPlaceholder}
+                              className="h-11 w-9 shrink-0 rounded-none text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                              aria-label="Copy numeric result to clipboard"
+                            >
+                              {resultCopyState === 'success' ? (
+                                <Check className="h-4 w-4 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                          <FormField
+                            control={form.control}
+                            name="toUnit"
+                              render={() => (
+                                <FormItem className="min-w-[112px] max-w-[320px] space-y-0 border-l border-border/60 pl-2">
+                                  <FormControl>
+                                  <DropdownMenu
+                                    open={toMenuOpen}
+                                    onOpenChange={(open) => {
+                                      setToMenuOpen(open);
+                                      if (open) {
+                                        setToUnitFilter('');
+                                        setToMenuCategory(
+                                          rhfCategory && typeof rhfCategory === 'string'
+                                            ? (rhfCategory as UnitCategory)
+                                            : null,
+                                        );
+                                      } else {
+                                        setToMenuCategory(null);
+                                        setToUnitFilter('');
+                                      }
+                                    }}
+                                  >
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        ref={toTriggerRef}
+                                        type="button"
+                                        className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                        style={{
+                                          width: toTriggerWidth ?? undefined,
+                                        }}
+                                      >
+                                        {rhfToUnit && currentToUnit ? (
+                                          <span
+                                            className={cn(
+                                              'block',
+                                              toUnitHighlight &&
+                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                            )}
+                                            title={`${currentToUnit.name} (${currentToUnit.symbol})`}
+                                          >
+                                            {abbreviateToTrigger
+                                              ? currentToUnit.symbol
+                                              : `${currentToUnit.name} (${currentToUnit.symbol})`}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground">Unit</span>
+                                        )}
+                                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    {renderUnitMenuContent('to')}
+                                  </DropdownMenu>
+                                </FormControl>
+                              </FormItem>
                             )}
-                            aria-label="Conversion result"
                           />
                         </div>
-                        <FormField
-                          control={form.control}
-                          name="toUnit"
-                            render={() => (
-                              <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
-                                <FormControl>
-                                <DropdownMenu
-                                  open={toMenuOpen}
-                                  onOpenChange={(open) => {
-                                    setToMenuOpen(open);
-                                    if (open) {
-                                      setToUnitFilter('');
-                                      setToMenuCategory(
-                                        rhfCategory && typeof rhfCategory === 'string'
-                                          ? (rhfCategory as UnitCategory)
-                                          : null,
-                                      );
-                                    } else {
-                                      setToMenuCategory(null);
-                                      setToUnitFilter('');
-                                    }
-                                  }}
-                                >
-                                  <DropdownMenuTrigger asChild>
-                                    <button
-                                      ref={toTriggerRef}
-                                      type="button"
-                                      className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                      style={{
-                                        width: toTriggerWidth ?? undefined,
-                                      }}
-                                    >
-                                      {rhfToUnit && currentToUnit ? (
-                                        <span
-                                          className={cn(
-                                            'block',
-                                            toUnitHighlight &&
-                                              'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
-                                          )}
-                                          title={`${currentToUnit.name} (${currentToUnit.symbol})`}
-                                        >
-                                          {abbreviateToTrigger
-                                            ? currentToUnit.symbol
-                                            : `${currentToUnit.name} (${currentToUnit.symbol})`}
-                                        </span>
-                                      ) : (
-                                        <span className="text-muted-foreground">Unit</span>
-                                      )}
-                                      <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  {renderUnitMenuContent('to')}
-                                </DropdownMenu>
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     </div>
                     {/* End of from/to grid */}
                     </div>
-                    <div className="order-3 grid w-full grid-cols-3 gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
-                      <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="h-11 w-full rounded-xl text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                            aria-label="Open calculator"
-                          >
-                            <Calculator className="h-5 w-5" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
-                          <DialogHeader className="sr-only">
-                            <DialogTitle>Calculator</DialogTitle>
-                          </DialogHeader>
-                          <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
-                        </DialogContent>
-                      </Dialog>
-                      <div className="flex w-full items-center justify-center sm:w-auto">
-                        {(onSaveFavoriteProp || hasToggleFavorites) && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
-                            disabled={finalSaveDisabled || showPlaceholder}
-                            className="h-11 w-full rounded-xl text-sm font-medium text-primary transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:w-14"
-                            aria-label={favoriteButtonLabel}
-                          >
-                            <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
-                          </Button>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleCopy}
-                        disabled={showPlaceholder}
-                        className="h-11 w-full rounded-xl text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        aria-label="Copy result to clipboard"
-                      >
-                        {resultCopyState === 'success' ? (
-                          <Check className="h-5 w-5 text-emerald-500" />
-                        ) : (
-                          <Copy className="h-5 w-5" />
-                        )}
-                      </Button>
-                    </div>
+
                   </div>
                 )}
 
 
                  {/* Textual Conversion Result Display */}
-                {resultBanner}
+                <div className="mt-6">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Result
+                  </div>
+                  {resultBanner}
+                </div>
 
                 {fxStatusMessage && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -2928,6 +2938,17 @@ return (
                     className="mt-2"
                   />
                 )}
+                <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
+                  <DialogTrigger asChild>
+                    <div />
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
+                    <DialogHeader className="sr-only">
+                      <DialogTitle>Calculator</DialogTitle>
+                    </DialogHeader>
+                    <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
+                  </DialogContent>
+                </Dialog>
               </div>
             </form>
           </Form>
