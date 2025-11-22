@@ -601,27 +601,224 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     const onUnitSelect =
       side === 'from' ? handleFromUnitMenuSelect : handleToUnitMenuSelect;
 
+    const normalizeSearchString = (value: string, options: { compact?: boolean } = {}) => {
+      const compact = options.compact ?? false;
+      let normalized = value
+        .trim()
+        .toLowerCase()
+        .replace(/µ/g, 'u')
+        .replace(/²/g, '2')
+        .replace(/³/g, '3')
+        .replace(/[-_]/g, ' ');
+
+      // add variant for " per " to "/"
+      normalized = normalized.replace(/\s+per\s+/g, '/');
+
+      if (compact) {
+        normalized = normalized.replace(/[\s^]/g, '');
+      }
+      return normalized;
+    };
+
+    const buildFilterVariants = (raw: string) => {
+      const base = normalizeSearchString(raw);
+      const compactBase = normalizeSearchString(raw, { compact: true });
+      const variants = new Set<string>([base]);
+      if (compactBase !== base) {
+        variants.add(compactBase);
+      }
+
+      // Add superscript variants for trailing digits (e.g., mm3 -> mm³, mm^3)
+      const suffixMatch = base.match(/^([a-zµ]+)(\d)$/);
+      if (suffixMatch) {
+        const [, prefix, power] = suffixMatch;
+        variants.add(`${prefix}${power}`);
+        variants.add(`${prefix}^${power}`);
+        if (power === '2') variants.add(`${prefix}²`);
+        if (power === '3') variants.add(`${prefix}³`);
+      }
+
+      // Handle "sq"/"square" prefixes
+      const sqMatch = base.match(/^sq(uare)?\s*(.*)$/);
+      if (sqMatch) {
+        const after = sqMatch[2] ?? '';
+        variants.add(`square ${after}`.trim());
+        variants.add(`sq ${after}`.trim());
+      }
+
+      // Handle "cu"/"cubic" prefixes
+      const cuMatch = base.match(/^cu(bic)?\s*(.*)$/);
+      if (cuMatch) {
+        const after = cuMatch[2] ?? '';
+        variants.add(`cubic ${after}`.trim());
+        variants.add(`cu ${after}`.trim());
+      }
+
+      // Common aliases for kWh / kilowatt hour shorthand
+      if (
+        base === 'kwh' ||
+        compactBase === 'kwh' ||
+        base.includes('kilowat')
+      ) {
+        variants.add('kilowatt hour');
+        variants.add('kilowatt-hour');
+        variants.add('kwh');
+      }
+
+      // Handle caret inputs like "mm^" or "mm^2"
+      if (base.includes('^')) {
+        const caretStripped = base.replace(/\^+/g, '').trim();
+        if (caretStripped) {
+          variants.add(`${caretStripped}2`);
+          variants.add(`${caretStripped}3`);
+          variants.add(`square ${caretStripped}`);
+          variants.add(`cubic ${caretStripped}`);
+        }
+      }
+
+      return Array.from(variants).filter(Boolean);
+    };
+
     const normalizedFilter = filter.trim().toLowerCase();
-    const filteredCategories = menuCategoryOptions
+    const compactFilter = normalizeSearchString(filter, { compact: true });
+    const filterVariants = buildFilterVariants(filter);
+
+    const unitMatchesFilter = (unit: { symbol: string; name: string; keywords?: string[] }) => {
+      if (!normalizedFilter) return true;
+      const symbol = unit.symbol.toLowerCase();
+      const name = unit.name.toLowerCase();
+      const symbolPlain = normalizeSearchString(symbol, { compact: true });
+      const namePlain = normalizeSearchString(name, { compact: true });
+      const keywordStrings = (unit.keywords ?? []).map((k) => normalizeSearchString(k, { compact: true }));
+
+      return filterVariants.some((variant) => {
+        const variantCompact = normalizeSearchString(variant, { compact: true });
+        const partial = variantCompact.length >= 4 ? variantCompact.slice(0, 4) : variantCompact;
+        return (
+          symbol.includes(variant) ||
+          symbolPlain.includes(variant) ||
+          symbolPlain.includes(partial) ||
+          name.includes(variant) ||
+          namePlain.includes(variant) ||
+          namePlain.includes(partial) ||
+          keywordStrings.some((kw) => kw.includes(variant) || kw.includes(variantCompact) || kw.includes(partial)) ||
+          symbolPlain.startsWith(compactFilter) ||
+          namePlain.startsWith(compactFilter)
+        );
+      });
+    };
+    const aliasCategoryHints: Record<string, UnitCategory[]> = {
+      kwh: ['Energy', 'Fuel Economy'],
+      kilow: ['Energy', 'Fuel Economy'],
+      kilowat: ['Energy', 'Fuel Economy'],
+      kilowatt: ['Energy', 'Fuel Economy'],
+    };
+
+    let filteredCategories = menuCategoryOptions
       .map((option) => {
-        const units = getUnitsForCategory(option.value).filter((unit) => {
-          if (!normalizedFilter) return true;
-          const symbol = unit.symbol.toLowerCase();
-          const name = unit.name.toLowerCase();
-          return symbol.includes(normalizedFilter) || name.includes(normalizedFilter);
-        });
+        const units = getUnitsForCategory(option.value).filter((unit) => unitMatchesFilter(unit));
         return { option, units };
       })
       .filter(({ units }) => units.length > 0);
+
+    // If some categories have no direct unit hits but the title/value matches, include them with full unit list.
+    if (normalizedFilter) {
+      menuCategoryOptions.forEach((option) => {
+        const alreadyIncluded = filteredCategories.some(({ option: opt }) => opt.value === option.value);
+        if (alreadyIncluded) return;
+        const titleMatch = filterVariants.some((variant) => {
+          const title = option.title.toLowerCase();
+          const value = String(option.value).toLowerCase();
+          return title.includes(variant) || value.includes(variant);
+        });
+        if (titleMatch) {
+          filteredCategories.push({
+            option,
+            units: getUnitsForCategory(option.value),
+          });
+        }
+      });
+    }
+
+    // Add alias-based category hints (e.g., kWh -> Energy and Fuel Economy)
+    Object.entries(aliasCategoryHints).forEach(([hint, categories]) => {
+      if (!compactFilter.includes(hint)) return;
+      categories.forEach((cat) => {
+        const exists = filteredCategories.some(({ option }) => option.value === cat);
+        if (!exists) {
+          const opt = menuCategoryOptions.find((o) => o.value === cat);
+          if (opt) {
+            filteredCategories.push({ option: opt, units: getUnitsForCategory(opt.value) });
+          }
+        }
+      });
+    });
+
+    // If hints are present and any hinted categories have units, prefer only those.
+    const activeHints = Object.entries(aliasCategoryHints)
+      .filter(([hint]) => compactFilter.includes(hint))
+      .flatMap(([, cats]) => cats);
+    if (activeHints.length > 0) {
+      const hinted = filteredCategories.filter(({ option }) => activeHints.includes(option.value as UnitCategory));
+      if (hinted.length > 0) {
+        filteredCategories = hinted;
+      }
+    }
+
+    if (normalizedFilter) {
+      filteredCategories = filteredCategories.sort((a, b) => {
+        const countDiff = b.units.length - a.units.length;
+        if (countDiff !== 0) return countDiff;
+        const aTitleMatch = a.option.title.toLowerCase().includes(normalizedFilter) ? 1 : 0;
+        const bTitleMatch = b.option.title.toLowerCase().includes(normalizedFilter) ? 1 : 0;
+        if (aTitleMatch !== bTitleMatch) return bTitleMatch - aTitleMatch;
+        if (rhfCategory) {
+          if (a.option.value === rhfCategory) return -1;
+          if (b.option.value === rhfCategory) return 1;
+        }
+        return 0;
+      });
+    }
+
+    // If no units matched, fall back to the first category whose title/id matches the filter
+    if (filteredCategories.length === 0 && normalizedFilter) {
+      const categoryFallback = menuCategoryOptions.find((opt) =>
+        filterVariants.some((variant) => {
+          const title = opt.title.toLowerCase();
+          const value = String(opt.value).toLowerCase();
+          return title.includes(variant) || value.includes(variant);
+        }),
+      );
+      if (categoryFallback) {
+        filteredCategories = [
+          {
+            option: categoryFallback,
+            units: getUnitsForCategory(categoryFallback.value),
+          },
+        ];
+      }
+    }
 
     const defaultOpenCategory =
       menuCategory ??
       (normalizedFilter
         ? filteredCategories[0]?.option.value ?? null
         : rhfCategory ?? filteredCategories[0]?.option.value ?? null);
-    const activeCategory = menuCategory ?? defaultOpenCategory;
-    const activeCategoryUnits =
-      filteredCategories.find(({ option }) => option.value === activeCategory)?.units ?? [];
+    const menuCategoryValid = menuCategory
+      ? filteredCategories.some(({ option }) => option.value === menuCategory)
+      : false;
+    const activeCategory = menuCategoryValid ? menuCategory : defaultOpenCategory;
+    const activeCategoryEntry = filteredCategories.find(
+      ({ option }) => option.value === activeCategory,
+    );
+    const activeCategoryUnits = activeCategoryEntry?.units ?? [];
+    const fallbackCategory = filteredCategories[0];
+    const displayUnitsCategory = activeCategoryEntry?.option.value ?? fallbackCategory?.option.value ?? null;
+    const displayUnits =
+      activeCategoryUnits.length > 0
+        ? activeCategoryUnits
+        : fallbackCategory?.units ?? [];
+    const effectiveCategory = displayUnitsCategory;
     const selectedUnitSymbol = side === 'from' ? rhfFromUnit : rhfToUnit;
 
     const emptyState = (
@@ -640,6 +837,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             placeholder="Search units…"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
             className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
           />
         </div>
@@ -677,6 +875,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             placeholder="Search units…"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
             className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
           />
         </div>
@@ -728,13 +927,14 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 mb-2">
                   Units
                 </div>
-                {activeCategoryUnits.length > 0 ? (
-                  activeCategoryUnits.map((unit) => (
+                {displayUnits.length > 0 ? (
+                  displayUnits.map((unit) => (
                     <button
                       key={unit.symbol}
+                      type="button"
                       onClick={() => {
-                        if (!activeCategory) return;
-                        onUnitSelect(activeCategory, unit.symbol);
+                        if (!effectiveCategory) return;
+                        onUnitSelect(effectiveCategory, unit.symbol);
                         if (side === 'from') {
                           setFromMenuOpen(false);
                         } else {
@@ -802,6 +1002,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             placeholder="Search units…"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
             className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
           />
         </div>
@@ -848,7 +1049,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                         <DropdownMenuItem
                           key={unit.symbol}
                           onSelect={() => onUnitSelect(option.value, unit.symbol)}
-                          className="pl-4 text-sm"
+                          className={cn(
+                            "pl-4 text-sm",
+                            unit.symbol === selectedUnitSymbol && "bg-primary/10 text-primary font-semibold",
+                          )}
                         >
                           {unit.name} ({unit.symbol})
                         </DropdownMenuItem>

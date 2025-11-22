@@ -33,25 +33,29 @@ interface HistoryListProps {
 const formatHistoryNumber = (num: number): string => {
   if (!isFinite(num)) return '-';
   const absNum = Math.abs(num);
-  if (absNum > 1e7 || (absNum < 1e-5 && absNum !== 0)) {
+
+  // fall back to scientific for extremes
+  if (absNum > 1e7 || (absNum !== 0 && absNum < 1e-7)) {
     const exp = num.toExponential(4).replace('e', 'E');
     const match = exp.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
     if (match) {
-        let coeff = match[1];
-        const exponent = match[3];
-        if (coeff.includes('.')) {
-            coeff = coeff.replace(/0+$/, ''); 
-            coeff = coeff.replace(/\.$/, '');  
-        }
-        return coeff + exponent;
+      let coeff = match[1];
+      const exponent = match[3];
+      if (coeff.includes('.')) {
+        coeff = coeff.replace(/0+$/, '');
+        coeff = coeff.replace(/\.$/, '');
+      }
+      return coeff + exponent;
     }
-    return exp; 
+    return exp;
   }
-  const rounded = parseFloat(num.toFixed(2));
-  if (Number.isInteger(rounded)) { 
-    return rounded.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  }
-  return rounded.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+  const maxFractionDigits = absNum >= 1 ? 4 : 6;
+  const formatted = num.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFractionDigits,
+  });
+  return formatted;
 };
 
 const getHistoryCategoryLabel = (item: ConversionHistoryItem): string => {

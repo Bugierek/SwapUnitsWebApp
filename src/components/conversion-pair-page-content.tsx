@@ -56,8 +56,9 @@ const formatNumber = (value: number): string =>
 const formatHistoryNumber = (num: number): string => {
   if (!isFinite(num)) return '-';
   const absNum = Math.abs(num);
-  if (absNum > 1e4 || (absNum < 1e-3 && absNum !== 0)) {
-    const exp = num.toExponential(2).replace('e', 'E');
+
+  if (absNum > 1e7 || (absNum !== 0 && absNum < 1e-7)) {
+    const exp = num.toExponential(4).replace('e', 'E');
     const match = exp.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
     if (match) {
       let coeff = match[1];
@@ -70,11 +71,12 @@ const formatHistoryNumber = (num: number): string => {
     }
     return exp;
   }
-  const rounded = parseFloat(num.toFixed(3));
-  if (rounded % 1 === 0) {
-    return rounded.toLocaleString(undefined, { maximumFractionDigits: 0, style: 'decimal' });
-  }
-  return rounded.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3, style: 'decimal' });
+
+  const maxFractionDigits = absNum >= 1 ? 4 : 6;
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFractionDigits,
+  });
 };
 
 export function ConversionPairPageContent({
