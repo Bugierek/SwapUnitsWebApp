@@ -112,7 +112,7 @@ export function SiteTopbar({
 
   return (
     <header className="sticky top-0 z-[60] border-b border-border/50 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-10">
+      <div className="relative mx-auto flex w-full max-w-[1480px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-10">
         <div className="flex items-center gap-2">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
@@ -347,27 +347,7 @@ export function SiteTopbar({
               </ScrollArea>
             </SheetContent>
           </Sheet>
-
-          <Link
-            href="/"
-            onClick={handleLogoClick}
-            className="group hidden items-center gap-3 text-sm font-semibold uppercase tracking-[0.3em] text-foreground md:flex"
-            aria-label="Reset the unit converter to its initial state"
-          >
-            <RefreshCw className="h-5 w-5 text-primary transition-transform duration-300 group-hover:rotate-180" aria-hidden="true" />
-            <span className="font-semibold">SwapUnits</span>
-          </Link>
         </div>
-
-        <Link
-          href="/"
-          onClick={handleLogoClick}
-          className="group flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-primary/60 hover:bg-card/90 md:hidden"
-          aria-label="Reset the unit converter to its initial state"
-        >
-          <RefreshCw className="h-4 w-4 text-primary transition-transform duration-300 group-hover:rotate-180" aria-hidden="true" />
-          SwapUnits
-        </Link>
 
         <div className="flex items-center gap-3">
           <div className="hidden text-right md:block">
@@ -377,6 +357,16 @@ export function SiteTopbar({
           <ThemeToggle />
           <BookmarkButton className="pr-3.5 pl-3" />
         </div>
+
+        <Link
+          href="/"
+          onClick={handleLogoClick}
+          className="group absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 text-sm font-semibold uppercase tracking-[0.3em] text-foreground"
+          aria-label="Reset the unit converter to its initial state"
+        >
+          <RefreshCw className="h-5 w-5 text-primary transition-transform duration-300 group-hover:rotate-180" aria-hidden="true" />
+          <span className="font-semibold">SwapUnits</span>
+        </Link>
       </div>
     </header>
   );

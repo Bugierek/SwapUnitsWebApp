@@ -2831,11 +2831,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           {currentConversionPairUrl && (
             <Link
               href={currentConversionPairUrl}
-              className="group/details absolute right-3 top-3 flex flex-row-reverse items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 py-1 text-[11px] font-medium text-primary transition-all duration-200 hover:border-primary/60 hover:bg-primary/10"
+              className="group/details absolute right-3 top-3 flex flex-row-reverse items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 py-1 text-[11px] font-medium text-primary transition-all duration-400 hover:border-primary/60 hover:bg-primary/10"
               aria-label="Open detailed conversion page"
             >
               <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] transition-all duration-200 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
+              <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] transition-all duration-400 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
                 Details
               </span>
             </Link>

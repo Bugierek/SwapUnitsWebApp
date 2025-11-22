@@ -110,7 +110,7 @@ export const PresetList = React.memo(function PresetListComponent({
                     </div>
                 ) : (
                     <ScrollArea
-                      className="max-h-[260px] pr-3 overflow-y-auto scrollbar-thin transition-[background-color] duration-200 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border/60 group-hover:[&::-webkit-scrollbar-thumb]:bg-border/60"
+                      className="max-h-[260px] pr-3 overflow-y-auto scrollbar-thin transition-[background-color] duration-400 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border/60 group-hover:[&::-webkit-scrollbar-thumb]:bg-border/60"
                     >
                     <div className="space-y-1">
                         <ul className="space-y-1">
