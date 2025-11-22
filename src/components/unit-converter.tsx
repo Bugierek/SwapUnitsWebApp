@@ -2861,11 +2861,16 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 aria-label="Copy textual result to clipboard"
               >
                 {textCopyState === 'success' ? (
-                  <Check className="h-4 w-4 text-emerald-500" />
+                  <>
+                    <Check className="h-4 w-4 text-emerald-500" />
+                    <span>Copied!</span>
+                  </>
                 ) : (
-                  <Copy className="h-4 w-4" />
+                  <>
+                    <Copy className="h-4 w-4" />
+                    <span>Copy</span>
+                  </>
                 )}
-                <span>Copy</span>
               </button>
               {(onSaveFavoriteProp || hasToggleFavorites) && (
                 <Button
