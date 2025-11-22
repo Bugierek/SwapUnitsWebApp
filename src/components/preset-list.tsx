@@ -2,9 +2,8 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-// Removed: import { getFilteredAndSortedPresets } from "@/lib/unit-data"; 
-import type { Preset, FavoriteItem } from '@/types'; 
-import { List, Star, X } from 'lucide-react'; // Added Star and X icons
+import type { FavoriteItem } from '@/types'; 
+import { Star, X } from 'lucide-react';
 import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
@@ -22,8 +21,6 @@ import {
 } from '@/components/ui/alert-dialog';
 
 interface PresetListProps {
-    presetsToDisplay: Preset[]; // Use this prop for the list of presets
-    onPresetSelect: (preset: Preset) => void;
     favorites: FavoriteItem[];
     onFavoriteSelect: (favorite: FavoriteItem) => void;
     onRemoveFavorite: (favoriteId: string) => void;
@@ -33,8 +30,6 @@ interface PresetListProps {
 }
 
 export const PresetList = React.memo(function PresetListComponent({ 
-    presetsToDisplay, // Use this prop
-    onPresetSelect, 
     favorites,
     onFavoriteSelect,
     onRemoveFavorite,
@@ -43,22 +38,13 @@ export const PresetList = React.memo(function PresetListComponent({
     isLoadingFavorites 
 }: PresetListProps) {
     const [isClearFavoritesDialogOpen, setIsClearFavoritesDialogOpen] = React.useState(false);
-    const maxCommonVisible = React.useMemo(() => Math.max(0, 10 - favorites.length), [favorites.length]);
-    const visibleCommonPresets = React.useMemo(() => presetsToDisplay.slice(0, maxCommonVisible), [presetsToDisplay, maxCommonVisible]);
-    const hiddenCommonCount = Math.max(0, presetsToDisplay.length - visibleCommonPresets.length);
-    // Removed: const displayPresets = getFilteredAndSortedPresets(); 
 
-    const LABEL_CHAR_LIMIT = 36;
     const getFavoriteLabels = React.useCallback((fav: FavoriteItem) => {
         const trimmed = fav.name?.trim() ?? '';
         const full = trimmed.length > 0 ? trimmed : `${fav.fromUnit} → ${fav.toUnit}`;
         const compact = `${fav.fromUnit} → ${fav.toUnit}`;
         return { full, compact };
     }, []);
-    const formatPresetLabel = (preset: Preset) => {
-        const trimmed = preset.name.trim();
-        return trimmed.length <= LABEL_CHAR_LIMIT ? trimmed : `${preset.fromUnit} → ${preset.toUnit}`;
-    };
 
     return (
         <Card className={cn("group flex w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-md backdrop-blur-sm max-h-[520px] xl:max-h-[calc(100vh-240px)] h-auto", className)} aria-label="Favorite and Common Unit Conversions">

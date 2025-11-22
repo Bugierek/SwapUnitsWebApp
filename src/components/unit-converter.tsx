@@ -63,9 +63,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
@@ -2826,11 +2823,23 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       <div className="relative">
         <div
           className={cn(
-            "group flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 text-base font-semibold text-primary transition-colors duration-700 sm:gap-4",
+            "group relative flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 pr-16 text-base font-semibold text-primary transition-colors duration-700 sm:gap-4",
             resultHighlightPulse &&
               'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
           )}
         >
+          {currentConversionPairUrl && (
+            <Link
+              href={currentConversionPairUrl}
+              className="group/details absolute right-3 top-3 flex flex-row-reverse items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 py-1 text-[11px] font-medium text-primary transition-all duration-200 hover:border-primary/60 hover:bg-primary/10"
+              aria-label="Open detailed conversion page"
+            >
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] transition-all duration-200 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
+                Details
+              </span>
+            </Link>
+          )}
           <div className="flex flex-1 flex-col gap-2.5 text-left">
             <span className="truncate">
               {formatFromValue(Number(rhfValue), precisionMode)}
@@ -2870,16 +2879,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                   <span>{activeFavorite ? 'Saved' : 'Add to favorites'}</span>
                 </Button>
               )}
-              {currentConversionPairUrl && (
-                <Link
-                  href={currentConversionPairUrl}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
-                  aria-label="Open detailed conversion page"
-                >
-                  <ArrowUpRight className="h-4 w-4" />
-                  <span>Details</span>
-                </Link>
-              )}
             </div>
           </div>
         </div>
@@ -2897,6 +2896,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     finalSaveDisabled,
     handleSaveToFavoritesInternal,
     handleToggleFavoriteInternal,
+    getUnitDisplayName,
     hasToggleFavorites,
     onSaveFavoriteProp,
     rhfCategory,
@@ -2935,7 +2935,7 @@ return (
         )}
         aria-labelledby="unit-converter-title"
       >
-        <CardContent className={cn("flex flex-grow flex-col px-5 py-5")}>
+        <CardContent className={cn("flex flex-grow flex-col px-2 py-3 sm:px-4 sm:py-5")}>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
           </div>
@@ -2947,7 +2947,7 @@ return (
                   name="category"
                   render={() => (
                     <FormItem>
-                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-4 shadow-lg shadow-primary/10">
+                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-1.5 py-2 shadow-lg shadow-primary/10 sm:px-4 sm:py-4">
                         <div className="mb-2 flex items-center gap-2">
                           <Label
                             htmlFor="conversion-search"
@@ -3056,7 +3056,7 @@ return (
                   )}
                 />
 
-                <div className="rounded-2xl border border-border/40 bg-transparent px-4 py-3 text-center">
+                <div className="rounded-2xl border border-border/40 bg-transparent px-2 py-2 text-center sm:px-4 sm:py-3">
                   <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     OR
                   </div>
@@ -3067,7 +3067,7 @@ return (
 
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
-                    <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
+                <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
                       <div className="space-y-2">
                         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                           From
