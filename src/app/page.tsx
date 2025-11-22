@@ -57,8 +57,9 @@ const UnitConverter = dynamic(
 const formatHistoryNumberMobile = (num: number): string => {
   if (!isFinite(num)) return '-';
   const absNum = Math.abs(num);
-  if (absNum > 1e4 || (absNum < 1e-3 && absNum !== 0)) {
-    const exp = num.toExponential(2).replace('e', 'E');
+
+  if (absNum > 1e7 || (absNum !== 0 && absNum < 1e-7)) {
+    const exp = num.toExponential(4).replace('e', 'E');
     const match = exp.match(/^(-?\d(?:\.\d*)?)(0*)(E[+-]\d+)$/);
     if (match) {
       let coeff = match[1];
@@ -71,11 +72,13 @@ const formatHistoryNumberMobile = (num: number): string => {
     }
     return exp;
   }
-  const rounded = parseFloat(num.toFixed(3));
-  if (rounded % 1 === 0) {
-    return rounded.toLocaleString(undefined, { maximumFractionDigits: 0, style: 'decimal' });
-  }
-  return rounded.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 3, style: 'decimal' });
+
+  const maxFractionDigits = absNum >= 1 ? 4 : 6;
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFractionDigits,
+    style: 'decimal',
+  });
 };
 
 export default function Home() {
@@ -214,33 +217,37 @@ export default function Home() {
 
         <main className="flex-1">
           <Toaster />
-          <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-14 pt-8 sm:px-6 lg:px-10" id="top-nav-content">
-            <div className="grid gap-7 lg:grid-cols-[minmax(260px,320px)_minmax(0,1.75fr)_minmax(260px,320px)] lg:items-stretch xl:grid-cols-[320px_minmax(0,1.4fr)_320px] 2xl:grid-cols-[360px_minmax(0,1.6fr)_360px]">
-              <HistoryList
-                items={history}
-                onHistorySelect={onDesktopHistoryItemSelect}
-                onClearHistory={clearHistory}
-                className="hidden lg:flex lg:h-full lg:flex-col xl:sticky xl:top-28"
-                isLoading={isLoadingHistory}
-              />
+          <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 px-4 pb-14 pt-8 sm:px-6 lg:px-10" id="top-nav-content">
+            <div className="grid gap-7 xl:grid-cols-[minmax(0,1.85fr)_minmax(280px,0.95fr)] xl:items-start">
               <UnitConverter
                 ref={unitConverterRef}
                 className="min-h-[560px] lg:h-full"
                 onResultCopied={handleResultCopied}
                 onToggleFavorite={handleToggleFavorite}
-          favorites={favorites}
+                favorites={favorites}
                 disableAddFavoriteButton={disableAddFavoriteButton}
               />
-              <PresetList
-                presetsToDisplay={displayPresetsForListDesktop}
-                onPresetSelect={onDesktopPresetSelect}
-                favorites={favorites}
-                onFavoriteSelect={onDesktopPresetSelect}
-                onRemoveFavorite={removeFavorite}
-                onClearAllFavorites={clearAllFavorites}
-                className="hidden lg:flex lg:h-full lg:flex-col xl:sticky xl:top-28"
-                isLoadingFavorites={isLoadingFavorites}
-              />
+
+              {/* Right sidebar: history + favorites stacked on all xl+ */}
+              <div className="hidden xl:flex h-full flex-col gap-6 xl:sticky xl:top-28">
+                <HistoryList
+                  items={history}
+                  onHistorySelect={onDesktopHistoryItemSelect}
+                  onClearHistory={clearHistory}
+                  className="h-full flex-col"
+                  isLoading={isLoadingHistory}
+                />
+                <PresetList
+                  presetsToDisplay={displayPresetsForListDesktop}
+                  onPresetSelect={onDesktopPresetSelect}
+                  favorites={favorites}
+                  onFavoriteSelect={onDesktopPresetSelect}
+                  onRemoveFavorite={removeFavorite}
+                  onClearAllFavorites={clearAllFavorites}
+                  className="h-full flex-col"
+                  isLoadingFavorites={isLoadingFavorites}
+                />
+              </div>
             </div>
           </div>
         </main>

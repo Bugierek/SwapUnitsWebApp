@@ -4,50 +4,41 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { MeasurementCategoryDropdown, MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
+import type { MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
 import {
-  ArrowRightLeft,
-  FlaskConical,
   Copy,
   Star,
   Calculator,
+  ChevronRight,
   ChevronsUpDown,
   ArrowUpRight,
   Check,
   Info,
+  Search,
 } from 'lucide-react';
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useIsCoarsePointer } from '@/hooks/use-pointer-capabilities';
 import { cn } from '@/lib/utils';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useImperativeHandle, forwardRef } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import type { ConversionComboboxProps } from './combobox';
+import type { ConversionComboboxProps, ConversionComboboxItem } from './combobox';
 import {
   Dialog,
   DialogContent,
@@ -66,6 +57,17 @@ import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
 import { AccordionTabs, type AccordionTabItem } from '@/components/accordion-tabs';
 import {
@@ -81,10 +83,10 @@ const formSchema = z.object({
   fromUnit: z.string().min(1, "Please select an input unit"),
   toUnit: z.string().min(1, "Please select an output unit"),
   value: z.union([
-     z.literal(''),
-     z.coerce.number({ invalid_type_error: "Please enter a valid number" })
-        .or(z.nan())
-   ]).optional(),
+    z.literal(''),
+    z.number(),
+    z.nan(),
+  ]).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -134,6 +136,7 @@ const LONG_UNIT_NAMES = new Set([
 ]);
 
 const MAX_UNIT_LABEL_LENGTH = 24;
+const PREFER_ABBREVIATED_UNIT_LABELS = true;
 const shouldAbbreviateUnit = (unit: { name: string; symbol: string }) => {
   return (
     unit.name.length > MAX_UNIT_LABEL_LENGTH ||
@@ -249,19 +252,39 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const fxErrorRef = React.useRef<string | null>(null);
   const fxLastAttemptRef = React.useRef<number | null>(null);
   const FX_RETRY_COOLDOWN_MS = 5000;
-  const isFullPrecision = precisionMode === 'full';
-  const isMobile = useIsMobile();
   const prefersTouch = useIsCoarsePointer();
+  const isTouch = prefersTouch;
   const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const fromTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const toTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const [abbreviateFromTrigger, setAbbreviateFromTrigger] = React.useState(false);
   const [abbreviateToTrigger, setAbbreviateToTrigger] = React.useState(false);
+  const [fromTriggerWidth, setFromTriggerWidth] = React.useState<number | null>(null);
+  const [toTriggerWidth, setToTriggerWidth] = React.useState<number | null>(null);
+  const [fromMenuOpen, setFromMenuOpen] = React.useState(false);
+  const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
+  const [fromCalcHover, setFromCalcHover] = React.useState(false);
+  const [fromCalcButtonFocused, setFromCalcButtonFocused] = React.useState(false);
+  const [fromMenuCategory, setFromMenuCategory] = React.useState<UnitCategory | null>(null);
+  const [toMenuOpen, setToMenuOpen] = React.useState(false);
+  const [toMenuCategory, setToMenuCategory] = React.useState<UnitCategory | null>(null);
+  const [toFieldFocused, setToFieldFocused] = React.useState(false);
+  const [toCopyHover, setToCopyHover] = React.useState(false);
+  const [fromMenuMaxHeight, setFromMenuMaxHeight] = React.useState<number | null>(null);
+  const [toMenuMaxHeight, setToMenuMaxHeight] = React.useState<number | null>(null);
+  const [menuScrollState, setMenuScrollState] = React.useState({
+    from: { atTop: true, atBottom: false, scrollable: false },
+    to: { atTop: true, atBottom: false, scrollable: false },
+  });
+  const fromMenuListRef = React.useRef<HTMLDivElement | null>(null);
+  const toMenuListRef = React.useRef<HTMLDivElement | null>(null);
+  const [fromUnitFilter, setFromUnitFilter] = React.useState('');
+  const [toUnitFilter, setToUnitFilter] = React.useState('');
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<FormData>,
     mode: 'onChange',
     defaultValues: {
       category: defaultCategory,
@@ -305,6 +328,56 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     if (!fxRates) return 'Loading latest FX rates (Frankfurter, updated daily ~16:00 CET)...';
     return null;
   }, [fxRates, rhfCategory]);
+  const computeMenuMaxHeight = React.useCallback((triggerEl: HTMLButtonElement | null) => {
+    if (typeof window === 'undefined' || !triggerEl) return null;
+    const rect = triggerEl.getBoundingClientRect();
+    const padding = 16;
+    const availableBelow = window.innerHeight - rect.bottom - padding;
+    const availableAbove = rect.top - padding;
+    const available = Math.max(availableBelow, availableAbove);
+    const clamped = Math.max(240, Math.min(available, 520));
+    return clamped;
+  }, []);
+
+  const updateMenuScrollState = React.useCallback((side: 'from' | 'to', target: HTMLElement) => {
+    const atTop = target.scrollTop <= 1;
+    const atBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 1;
+    const scrollable = target.scrollHeight - target.clientHeight > 1;
+    setMenuScrollState((prev) => ({
+      ...prev,
+      [side]: { atTop, atBottom, scrollable },
+    }));
+  }, []);
+
+  const refreshMenuScrollState = React.useCallback(
+    (side: 'from' | 'to') => {
+      const ref = side === 'from' ? fromMenuListRef.current : toMenuListRef.current;
+      if (ref) {
+        updateMenuScrollState(side, ref);
+      }
+    },
+    [updateMenuScrollState],
+  );
+
+  React.useEffect(() => {
+    if (!fromMenuOpen) {
+      setFromMenuMaxHeight(null);
+      return;
+    }
+    const maxHeight = computeMenuMaxHeight(fromTriggerRef.current);
+    setFromMenuMaxHeight(maxHeight);
+    requestAnimationFrame(() => refreshMenuScrollState('from'));
+  }, [fromMenuOpen, computeMenuMaxHeight, refreshMenuScrollState]);
+
+  React.useEffect(() => {
+    if (!toMenuOpen) {
+      setToMenuMaxHeight(null);
+      return;
+    }
+    const maxHeight = computeMenuMaxHeight(toTriggerRef.current);
+    setToMenuMaxHeight(maxHeight);
+    requestAnimationFrame(() => refreshMenuScrollState('to'));
+  }, [toMenuOpen, computeMenuMaxHeight, refreshMenuScrollState]);
   const hasToggleFavorites = typeof onToggleFavorite === 'function';
   const getUnitDisplayName = React.useCallback(
     (category: UnitCategory | "", symbol: string) => {
@@ -325,6 +398,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
         fav.toUnit === rhfToUnit,
     );
   }, [favorites, hasToggleFavorites, rhfCategory, rhfFromUnit, rhfToUnit]);
+  const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
+  const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
+  const favoriteButtonLabel = hasToggleFavorites
+    ? activeFavorite
+      ? 'Remove from favorites'
+      : 'Save conversion to favorites'
+    : 'Save conversion to favorites';
   const rhfValue = watch("value");
   const inputPrecisionHint = React.useMemo(
     () => getDecimalPrecisionFromInput(rhfValue),
@@ -335,6 +415,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
   const resultHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasAppliedHighlightRef = React.useRef(false);
+  const [fromUnitHighlight, setFromUnitHighlight] = React.useState(false);
+  const [toUnitHighlight, setToUnitHighlight] = React.useState(false);
+  const unitHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [finderVersion, setFinderVersion] = React.useState(0);
   const [finderPresetQuery, setFinderPresetQuery] = React.useState<string | null>(null);
   const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
@@ -492,10 +575,512 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       });
   }, []);
 
+  const menuCategoryOptions = React.useMemo(() => {
+    if (!rhfCategory) {
+      return categoryOptions;
+    }
+    const current = categoryOptions.find((opt) => opt.value === rhfCategory);
+    if (!current) {
+      return categoryOptions;
+    }
+    const rest = categoryOptions.filter((opt) => opt.value !== rhfCategory);
+    return [current, ...rest];
+  }, [categoryOptions, rhfCategory]);
+
   const currentUnitsForCategory = React.useMemo(() => {
     if (!rhfCategory) return [];
     return getUnitsForCategory(rhfCategory);
   }, [rhfCategory]);
+
+  const renderUnitMenuContent = (side: 'from' | 'to') => {
+    const filter = side === 'from' ? fromUnitFilter : toUnitFilter;
+    const setFilter = side === 'from' ? setFromUnitFilter : setToUnitFilter;
+    const menuCategory = side === 'from' ? fromMenuCategory : toMenuCategory;
+    const setMenuCategory = side === 'from' ? setFromMenuCategory : setToMenuCategory;
+    const label = side === 'from' ? 'From unit' : 'To unit';
+    const onUnitSelect =
+      side === 'from' ? handleFromUnitMenuSelect : handleToUnitMenuSelect;
+
+    const normalizeSearchString = (value: string, options: { compact?: boolean } = {}) => {
+      const compact = options.compact ?? false;
+      let normalized = value
+        .trim()
+        .toLowerCase()
+        .replace(/µ/g, 'u')
+        .replace(/²/g, '2')
+        .replace(/³/g, '3')
+        .replace(/[-_]/g, ' ');
+
+      // add variant for " per " to "/"
+      normalized = normalized.replace(/\s+per\s+/g, '/');
+
+      if (compact) {
+        normalized = normalized.replace(/[\s^]/g, '');
+      }
+      return normalized;
+    };
+
+    const buildFilterVariants = (raw: string) => {
+      const base = normalizeSearchString(raw);
+      const compactBase = normalizeSearchString(raw, { compact: true });
+      const variants = new Set<string>([base]);
+      if (compactBase !== base) {
+        variants.add(compactBase);
+      }
+
+      // Add superscript variants for trailing digits (e.g., mm3 -> mm³, mm^3)
+      const suffixMatch = base.match(/^([a-zµ]+)(\d)$/);
+      if (suffixMatch) {
+        const [, prefix, power] = suffixMatch;
+        variants.add(`${prefix}${power}`);
+        variants.add(`${prefix}^${power}`);
+        if (power === '2') variants.add(`${prefix}²`);
+        if (power === '3') variants.add(`${prefix}³`);
+      }
+
+      // Handle "sq"/"square" prefixes
+      const sqMatch = base.match(/^sq(uare)?\s*(.*)$/);
+      if (sqMatch) {
+        const after = sqMatch[2] ?? '';
+        variants.add(`square ${after}`.trim());
+        variants.add(`sq ${after}`.trim());
+      }
+
+      // Handle "cu"/"cubic" prefixes
+      const cuMatch = base.match(/^cu(bic)?\s*(.*)$/);
+      if (cuMatch) {
+        const after = cuMatch[2] ?? '';
+        variants.add(`cubic ${after}`.trim());
+        variants.add(`cu ${after}`.trim());
+      }
+
+      // Common aliases for kWh / kilowatt hour shorthand
+      if (
+        base === 'kwh' ||
+        compactBase === 'kwh' ||
+        base.includes('kilowat')
+      ) {
+        variants.add('kilowatt hour');
+        variants.add('kilowatt-hour');
+        variants.add('kwh');
+      }
+
+      // Handle caret inputs like "mm^" or "mm^2"
+      if (base.includes('^')) {
+        const caretStripped = base.replace(/\^+/g, '').trim();
+        if (caretStripped) {
+          variants.add(`${caretStripped}2`);
+          variants.add(`${caretStripped}3`);
+          variants.add(`square ${caretStripped}`);
+          variants.add(`cubic ${caretStripped}`);
+        }
+      }
+
+      return Array.from(variants).filter(Boolean);
+    };
+
+    const normalizedFilter = filter.trim().toLowerCase();
+    const compactFilter = normalizeSearchString(filter, { compact: true });
+    const filterVariants = buildFilterVariants(filter);
+
+    const unitMatchesFilter = (unit: { symbol: string; name: string; keywords?: string[] }) => {
+      if (!normalizedFilter) return true;
+      const symbol = unit.symbol.toLowerCase();
+      const name = unit.name.toLowerCase();
+      const symbolPlain = normalizeSearchString(symbol, { compact: true });
+      const namePlain = normalizeSearchString(name, { compact: true });
+      const keywordStrings = (unit.keywords ?? []).map((k) => normalizeSearchString(k, { compact: true }));
+
+      return filterVariants.some((variant) => {
+        const variantCompact = normalizeSearchString(variant, { compact: true });
+        const partial = variantCompact.length >= 4 ? variantCompact.slice(0, 4) : variantCompact;
+        return (
+          symbol.includes(variant) ||
+          symbolPlain.includes(variant) ||
+          symbolPlain.includes(partial) ||
+          name.includes(variant) ||
+          namePlain.includes(variant) ||
+          namePlain.includes(partial) ||
+          keywordStrings.some((kw) => kw.includes(variant) || kw.includes(variantCompact) || kw.includes(partial)) ||
+          symbolPlain.startsWith(compactFilter) ||
+          namePlain.startsWith(compactFilter)
+        );
+      });
+    };
+    const aliasCategoryHints: Record<string, UnitCategory[]> = {
+      kwh: ['Energy', 'Fuel Economy'],
+      kilow: ['Energy', 'Fuel Economy'],
+      kilowat: ['Energy', 'Fuel Economy'],
+      kilowatt: ['Energy', 'Fuel Economy'],
+    };
+
+    let filteredCategories = menuCategoryOptions
+      .map((option) => {
+        const units = getUnitsForCategory(option.value).filter((unit) => unitMatchesFilter(unit));
+        return { option, units };
+      })
+      .filter(({ units }) => units.length > 0);
+
+    // If some categories have no direct unit hits but the title/value matches, include them with full unit list.
+    if (normalizedFilter) {
+      menuCategoryOptions.forEach((option) => {
+        const alreadyIncluded = filteredCategories.some(({ option: opt }) => opt.value === option.value);
+        if (alreadyIncluded) return;
+        const titleMatch = filterVariants.some((variant) => {
+          const title = option.title.toLowerCase();
+          const value = String(option.value).toLowerCase();
+          return title.includes(variant) || value.includes(variant);
+        });
+        if (titleMatch) {
+          filteredCategories.push({
+            option,
+            units: getUnitsForCategory(option.value),
+          });
+        }
+      });
+    }
+
+    // Add alias-based category hints (e.g., kWh -> Energy and Fuel Economy)
+    Object.entries(aliasCategoryHints).forEach(([hint, categories]) => {
+      if (!compactFilter.includes(hint)) return;
+      categories.forEach((cat) => {
+        const exists = filteredCategories.some(({ option }) => option.value === cat);
+        if (!exists) {
+          const opt = menuCategoryOptions.find((o) => o.value === cat);
+          if (opt) {
+            filteredCategories.push({ option: opt, units: getUnitsForCategory(opt.value) });
+          }
+        }
+      });
+    });
+
+    // If hints are present and any hinted categories have units, prefer only those.
+    const activeHints = Object.entries(aliasCategoryHints)
+      .filter(([hint]) => compactFilter.includes(hint))
+      .flatMap(([, cats]) => cats);
+    if (activeHints.length > 0) {
+      const hinted = filteredCategories.filter(({ option }) => activeHints.includes(option.value as UnitCategory));
+      if (hinted.length > 0) {
+        filteredCategories = hinted;
+      }
+    }
+
+    if (normalizedFilter) {
+      filteredCategories = filteredCategories.sort((a, b) => {
+        const countDiff = b.units.length - a.units.length;
+        if (countDiff !== 0) return countDiff;
+        const aTitleMatch = a.option.title.toLowerCase().includes(normalizedFilter) ? 1 : 0;
+        const bTitleMatch = b.option.title.toLowerCase().includes(normalizedFilter) ? 1 : 0;
+        if (aTitleMatch !== bTitleMatch) return bTitleMatch - aTitleMatch;
+        if (rhfCategory) {
+          if (a.option.value === rhfCategory) return -1;
+          if (b.option.value === rhfCategory) return 1;
+        }
+        return 0;
+      });
+    }
+
+    // If no units matched, fall back to the first category whose title/id matches the filter
+    if (filteredCategories.length === 0 && normalizedFilter) {
+      const categoryFallback = menuCategoryOptions.find((opt) =>
+        filterVariants.some((variant) => {
+          const title = opt.title.toLowerCase();
+          const value = String(opt.value).toLowerCase();
+          return title.includes(variant) || value.includes(variant);
+        }),
+      );
+      if (categoryFallback) {
+        filteredCategories = [
+          {
+            option: categoryFallback,
+            units: getUnitsForCategory(categoryFallback.value),
+          },
+        ];
+      }
+    }
+
+    const defaultOpenCategory =
+      menuCategory ??
+      (normalizedFilter
+        ? filteredCategories[0]?.option.value ?? null
+        : rhfCategory ?? filteredCategories[0]?.option.value ?? null);
+    const menuCategoryValid = menuCategory
+      ? filteredCategories.some(({ option }) => option.value === menuCategory)
+      : false;
+    const activeCategory = menuCategoryValid ? menuCategory : defaultOpenCategory;
+    const activeCategoryEntry = filteredCategories.find(
+      ({ option }) => option.value === activeCategory,
+    );
+    const activeCategoryUnits = activeCategoryEntry?.units ?? [];
+    const fallbackCategory = filteredCategories[0];
+    const displayUnitsCategory = activeCategoryEntry?.option.value ?? fallbackCategory?.option.value ?? null;
+    const displayUnits =
+      activeCategoryUnits.length > 0
+        ? activeCategoryUnits
+        : fallbackCategory?.units ?? [];
+    const effectiveCategory = displayUnitsCategory;
+    const selectedUnitSymbol = side === 'from' ? rhfFromUnit : rhfToUnit;
+
+    const emptyState = (
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        avoidCollisions={false}
+        className="min-w-[14rem] max-h-[60vh] overflow-y-auto"
+      >
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-1 pb-1">
+          <Input
+            autoFocus
+            placeholder="Search units…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+          />
+        </div>
+        <div className="px-3 py-2 text-xs text-muted-foreground">No units found.</div>
+      </DropdownMenuContent>
+    );
+
+    if (!filteredCategories.length) {
+      return emptyState;
+    }
+
+    const menuMaxHeight = side === 'from' ? fromMenuMaxHeight : toMenuMaxHeight;
+    const computedMaxHeight =
+      menuMaxHeight !== null ? `${menuMaxHeight}px` : 'min(calc(100vh - 120px), 480px)';
+    const listMaxHeight =
+      menuMaxHeight !== null
+        ? `${Math.max(menuMaxHeight - 120, 220)}px`
+        : 'calc(min(calc(100vh - 120px), 480px) - 120px)';
+
+    if (!isTouch) {
+      return (
+      <DropdownMenuContent
+        side="bottom"
+        align={side === 'from' ? 'start' : 'end'}
+        sideOffset={8}
+        collisionPadding={{ top: 12, bottom: 12, left: 16, right: 16 }}
+        className="min-w-[30rem] overflow-visible"
+        style={{ maxHeight: computedMaxHeight, maxWidth: 'calc(100vw - 32px)' }}
+      >
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-1 pb-1">
+          <Input
+            autoFocus
+            placeholder="Search units…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+          />
+        </div>
+        <div className="relative">
+          <div className="flex gap-3" style={{ maxHeight: listMaxHeight }}>
+            <div
+              ref={side === 'from' ? fromMenuListRef : toMenuListRef}
+              onScroll={(e) => updateMenuScrollState(side, e.currentTarget)}
+              className="max-h-[60vh] w-[14rem] shrink-0 overflow-y-auto overflow-x-hidden pl-3 pr-2 pt-6 pb-6"
+              style={{ maxHeight: listMaxHeight, scrollbarWidth: 'thin', direction: 'rtl' }}
+            >
+              <div style={{ direction: 'ltr' }}>
+                <div className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                  Category
+                </div>
+                {filteredCategories.map(({ option }) => {
+                  const isActiveCategory = option.value === (menuCategory ?? defaultOpenCategory);
+                  return (
+                    <DropdownMenuItem
+                      key={`${side}-${option.value}`}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        setMenuCategory(option.value);
+                      }}
+                      onMouseEnter={() => setMenuCategory(option.value)}
+                      onFocus={() => setMenuCategory(option.value)}
+                      data-current={option.value === rhfCategory || undefined}
+                      className={cn(
+                        'flex items-center justify-between gap-2',
+                        option.value === rhfCategory && 'font-semibold text-primary',
+                        isActiveCategory && 'bg-muted/40',
+                      )}
+                    >
+                      <span>{option.title}</span>
+                      <ChevronRight className="h-4 w-4 opacity-70" aria-hidden="true" />
+                    </DropdownMenuItem>
+                  );
+                })}
+              </div>
+            </div>
+            <div
+              className="relative w-[18rem] shrink-0 overflow-hidden rounded-lg border border-border/50 bg-[hsl(var(--card))]/70"
+              style={{ maxHeight: listMaxHeight }}
+            >
+              <div
+                className="h-full overflow-y-auto overflow-x-hidden px-3 py-6"
+                style={{ scrollbarWidth: 'thin', direction: 'ltr' }}
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 mb-2">
+                  Units
+                </div>
+                {displayUnits.length > 0 ? (
+                  displayUnits.map((unit) => (
+                    <button
+                      key={unit.symbol}
+                      type="button"
+                      onClick={() => {
+                        if (!effectiveCategory) return;
+                        onUnitSelect(effectiveCategory, unit.symbol);
+                        if (side === 'from') {
+                          setFromMenuOpen(false);
+                        } else {
+                          setToMenuOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm text-left transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                        unit.symbol === selectedUnitSymbol
+                          ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
+                          : undefined,
+                      )}
+                    >
+                      <span className="whitespace-normal break-words leading-snug">{unit.name}</span>
+                      <span className="ml-2 shrink-0 text-muted-foreground">({unit.symbol})</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-xs text-muted-foreground">No units found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+          {menuScrollState[side].scrollable && (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex h-6 items-center justify-center bg-[hsl(var(--card))]/95">
+                <ChevronsUpDown
+                  className={cn(
+                    'h-4 w-4 transition-opacity',
+                    menuScrollState[side].atTop ? 'opacity-20' : 'opacity-80 rotate-180',
+                  )}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-6 items-center justify-center bg-[hsl(var(--card))]/95">
+                <ChevronsUpDown
+                  className={cn(
+                    'h-4 w-4 transition-opacity',
+                    menuScrollState[side].atBottom ? 'opacity-20' : 'opacity-80',
+                  )}
+                  aria-hidden="true"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </DropdownMenuContent>
+    );
+  }
+
+    return (
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        avoidCollisions={false}
+        className="min-w-[14rem] overflow-visible"
+        style={{ maxHeight: computedMaxHeight }}
+      >
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-1 pb-1">
+          <Input
+            autoFocus
+            placeholder="Search units…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+          />
+        </div>
+        <div className="relative">
+          <div
+            ref={side === 'from' ? fromMenuListRef : toMenuListRef}
+            onScroll={(e) => updateMenuScrollState(side, e.currentTarget)}
+            className="max-h-[60vh] overflow-y-auto hide-scrollbar pt-5 pb-5"
+            style={{ maxHeight: computedMaxHeight, scrollbarWidth: 'none' }}
+          >
+            {filteredCategories.map(({ option, units }) => {
+              const isActiveCategory = option.value === rhfCategory;
+              const isExpanded =
+                menuCategory === option.value ||
+                (normalizedFilter !== '' && menuCategory === null && option.value === filteredCategories[0]?.option.value) ||
+                option.value === defaultOpenCategory;
+
+              return (
+                <div key={`${side}-${option.value}`} className="flex flex-col">
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setMenuCategory((current) =>
+                        current === option.value ? null : option.value,
+                      );
+                    }}
+                    className={cn(
+                      'flex items-center justify-between gap-2',
+                      isActiveCategory && 'font-semibold text-primary',
+                    )}
+                  >
+                    <span>{option.title}</span>
+                    <ChevronRight
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        isExpanded && 'translate-x-0.5',
+                      )}
+                      aria-hidden="true"
+                    />
+                  </DropdownMenuItem>
+                  {isExpanded && (
+                    <div className="ml-3 border-l border-border/60 pl-2">
+                      {units.map((unit) => (
+                        <DropdownMenuItem
+                          key={unit.symbol}
+                          onSelect={() => onUnitSelect(option.value, unit.symbol)}
+                          className={cn(
+                            "pl-4 text-sm",
+                            unit.symbol === selectedUnitSymbol && "bg-primary/10 text-primary font-semibold",
+                          )}
+                        >
+                          {unit.name} ({unit.symbol})
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {(!menuScrollState[side].atTop || !menuScrollState[side].atBottom) && (
+            <>
+              {!menuScrollState[side].atTop && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 flex h-5 items-center justify-center bg-[hsl(var(--card))]/95 text-muted-foreground/70">
+                  <ChevronsUpDown className="h-4 w-4 rotate-180 opacity-80" />
+                </div>
+              )}
+              {!menuScrollState[side].atBottom && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-5 items-center justify-center bg-[hsl(var(--card))]/95 text-muted-foreground/70">
+                  <ChevronsUpDown className="h-4 w-4 opacity-80" />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </DropdownMenuContent>
+    );
+  };
 
   const currentFromUnit = React.useMemo(
     () => currentUnitsForCategory.find((unit) => unit.symbol === rhfFromUnit),
@@ -529,38 +1114,50 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     [],
   );
 
+  const clampTriggerWidth = React.useCallback((textWidth: number) => {
+    const padding = 40; // horizontal padding for text
+    const caretSpace = 24; // space for chevrons and gap
+    const desired = textWidth + padding + caretSpace;
+    const minWidth = 128;
+    const maxWidth = 460;
+    return Math.max(minWidth, Math.min(desired, maxWidth));
+  }, []);
+
   const evaluateLabelWidths = React.useCallback(() => {
     if (typeof window === 'undefined') return;
+
     if (currentFromUnit && fromTriggerRef.current) {
-      const triggerWidth = fromTriggerRef.current.clientWidth;
-      if (triggerWidth > 0) {
-        const labelText = `${currentFromUnit.name} (${currentFromUnit.symbol})`;
-        const measuredWidth = measureLabelWidth(fromTriggerRef.current, labelText);
-        setAbbreviateFromTrigger(
-          measuredWidth > triggerWidth * 0.5 || shouldAbbreviateUnit(currentFromUnit),
-        );
+      const fullLabel = `${currentFromUnit.name} (${currentFromUnit.symbol})`;
+      const displayText = PREFER_ABBREVIATED_UNIT_LABELS ? currentFromUnit.symbol : fullLabel;
+      const measuredWidth = measureLabelWidth(fromTriggerRef.current, displayText);
+      if (measuredWidth > 0) {
+        setFromTriggerWidth(clampTriggerWidth(measuredWidth));
+        setAbbreviateFromTrigger(PREFER_ABBREVIATED_UNIT_LABELS || shouldAbbreviateUnit(currentFromUnit));
       } else {
         setAbbreviateFromTrigger(false);
+        setFromTriggerWidth(null);
       }
     } else {
       setAbbreviateFromTrigger(false);
+      setFromTriggerWidth(null);
     }
 
     if (currentToUnit && toTriggerRef.current) {
-      const triggerWidth = toTriggerRef.current.clientWidth;
-      if (triggerWidth > 0) {
-        const labelText = `${currentToUnit.name} (${currentToUnit.symbol})`;
-        const measuredWidth = measureLabelWidth(toTriggerRef.current, labelText);
-        setAbbreviateToTrigger(
-          measuredWidth > triggerWidth * 0.5 || shouldAbbreviateUnit(currentToUnit),
-        );
+      const fullLabel = `${currentToUnit.name} (${currentToUnit.symbol})`;
+      const displayText = PREFER_ABBREVIATED_UNIT_LABELS ? currentToUnit.symbol : fullLabel;
+      const measuredWidth = measureLabelWidth(toTriggerRef.current, displayText);
+      if (measuredWidth > 0) {
+        setToTriggerWidth(clampTriggerWidth(measuredWidth));
+        setAbbreviateToTrigger(PREFER_ABBREVIATED_UNIT_LABELS || shouldAbbreviateUnit(currentToUnit));
       } else {
         setAbbreviateToTrigger(false);
+        setToTriggerWidth(null);
       }
     } else {
       setAbbreviateToTrigger(false);
+      setToTriggerWidth(null);
     }
-  }, [currentFromUnit, currentToUnit, measureLabelWidth]);
+  }, [clampTriggerWidth, currentFromUnit, currentToUnit, measureLabelWidth]);
 
   React.useLayoutEffect(() => {
     evaluateLabelWidths();
@@ -575,7 +1172,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return () => window.removeEventListener('resize', handleResize);
   }, [evaluateLabelWidths]);
 
-  const unitConversionPairs = React.useMemo(() => {
+  const unitConversionPairs = React.useMemo<ConversionComboboxItem[]>(() => {
     const orderedCategories: UnitCategory[] = [
       ...categoryDisplayOrder,
       ...Object.keys(unitData).filter(
@@ -583,10 +1180,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       ),
     ]
       .filter((category, index, arr) => arr.indexOf(category) === index)
-      .filter((category): category is UnitCategory => !!unitData[category]);
+      .filter((category): category is UnitCategory => !!unitData[category as UnitCategory]);
 
-    return orderedCategories.flatMap((category) => {
-      const data = unitData[category];
+    return orderedCategories.flatMap<ConversionComboboxItem>((category) => {
+      const data = unitData[category as UnitCategory];
       if (!data) return [];
 
       if (category === 'SI Prefixes') {
@@ -626,7 +1223,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       }
 
       const units = getUnitsForCategory(category);
-      return units.flatMap((fromUnit) =>
+      return units.flatMap<ConversionComboboxItem>((fromUnit) =>
         units
           .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
           .map((toUnit) => {
@@ -673,6 +1270,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               keywordsLower: keywords.map((keyword) => keyword.toLowerCase()),
               pairUrl,
               kind: 'unit' as const,
+              siPrefixMeta: undefined,
             };
           }),
       );
@@ -961,6 +1559,233 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     ],
   );
 
+  const updateUnitsForCategory = React.useCallback(
+    (
+      category: UnitCategory,
+      overrides: {
+        fromUnit?: string;
+        toUnit?: string;
+      },
+    ) => {
+      const availableUnits = getUnitsForCategory(category);
+      if (availableUnits.length === 0) {
+        setSelectedCategoryLocal(category);
+        setValue('category', category, { shouldValidate: true });
+        return;
+      }
+
+      const currentValues = getValues();
+      const availableSymbols = availableUnits.map((unit) => unit.symbol);
+      const defaultPair = getCategoryDefaultPair(category);
+
+      let fromUnitSymbol: string | undefined =
+        overrides.fromUnit && availableSymbols.includes(overrides.fromUnit)
+          ? overrides.fromUnit
+          : (typeof currentValues.fromUnit === 'string' &&
+              availableSymbols.includes(currentValues.fromUnit)
+            ? currentValues.fromUnit
+            : undefined);
+
+      let toUnitSymbol: string | undefined =
+        overrides.toUnit && availableSymbols.includes(overrides.toUnit)
+          ? overrides.toUnit
+          : (typeof currentValues.toUnit === 'string' &&
+              availableSymbols.includes(currentValues.toUnit)
+            ? currentValues.toUnit
+            : undefined);
+
+      // If user explicitly chose the to-unit and it currently matches from,
+      // clear from so we can pick a sensible counterpart (and vice versa).
+      if (overrides.toUnit && fromUnitSymbol === overrides.toUnit) {
+        fromUnitSymbol = undefined;
+      }
+      if (overrides.fromUnit && toUnitSymbol === overrides.fromUnit) {
+        toUnitSymbol = undefined;
+      }
+
+      // Case 1: nothing valid yet -> seed from defaults or first two units.
+      if (!fromUnitSymbol && !toUnitSymbol) {
+        if (
+          defaultPair &&
+          availableSymbols.includes(defaultPair.fromUnit) &&
+          availableSymbols.includes(defaultPair.toUnit)
+        ) {
+          fromUnitSymbol = defaultPair.fromUnit;
+          toUnitSymbol = defaultPair.toUnit;
+        } else {
+          fromUnitSymbol = availableSymbols[0] ?? '';
+          toUnitSymbol =
+            availableSymbols.find((sym) => sym !== fromUnitSymbol) ??
+            fromUnitSymbol;
+        }
+      }
+      // Case 2: from is fixed (possibly by user), choose a matching to.
+      else if (fromUnitSymbol && !toUnitSymbol) {
+        if (defaultPair) {
+          if (
+            fromUnitSymbol === defaultPair.fromUnit &&
+            availableSymbols.includes(defaultPair.toUnit)
+          ) {
+            toUnitSymbol = defaultPair.toUnit;
+          } else if (
+            fromUnitSymbol === defaultPair.toUnit &&
+            availableSymbols.includes(defaultPair.fromUnit)
+          ) {
+            toUnitSymbol = defaultPair.fromUnit;
+          }
+        }
+        if (!toUnitSymbol) {
+          toUnitSymbol =
+            availableSymbols.find((sym) => sym !== fromUnitSymbol) ??
+            fromUnitSymbol;
+        }
+      }
+      // Case 3: to is fixed (possibly by user), choose a matching from.
+      else if (!fromUnitSymbol && toUnitSymbol) {
+        if (defaultPair) {
+          if (
+            toUnitSymbol === defaultPair.toUnit &&
+            availableSymbols.includes(defaultPair.fromUnit)
+          ) {
+            fromUnitSymbol = defaultPair.fromUnit;
+          } else if (
+            toUnitSymbol === defaultPair.fromUnit &&
+            availableSymbols.includes(defaultPair.toUnit)
+          ) {
+            fromUnitSymbol = defaultPair.toUnit;
+          }
+        }
+        if (!fromUnitSymbol) {
+          fromUnitSymbol =
+            availableSymbols.find((sym) => sym !== toUnitSymbol) ??
+            toUnitSymbol;
+        }
+      }
+      // Case 4: both defined but ended up equal -> adjust the non-overridden side.
+      else if (fromUnitSymbol && toUnitSymbol && fromUnitSymbol === toUnitSymbol) {
+        if (overrides.toUnit && !overrides.fromUnit) {
+          // Respect result side; move input side.
+          if (defaultPair) {
+            if (
+              toUnitSymbol === defaultPair.toUnit &&
+              availableSymbols.includes(defaultPair.fromUnit)
+            ) {
+              fromUnitSymbol = defaultPair.fromUnit;
+            } else if (
+              toUnitSymbol === defaultPair.fromUnit &&
+              availableSymbols.includes(defaultPair.toUnit)
+            ) {
+              fromUnitSymbol = defaultPair.toUnit;
+            }
+          }
+          if (fromUnitSymbol === toUnitSymbol) {
+            fromUnitSymbol =
+              availableSymbols.find((sym) => sym !== toUnitSymbol) ??
+              toUnitSymbol;
+          }
+        } else if (overrides.fromUnit && !overrides.toUnit) {
+          // Respect input side; move result side.
+          if (defaultPair) {
+            if (
+              fromUnitSymbol === defaultPair.fromUnit &&
+              availableSymbols.includes(defaultPair.toUnit)
+            ) {
+              toUnitSymbol = defaultPair.toUnit;
+            } else if (
+              fromUnitSymbol === defaultPair.toUnit &&
+              availableSymbols.includes(defaultPair.fromUnit)
+            ) {
+              toUnitSymbol = defaultPair.fromUnit;
+            }
+          }
+          if (toUnitSymbol === fromUnitSymbol) {
+            toUnitSymbol =
+              availableSymbols.find((sym) => sym !== fromUnitSymbol) ??
+              fromUnitSymbol;
+          }
+        } else if (defaultPair) {
+          // No explicit override; fall back to default pair orientation.
+          if (
+            availableSymbols.includes(defaultPair.fromUnit) &&
+            availableSymbols.includes(defaultPair.toUnit)
+          ) {
+            fromUnitSymbol = defaultPair.fromUnit;
+            toUnitSymbol = defaultPair.toUnit;
+          }
+        }
+      }
+
+      // Final safety: ensure we have concrete symbols.
+      const safeFrom = fromUnitSymbol ?? availableSymbols[0] ?? '';
+      const safeTo =
+        toUnitSymbol ??
+        availableSymbols.find((sym) => sym !== safeFrom) ??
+        safeFrom;
+
+      const currentValueRaw = currentValues.value;
+      const numericValue =
+        typeof currentValueRaw === 'number'
+          ? currentValueRaw
+          : Number(currentValueRaw);
+      const shouldResetValue =
+        !Number.isFinite(numericValue) ||
+        String(currentValueRaw ?? '').trim() === '' ||
+        String(currentValueRaw ?? '').trim() === '-';
+
+      const finalValue = shouldResetValue ? 1 : numericValue;
+
+      setSelectedCategoryLocal(category);
+      setValue('category', category, { shouldDirty: true, shouldValidate: true });
+      setValue('fromUnit', safeFrom, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue('toUnit', safeTo, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setValue('value', finalValue, { shouldDirty: true, shouldValidate: true });
+      setLastValidInputValue(finalValue);
+      setNumberFormat('normal');
+      setIsNormalFormatDisabled(false);
+
+      const conversion = convertUnits({
+        category,
+        fromUnit: safeFrom,
+        toUnit: safeTo,
+        value: finalValue,
+      });
+
+      setConversionResult(conversion);
+    },
+    [
+      convertUnits,
+      getValues,
+      setConversionResult,
+      setIsNormalFormatDisabled,
+      setLastValidInputValue,
+      setNumberFormat,
+      setSelectedCategoryLocal,
+      setValue,
+    ],
+  );
+
+  const handleFromUnitMenuSelect = React.useCallback(
+    (category: UnitCategory, unitSymbol: string) => {
+      resetFinderInput();
+      updateUnitsForCategory(category, { fromUnit: unitSymbol });
+    },
+    [resetFinderInput, updateUnitsForCategory],
+  );
+
+  const handleToUnitMenuSelect = React.useCallback(
+    (category: UnitCategory, unitSymbol: string) => {
+      resetFinderInput();
+      updateUnitsForCategory(category, { toUnit: unitSymbol });
+    },
+    [resetFinderInput, updateUnitsForCategory],
+  );
+
   const handleParsedConversion = React.useCallback(
     (payload: ParsedConversionPayload) => {
       pendingFinderSelectionRef.current = true;
@@ -972,9 +1797,24 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         focusResultField();
       };
 
+      const pulseUnitHighlight = () => {
+        if (unitHighlightTimeoutRef.current) {
+          clearTimeout(unitHighlightTimeoutRef.current);
+          unitHighlightTimeoutRef.current = null;
+        }
+        setFromUnitHighlight(true);
+        setToUnitHighlight(true);
+        unitHighlightTimeoutRef.current = setTimeout(() => {
+          setFromUnitHighlight(false);
+          setToUnitHighlight(false);
+          unitHighlightTimeoutRef.current = null;
+        }, 900);
+      };
+
       if (payload.kind === 'category') {
         setIsSwapped(false);
         applyCategoryDefaults(payload.category, { forceDefaults: true });
+        pulseUnitHighlight();
         finalizeFinderSelection();
         return;
       }
@@ -1034,6 +1874,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             setConversionResult(conversion);
           })
           .finally(() => {
+            pulseUnitHighlight();
             finalizeFinderSelection();
           });
         return;
@@ -1060,6 +1901,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           setConversionResult(conversion);
         })
         .finally(() => {
+          pulseUnitHighlight();
           finalizeFinderSelection();
         });
     },
@@ -1074,6 +1916,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setIsSwapped,
       pendingFinderSelectionRef,
       resultInputRef,
+      unitHighlightTimeoutRef,
     ],
   );
 
@@ -1119,7 +1962,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       }
 
       const normalizedValue = normalizeNumericInputValue(numericValue);
-      setValue('value', normalizedValue, { shouldValidate: true, shouldDirty: true });
+      const valueForForm = typeof normalizedValue === 'number' ? normalizedValue : numericValue;
+      setValue('value', valueForForm, { shouldValidate: true, shouldDirty: true });
       setLastValidInputValue(numericValue);
 
       const currentValues = getValues();
@@ -1242,6 +2086,14 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         }
     }
   }, [rhfValue, rhfFromUnit, rhfToUnit, rhfCategory, selectedCategoryLocal, getValues, convertUnits, errors.value]);
+
+  React.useEffect(() => {
+    return () => {
+      if (unitHighlightTimeoutRef.current) {
+        clearTimeout(unitHighlightTimeoutRef.current);
+      }
+    };
+  }, []);
 
 
    React.useEffect(() => {
@@ -1438,6 +2290,16 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     setTextCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
+  const prevCalculatorOpenRef = React.useRef(isCalculatorOpen);
+  React.useEffect(() => {
+    if (prevCalculatorOpenRef.current && !isCalculatorOpen) {
+      setFromCalcHover(false);
+      setFromCalcButtonFocused(false);
+      setFromFieldFocused(false);
+    }
+    prevCalculatorOpenRef.current = isCalculatorOpen;
+  }, [isCalculatorOpen]);
+
   const resolveCurrencyPairRate = React.useCallback((): number | null => {
     if (rhfCategory !== 'Currency') return null;
     if (!fxRates || !rhfFromUnit || !rhfToUnit) return null;
@@ -1578,6 +2440,55 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     fxRates?.date,
   ]);
 
+  const handleCopyTextualResult = React.useCallback(async () => {
+    const currentRawFormValue = getValues("value");
+    const numericFromValue = Number(currentRawFormValue);
+
+    const textToCopy = showPlaceholder || !conversionResult
+      ? ''
+      : `${formatFromValue(numericFromValue, precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
+
+    if (!textToCopy) return;
+
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
+      setTextCopyState('success');
+      if (
+        onResultCopied &&
+        rhfCategory &&
+        conversionResult &&
+        isFinite(numericFromValue) &&
+        String(currentRawFormValue).trim() !== '' &&
+        String(currentRawFormValue).trim() !== '-'
+      ) {
+        onResultCopied({
+          category: rhfCategory,
+          fromValue: numericFromValue,
+          fromUnit: rhfFromUnit,
+          toValue: conversionResult.value,
+          toUnit: rhfToUnit,
+        });
+      }
+    } else {
+      toast({
+        title: "Copy Failed",
+        description: "Clipboard access is blocked. Please copy the text manually.",
+        variant: "destructive",
+      });
+    }
+  }, [
+    showPlaceholder,
+    conversionResult,
+    formattedResultString,
+    rhfToUnit,
+    rhfFromUnit,
+    getValues,
+    toast,
+    onResultCopied,
+    rhfCategory,
+    precisionMode,
+  ]);
+
   const formulaContentNode = React.useMemo(() => {
     if (!generalFormula && !dynamicFormula) {
       return (
@@ -1597,61 +2508,159 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       </div>
     );
   }, [generalFormula, dynamicFormula]);
-  const referenceTabs = React.useMemo<AccordionTabItem[]>(() => {
+  const formulaTabContent = React.useMemo(() => {
+    if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Enter a value and pick both units to see the formula.
+        </p>
+      );
+    }
+
+    return (
+      <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 md:px-2.5 md:py-2.5">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Formula
+        </div>
+        {formulaContentNode}
+      </div>
+    );
+  }, [
+    conversionResult,
+    formulaContentNode,
+    rhfCategory,
+    rhfFromUnit,
+    rhfToUnit,
+    showPlaceholder,
+  ]);
+
+  const sourcesTabContent = React.useMemo(() => {
+    if (conversionSources.length === 0) return null;
+    return (
+      <ul className="space-y-3 text-xs text-muted-foreground">
+        {conversionSources.map((source) => (
+          <li key={source.id} className="leading-relaxed">
+            <p className="text-sm font-semibold text-foreground">{source.title}</p>
+            <p className="mt-1">
+              <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+              {source.summary}{' '}
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                View source
+              </a>
+              {source.id === 'nist-guide-si' && (
+                <>
+                  {' '}·{' '}
+                  <Link
+                    href="/standards/nist-si-tenfold"
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    View SI table
+                  </Link>
+                </>
+              )}
+            </p>
+          </li>
+        ))}
+      </ul>
+    );
+  }, [conversionSources]);
+
+  const formattingTabContent = React.useMemo(() => (
+    <div className="space-y-6 text-sm text-foreground">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result format</p>
+        <RadioGroup
+          name="result-format"
+          value={numberFormat}
+          onValueChange={(value: string) => {
+            setNumberFormat(value as NumberFormat);
+            handleActualFormatChange(value as NumberFormat, 'user_choice');
+          }}
+          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
+          aria-label="Choose number format for the result"
+        >
+          <div className="flex items-center gap-2">
+            <RadioGroupItem
+              value="normal"
+              id="format-normal"
+              disabled={isNormalFormatDisabled}
+            />
+            <Label
+              htmlFor="format-normal"
+              className={cn(
+                'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition',
+                isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary',
+              )}
+            >
+              Normal (e.g., 1,234.56)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="scientific" id="format-scientific" />
+            <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">Scientific (e.g., 1.23E+6)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Precision</p>
+        <RadioGroup
+          name="precision-mode"
+          value={precisionMode}
+          onValueChange={(value: string) => setPrecisionMode(value as PrecisionMode)}
+          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
+          aria-label="Choose precision mode"
+        >
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="rounded" id="precision-rounded" />
+            <Label htmlFor="precision-rounded" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">
+              Rounded (readable)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="full" id="precision-full" />
+            <Label htmlFor="precision-full" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">
+              Full precision
+            </Label>
+          </div>
+        </RadioGroup>
+        <p className="text-xs text-muted-foreground">
+          Rounded shows up to four decimals for clarity; Full precision shows the raw computed value when available.
+        </p>
+      </div>
+    </div>
+  ), [numberFormat, precisionMode, isNormalFormatDisabled, handleActualFormatChange]);
+
+  const resultTabs = React.useMemo<AccordionTabItem[]>(() => {
     const tabs: AccordionTabItem[] = [
       {
         id: 'formula',
         label: 'Formula',
-        content: formulaContentNode,
+        content: formulaTabContent,
       },
     ];
 
-    if (conversionSources.length > 0) {
+    if (sourcesTabContent) {
       tabs.push({
         id: 'sources',
         label: 'Sources',
-        content: (
-          <ul className="space-y-3 text-xs text-muted-foreground">
-            {conversionSources.map((source) => (
-              <li key={source.id} className="leading-relaxed">
-                <p className="text-sm font-semibold text-foreground">{source.title}</p>
-                <p className="mt-1">
-                  <span className="font-medium text-foreground">{source.organization}</span>.{' '}
-                  {source.summary}{' '}
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="font-semibold text-primary underline-offset-2 hover:underline"
-                  >
-                    View source
-                  </a>
-                  {source.id === 'nist-guide-si' && (
-                    <>
-                      {' '}
-                      ·{' '}
-                      <Link
-                        href="/standards/nist-si-tenfold"
-                        className="font-semibold text-primary underline-offset-2 hover:underline"
-                      >
-                        View SI table
-                      </Link>
-                    </>
-                  )}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ),
+        content: sourcesTabContent,
       });
     }
 
+    tabs.push({
+      id: 'formatting',
+      label: 'Formatting',
+      content: formattingTabContent,
+    });
+
     return tabs;
-  }, [formulaContentNode, conversionSources]);
-  const showPrecisionControls = false;
-  const handlePrecisionToggle = React.useCallback(() => {
-    setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
-  }, []);
+  }, [formulaTabContent, sourcesTabContent, formattingTabContent]);
 
  const handleSwapClick = React.useCallback(() => {
     const currentFromUnit = getValues("fromUnit");
@@ -1671,7 +2680,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
 
     const normalizedValue = normalizeNumericInputValue(newInputValue);
-    setValue("value", normalizedValue, { shouldValidate: true, shouldDirty: true });
+    const valueForForm =
+      typeof normalizedValue === 'number'
+        ? normalizedValue
+        : typeof newInputValue === 'number'
+          ? newInputValue
+          : '';
+    setValue("value", valueForForm, { shouldValidate: true, shouldDirty: true });
     if (newInputValue !== undefined) {
       setLastValidInputValue(newInputValue);
     }
@@ -1742,43 +2757,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
   }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfFromUnit, getValues]);
 
-  const handleCopyTextualResult = React.useCallback(async () => {
-    const currentRawFormValue = getValues("value");
-    const numericFromValue = Number(currentRawFormValue);
-
-    const textToCopy = showPlaceholder || !conversionResult 
-        ? '' 
-        : `${formatFromValue(numericFromValue, precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
-    
-    if (!textToCopy) return;
-
-    const copied = await copyTextToClipboard(textToCopy);
-    if (copied) {
-        setTextCopyState('success');
-        if (
-            onResultCopied &&
-            rhfCategory &&
-            conversionResult &&
-            isFinite(numericFromValue) &&
-            String(currentRawFormValue).trim() !== '' && String(currentRawFormValue).trim() !== '-'
-        ) {
-            onResultCopied({
-                category: rhfCategory,
-                fromValue: numericFromValue,
-                fromUnit: rhfFromUnit,
-                toValue: conversionResult.value,
-                toUnit: rhfToUnit,
-            });
-        }
-    } else {
-        toast({
-            title: "Copy Failed",
-            description: "Clipboard access is blocked. Please copy the text manually.",
-            variant: "destructive",
-        });
-    }
-  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, rhfFromUnit, getValues, toast, onResultCopied, rhfCategory, precisionMode]);
-
 
   const handleSaveToFavoritesInternal = React.useCallback(() => {
     if (!rhfCategory || !rhfFromUnit || !rhfToUnit) {
@@ -1832,17 +2810,106 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     });
   }, [onToggleFavorite, rhfCategory, rhfFromUnit, rhfToUnit, handleSaveToFavoritesInternal, getUnitDisplayName]);
 
+  const resultBanner = React.useMemo(() => {
+    if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return (
+        <div className="rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 text-sm text-muted-foreground">
+          Enter a value and pick both units to see the result.
+        </div>
+      );
+    }
+
+    const fromUnitFull = getUnitDisplayName(rhfCategory, rhfFromUnit) ?? rhfFromUnit;
+    const toUnitFull = getUnitDisplayName(rhfCategory, rhfToUnit) ?? rhfToUnit;
+
+    return (
+      <div className="relative">
+        <div
+          className={cn(
+            "group flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 text-base font-semibold text-primary transition-colors duration-700 sm:gap-4",
+            resultHighlightPulse &&
+              'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
+          )}
+        >
+          <div className="flex flex-1 flex-col gap-2.5 text-left">
+            <span className="truncate">
+              {formatFromValue(Number(rhfValue), precisionMode)}
+              <span className="ml-1 hidden lg:inline">{fromUnitFull}</span>
+              <span className="ml-1 lg:hidden">{rhfFromUnit}</span>
+              {' = '}
+              {formattedResultString}
+              <span className="ml-1 hidden lg:inline">{toUnitFull}</span>
+              <span className="ml-1 lg:hidden">{rhfToUnit}</span>
+            </span>
+            <div className="mt-2 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleCopyTextualResult}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
+                aria-label="Copy textual result to clipboard"
+              >
+                {textCopyState === 'success' ? (
+                  <Check className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                <span>Copy</span>
+              </button>
+              {(onSaveFavoriteProp || hasToggleFavorites) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
+                  disabled={finalSaveDisabled || showPlaceholder}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent",
+                  )}
+                  aria-label={favoriteButtonLabel}
+                >
+                  <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
+                  <span>{activeFavorite ? 'Saved' : 'Add to favorites'}</span>
+                </Button>
+              )}
+              {currentConversionPairUrl && (
+                <Link
+                  href={currentConversionPairUrl}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
+                  aria-label="Open detailed conversion page"
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                  <span>Details</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }, [
+    conversionResult,
+    currentConversionPairUrl,
+    formattedResultString,
+    handleCopyTextualResult,
+    precisionMode,
+    resultHighlightPulse,
+    activeFavorite,
+    favoriteButtonLabel,
+    finalSaveDisabled,
+    handleSaveToFavoritesInternal,
+    handleToggleFavoriteInternal,
+    hasToggleFavorites,
+    onSaveFavoriteProp,
+    rhfCategory,
+    rhfFromUnit,
+    rhfToUnit,
+    rhfValue,
+    showPlaceholder,
+    textCopyState,
+  ]);
+
   const screenReaderText = showPlaceholder
     ? (rhfValue !== undefined && rhfFromUnit ? `Waiting for conversion of ${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit}` : 'Enter a value and select units to convert')
     : `${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
-
-  const baseSaveDisabled = !rhfCategory || !rhfFromUnit || !rhfToUnit;
-  const finalSaveDisabled = hasToggleFavorites ? baseSaveDisabled : baseSaveDisabled || disableAddFavoriteButton;
-  const favoriteButtonLabel = hasToggleFavorites
-    ? activeFavorite
-      ? 'Remove from favorites'
-      : 'Save conversion to favorites'
-    : 'Save conversion to favorites';
 
   const handleCalculatorValueSent = (valueFromCalculator: string) => {
     const numericValue = parseFloat(valueFromCalculator);
@@ -1858,317 +2925,319 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
 return (
   <>
-     <Card
+    <GlobalStyles />
+     <div className="w-full max-w-none mx-auto px-4 md:px-6">
+      <Card
         id="converter"
         className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
+          "relative flex h-full w-full flex-col overflow-visible rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
           className
         )}
         aria-labelledby="unit-converter-title"
       >
-        <CardHeader className="border-b border-border/60 px-5 py-5">
-          <div className="flex items-center gap-3 text-xl font-semibold text-foreground" id="unit-converter-title">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <FlaskConical className="h-5 w-5" aria-hidden="true" />
-            </span>
-            SwapUnits Converter
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Enter a value, choose your units, and copy the result instantly. History and favorites stay in sync automatically.
-          </p>
-        </CardHeader>
         <CardContent className={cn("flex flex-grow flex-col px-5 py-5")}>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
           </div>
           <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-6">
-              <div className="flex flex-1 flex-col gap-6">
+            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-7">
+              <div className="flex flex-1 flex-col gap-7">
                 <FormField
                   control={form.control}
                   name="category"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
-                      <div className="mb-1 flex items-center gap-2">
-                        <Label
-                          htmlFor="conversion-search"
-                          className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground"
-                        >
-                          Conversion finder
-                        </Label>
-                        <TooltipProvider delayDuration={150}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                className="hidden h-5 w-5 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
-                                aria-label="How the conversion finder understands your input"
-                              >
-                                <Info className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              align="start"
-                              className="max-w-[260px] whitespace-normal break-words text-xs leading-relaxed"
-                            >
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                    TRY CONVERSIONS EG.
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleFinderExampleSelect(finderExamples.value)}
-                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                      aria-label={`Use ${finderExamples.value} in the conversion finder`}
-                                    >
-                                      {finderExamples.value}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleFinderExampleSelect(finderExamples.units)}
-                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                      aria-label={`Use ${finderExamples.units} in the conversion finder`}
-                                    >
-                                      {finderExamples.units}
-                                    </button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                    OR FIND CATEGORY EG.
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleFinderExampleSelect(finderExamples.category)}
-                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                      aria-label={`Use ${finderExamples.category} as the category`}
-                                    >
-                                      {finderExamples.category}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="relative mb-6">
-                        {ComboboxComponent ? (
-                          <ComboboxComponent
-                            key={finderVersion}
-                            items={conversionPairs}
-                            value={selectedConversionPairValue}
-                            onChange={() => {
-                              // Selection is handled via onParsedConversion; no-op here.
-                            }}
-                            placeholder={"Type '100 kg to g', unit(s), or a category"}
-                            inputId="conversion-search"
-                            onParsedConversion={handleParsedConversion}
-                            onParseError={handleParseError}
-                            presetQuery={finderPresetQuery}
-                            autoFocusOnMount={shouldAutoFocusFinder}
-                            onAutoFocusComplete={handleFinderAutoFocusComplete}
-                            onNumericValue={handleFinderNumericValue}
-                          />
-                        ) : (
-                          <Button
-                            type="button"
-                            id="conversion-search"
-                            variant="outline"
-                            disabled
-                            className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
-                            aria-busy="true"
+                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-4 shadow-lg shadow-primary/10">
+                        <div className="mb-2 flex items-center gap-2">
+                          <Label
+                            htmlFor="conversion-search"
+                            className="text-xs font-semibold uppercase tracking-[0.25em] text-primary"
                           >
-                            Loading conversions…
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
-                          </Button>
-                        )}
+                            Conversion finder
+                          </Label>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="hidden h-5 w-5 items-center justify-center rounded-full border border-primary/50 text-primary transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
+                                  aria-label="How the conversion finder understands your input"
+                                >
+                                  <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="bottom"
+                                align="start"
+                                sideOffset={10}
+                                collisionPadding={{ top: 80, bottom: 16, left: 12, right: 12 }}
+                                className="max-w-[320px] whitespace-normal break-words rounded-xl border border-border/60 bg-card/95 px-3 py-2 text-xs leading-relaxed shadow-lg z-[70]"
+                              >
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      Try conversions eg.
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFinderExampleSelect(finderExamples.value)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${finderExamples.value} in the conversion finder`}
+                                      >
+                                        {finderExamples.value}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFinderExampleSelect(finderExamples.units)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${finderExamples.units} in the conversion finder`}
+                                      >
+                                        {finderExamples.units}
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      Or find category eg.
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFinderExampleSelect(finderExamples.category)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${finderExamples.category} as the category`}
+                                      >
+                                        {finderExamples.category}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="relative">
+                          {ComboboxComponent ? (
+                            <ComboboxComponent
+                              key={finderVersion}
+                              items={conversionPairs}
+                              value={selectedConversionPairValue}
+                              onChange={() => {
+                                // Selection is handled via onParsedConversion; no-op here.
+                              }}
+                              placeholder={"Type '100 kg to g', unit(s), or a category"}
+                              inputId="conversion-search"
+                              onParsedConversion={handleParsedConversion}
+                              onParseError={handleParseError}
+                              presetQuery={finderPresetQuery}
+                              autoFocusOnMount={shouldAutoFocusFinder}
+                              onAutoFocusComplete={handleFinderAutoFocusComplete}
+                              onNumericValue={handleFinderNumericValue}
+                              prefixIcon={<Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+                            />
+                          ) : (
+                            <Button
+                              type="button"
+                              id="conversion-search"
+                              variant="outline"
+                              disabled
+                              className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
+                              aria-busy="true"
+                            >
+                              Loading conversions…
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <FormLabel className="mb-2 block text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                        Measurement Category
-                      </FormLabel>
-                      <FormControl>
-                        <MeasurementCategoryDropdown
-                          options={categoryOptions}
-                          value={(field.value as UnitCategory) ?? ''}
-                          onSelect={(nextCategory) => {
-                            if (typeof nextCategory !== 'string') {
-                              return;
-                            }
-                            const normalizedCategory = nextCategory as UnitCategory;
-                            field.onChange(normalizedCategory);
-                            resetFinderInput();
-                            applyCategoryDefaults(normalizedCategory, { forceDefaults: true });
-                          }}
-                          placeholder="Select a category"
-                          triggerClassName="h-11"
-                        />
-                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                <div className="rounded-2xl border border-border/40 bg-transparent px-4 py-3 text-center">
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    OR
+                  </div>
+                  <p className="text-[13px] text-muted-foreground/80">
+                    Enter a value, choose your units, and copy the result instantly.
+                  </p>
+                </div>
+
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
-                    {/* From Input Row */}
-                    <div className="flex flex-wrap items-stretch gap-3">
-                      <div className="flex min-w-0 flex-1">
-                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 border-solid bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <FormField
-                            control={form.control}
-                            name="value"
-                            render={({ field }) => (
-                              <FormItem className="flex-1 space-y-0">
-                                <FormControl>
-                                  <Input
-                                    id="value-input"
-                                    name="from-value"
-                                    type="text"
-                                    inputMode="decimal"
-                                    placeholder="Enter value"
-                                    {...field}
-                                    onChange={(e) => {
-                                      const rawValue = e.target.value;
-                                      if (
-                                        rawValue === '' ||
-                                        rawValue === '-' ||
-                                        /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
-                                        /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
-                                      ) {
-                                        if (/([eE])/.test(rawValue)) {
-                                          field.onChange(rawValue);
-                                        } else {
-                                          const parts = rawValue.split('.');
-                                          if (
-                                            parts[0].replace('-', '').length <= 8 &&
-                                            (parts[1] === undefined || parts[1].length <= 7)
-                                          ) {
+                    <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          From
+                        </div>
+                        <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <div
+                            className="flex items-stretch border-r border-border/60"
+                            onMouseEnter={() => setFromCalcHover(true)}
+                            onMouseLeave={() => setFromCalcHover(false)}
+                          >
+                            <FormField
+                              control={form.control}
+                              name="value"
+                              render={({ field }) => (
+                                <FormItem className="flex flex-1 items-stretch space-y-0">
+                                  <FormControl>
+                                    <Input
+                                      id="value-input"
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="Enter value"
+                                      {...field}
+                                      onFocus={() => setFromFieldFocused(true)}
+                                      onBlur={() => setFromFieldFocused(false)}
+                                      onChange={(e) => {
+                                        const rawValue = e.target.value;
+                                        if (
+                                          rawValue === '' ||
+                                          rawValue === '-' ||
+                                          /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(rawValue) ||
+                                          /^-?\d{1,8}(\.\d{0,7})?([eE][-+]?\d*)?$/.test(rawValue)
+                                        ) {
+                                          if (/([eE])/.test(rawValue)) {
                                             field.onChange(rawValue);
-                                          } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
-                                            field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
+                                          } else {
+                                            const parts = rawValue.split('.');
+                                            if (
+                                              parts[0].replace('-', '').length <= 8 &&
+                                              (parts[1] === undefined || parts[1].length <= 7)
+                                            ) {
+                                              field.onChange(rawValue);
+                                            } else if (parts[0].replace('-', '').length > 8 && parts[1] === undefined) {
+                                              field.onChange(rawValue.slice(0, parts[0][0] === '-' ? 9 : 8));
+                                            }
                                           }
                                         }
-                                      }
-                                    }}
-                                    value={field.value === undefined ? '' : String(field.value)}
-                                    disabled={!rhfFromUnit || !rhfToUnit}
-                                    aria-required="true"
-                                    className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                  />
-                                </FormControl>
-                              </FormItem>
+                                      }}
+                                      value={field.value === undefined ? '' : String(field.value)}
+                                      disabled={!rhfFromUnit || !rhfToUnit}
+                                      aria-required="true"
+                                      className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            {(fromFieldFocused || fromCalcHover || fromCalcButtonFocused) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsCalculatorOpen(true)}
+                                onMouseEnter={() => setFromCalcHover(true)}
+                                onMouseLeave={() => setFromCalcHover(false)}
+                                onMouseDown={() => setFromFieldFocused(true)}
+                                onFocus={() => setFromCalcButtonFocused(true)}
+                                onBlur={() => setFromCalcButtonFocused(false)}
+                                className="h-11 w-9 shrink-0 rounded-none text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none disabled:text-muted-foreground disabled:hover:bg-transparent"
+                                aria-label="Open calculator"
+                              >
+                                <Calculator className="h-4 w-4" />
+                              </Button>
                             )}
-                          />
+                          </div>
                           <FormField
                             control={form.control}
                             name="fromUnit"
-                            render={({ field }) => (
-                              <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
-                                <Select
-                                  name="fromUnit"
-                                  onValueChange={(value) => {
-                                    resetFinderInput();
-                                    field.onChange(value);
-                                  }}
-                                  value={field.value}
-                                  disabled={!rhfCategory}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger
-                                      ref={fromTriggerRef}
-                                      className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                    >
-                                      {field.value && currentFromUnit ? (
-                                        (isMobile || abbreviateFromTrigger || shouldAbbreviateUnit(currentFromUnit)) ? (
-                                          <span>({currentFromUnit.symbol})</span>
-                                        ) : (
-                                          <span>
-                                            {currentFromUnit.name}{' '}
-                                            ({currentFromUnit.symbol})
-                                          </span>
-                                        )
-                                      ) : (
-                                        <SelectValue placeholder="Unit" />
-                                      )}
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent
-                                    side="bottom"
-                                    align="end"
-                                    avoidCollisions={false}
-                                    className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible"
+                            render={() => (
+                              <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
+                                <FormControl>
+                                  <DropdownMenu
+                                    open={fromMenuOpen}
+                                    onOpenChange={(open) => {
+                                      setFromMenuOpen(open);
+                                      if (open) {
+                                        setFromUnitFilter('');
+                                        setFromMenuCategory(
+                                          rhfCategory && typeof rhfCategory === 'string'
+                                            ? (rhfCategory as UnitCategory)
+                                            : null,
+                                        );
+                                      } else {
+                                        setFromMenuCategory(null);
+                                        setFromUnitFilter('');
+                                      }
+                                    }}
                                   >
-                                    {currentUnitsForCategory.map((unit) => (
-                                      <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                        {unit.name} ({unit.symbol})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        ref={fromTriggerRef}
+                                        type="button"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        style={{
+                                          width: fromTriggerWidth ? `${fromTriggerWidth}px` : undefined,
+                                          maxWidth: '100%',
+                                        }}
+                                      >
+                                        {rhfFromUnit && currentFromUnit ? (
+                                          <span
+                                            className={cn(
+                                              'block',
+                                              fromUnitHighlight &&
+                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                            )}
+                                            title={`${currentFromUnit.name} (${currentFromUnit.symbol})`}
+                                          >
+                                            {abbreviateFromTrigger
+                                              ? currentFromUnit.symbol
+                                              : `${currentFromUnit.name} (${currentFromUnit.symbol})`}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground">Unit</span>
+                                        )}
+                                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    {renderUnitMenuContent('from')}
+                                  </DropdownMenu>
+                                </FormControl>
                               </FormItem>
                             )}
                           />
                         </div>
                       </div>
-                      <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-11 w-11 shrink-0 rounded-xl border-0 bg-transparent text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                            aria-label="Open calculator"
-                          >
-                            <Calculator className="h-5 w-5" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
-                          <DialogHeader className="sr-only">
-                            <DialogTitle>Calculator</DialogTitle>
-                          </DialogHeader>
-                          <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-
-                   {/* Middle Row - Swap and Favorite Buttons */}
-                   <div className="flex flex-wrap items-stretch gap-3">
+                      <div className="flex w-full items-center justify-center pt-6 sm:w-auto">
                         <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleSwapClick}
-                            disabled={!rhfFromUnit || !rhfToUnit}
-                            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] text-sm font-medium transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40"
-                            aria-label="Swap from and to units"
+                          type="button"
+                          variant="ghost"
+                          onClick={handleSwapClick}
+                          disabled={!rhfFromUnit || !rhfToUnit}
+                          className="h-11 w-full rounded-xl border border-border/60 p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
+                          aria-label="Swap units"
                         >
-                            <ArrowRightLeft className={cn("h-4 w-4 text-primary transition-transform", isSwapped && "rotate-180 scale-x-[-1]")} aria-hidden="true" />
-                            <span className="hidden md:inline">Swap units</span>
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={cn('transition-transform text-primary', isSwapped && 'rotate-180 scale-x-[-1]')}
+                            aria-hidden="true"
+                          >
+                            <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                              <path d="M21 3v5h-5" />
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                              <path d="M8 16H3v5" />
+                            </g>
+                          </svg>
                         </Button>
-
-                         {(onSaveFavoriteProp || hasToggleFavorites) && (
-                          <Button
-                              type="button"
-                              variant="ghost" 
-                              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
-                              disabled={finalSaveDisabled || showPlaceholder}
-                              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border-0 bg-transparent text-sm font-medium transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                              aria-label={favoriteButtonLabel}
-                            >
-                              <Star className={cn("h-4 w-4", activeFavorite ? "fill-primary text-primary" : (!finalSaveDisabled && !showPlaceholder) ? "text-primary" : "text-muted-foreground")} />
-                          </Button>
-                        )}
-                    </div>
-
-
-                    {/* To Result Row */}
-                    <div className="flex flex-wrap items-stretch gap-3">
-                      <div className="flex min-w-0 flex-1">
-                        <div className="flex w-full items-stretch divide-x divide-border/60 rounded-2xl border border-border/60 border-solid bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                          <div className="flex-1">
+                      </div>
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          To
+                        </div>
+                        <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <div
+                            className="flex items-stretch border-r border-border/60"
+                            onMouseEnter={() => setToCopyHover(true)}
+                            onMouseLeave={() => setToCopyHover(false)}
+                          >
                             <Input
                               id="conversion-result"
                               name="conversion-result"
@@ -2176,221 +3245,154 @@ return (
                               readOnly
                               value={showPlaceholder ? '-' : formattedResultString}
                               className={cn(
-                                "h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
-                                showPlaceholder && 'text-muted-foreground'
+                                'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+                                showPlaceholder && 'text-muted-foreground',
                               )}
+                              onFocus={() => setToFieldFocused(true)}
+                              onBlur={() => setToFieldFocused(false)}
                               aria-label="Conversion result"
                             />
+                            {(toFieldFocused || toCopyHover) && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={handleCopy}
+                                disabled={showPlaceholder}
+                                className="h-11 w-9 shrink-0 rounded-none text-muted-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                                aria-label="Copy numeric result to clipboard"
+                              >
+                                {resultCopyState === 'success' ? (
+                                  <Check className="h-4 w-4 text-emerald-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                           <FormField
                             control={form.control}
                             name="toUnit"
-                            render={({ field }) => (
-                              <FormItem className="min-w-[120px] space-y-0 md:min-w-[190px]">
-                                <Select
-                                  name="toUnit"
-                                  onValueChange={(value) => {
-                                    resetFinderInput();
-                                    field.onChange(value);
-                                  }}
-                                  value={field.value}
-                                  disabled={!rhfCategory}
-                                >
+                              render={() => (
+                                <FormItem className="min-w-[112px] max-w-[320px] space-y-0 border-l border-border/60 pl-2">
                                   <FormControl>
-                                    <SelectTrigger
-                                      ref={toTriggerRef}
-                                      className="h-11 rounded-none border-0 bg-transparent px-3 text-left text-sm font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                                    >
-                                      {field.value && currentToUnit ? (
-                                        (isMobile || abbreviateToTrigger || shouldAbbreviateUnit(currentToUnit)) ? (
-                                          <span>({currentToUnit.symbol})</span>
-                                        ) : (
-                                          <span>
-                                            {currentToUnit.name}{' '}
-                                            ({currentToUnit.symbol})
-                                          </span>
-                                        )
-                                      ) : (
-                                        <SelectValue placeholder="Unit" />
-                                      )}
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent
-                                    side="bottom"
-                                    align="end"
-                                    avoidCollisions={false}
-                                    className="max-h-60 overflow-y-auto md:max-h-none md:overflow-y-visible"
+                                  <DropdownMenu
+                                    open={toMenuOpen}
+                                    onOpenChange={(open) => {
+                                      setToMenuOpen(open);
+                                      if (open) {
+                                        setToUnitFilter('');
+                                        setToMenuCategory(
+                                          rhfCategory && typeof rhfCategory === 'string'
+                                            ? (rhfCategory as UnitCategory)
+                                            : null,
+                                        );
+                                      } else {
+                                        setToMenuCategory(null);
+                                        setToUnitFilter('');
+                                      }
+                                    }}
                                   >
-                                    {currentUnitsForCategory.map((unit) => (
-                                      <SelectItem key={unit.symbol} value={unit.symbol} className="text-left">
-                                        {unit.name} ({unit.symbol})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        ref={toTriggerRef}
+                                        type="button"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        style={{
+                                          width: toTriggerWidth ? `${toTriggerWidth}px` : undefined,
+                                          maxWidth: '100%',
+                                        }}
+                                      >
+                                        {rhfToUnit && currentToUnit ? (
+                                          <span
+                                            className={cn(
+                                              'block',
+                                              toUnitHighlight &&
+                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                            )}
+                                            title={`${currentToUnit.name} (${currentToUnit.symbol})`}
+                                          >
+                                            {abbreviateToTrigger
+                                              ? currentToUnit.symbol
+                                              : `${currentToUnit.name} (${currentToUnit.symbol})`}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground">Unit</span>
+                                        )}
+                                        <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    {renderUnitMenuContent('to')}
+                                  </DropdownMenu>
+                                </FormControl>
                               </FormItem>
                             )}
                           />
                         </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleCopy}
-                        disabled={showPlaceholder}
-                        className="h-11 w-11 shrink-0 rounded-xl border-0 bg-transparent text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                        aria-label="Copy result to clipboard"
-                      >
-                        {resultCopyState === 'success' ? (
-                          <Check className="h-5 w-5 text-emerald-500" />
-                        ) : (
-                          <Copy className="h-5 w-5" />
-                        )}
-                      </Button>
                     </div>
+                    {/* End of from/to grid */}
+                    </div>
+
                   </div>
                 )}
 
-                {showPrecisionControls && !showPlaceholder && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <TooltipProvider delayDuration={150}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="hidden h-6 w-6 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary lg:inline-flex"
-                              aria-label="How precision is calculated"
-                            >
-                              <Info className="h-3.5 w-3.5" aria-hidden="true" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            align="start"
-                            sideOffset={6}
-                            className="max-w-sm text-xs text-muted-foreground"
-                          >
-                            {actualFormatUsed === 'scientific'
-                              ? 'Scientific notation already shows the exact value computed from our unit factors.'
-                              : isFullPrecision
-                                ? 'Full precision shows additional decimal places using the exact conversion factors from our standards-backed sources (NIST Guide to SI, ASTM, IEC, etc.).'
-                                : 'Rounded results show up to four digits after the decimal for readability. Switch to full precision to inspect the raw calculation.'}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <span>{isFullPrecision ? 'Full precision result' : 'Rounded result (4 decimals max)'}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7"
-                      onClick={handlePrecisionToggle}
-                      disabled={actualFormatUsed === 'scientific'}
-                    >
-                      {isFullPrecision ? 'Show rounded' : 'Show full precision'}
-                    </Button>
-                  </div>
-                )}
-                
+
                  {/* Textual Conversion Result Display */}
+                <div className="mt-6">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Result
+                  </div>
+                  {resultBanner}
+                </div>
+
                 {fxStatusMessage && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {fxStatusMessage}
                   </div>
                 )}
 
-                {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                  <div className="relative">
-                    <div
-                      className={cn(
-                        "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
-                        resultHighlightPulse &&
-                          'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
-                      )}
-                    >
-                      <div className="flex flex-1 items-center gap-2 text-left">
-                        <span className="truncate">
-                          {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleCopyTextualResult}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                          aria-label="Copy textual result to clipboard"
-                        >
-                          {textCopyState === 'success' ? (
-                            <Check className="h-4 w-4 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                      {currentConversionPairUrl && (
-                        <Link
-                          href={currentConversionPairUrl}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                          aria-label="Open detailed conversion page"
-                        >
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {referenceTabs.length > 0 && (
+                {resultTabs.length > 0 && (
                   <AccordionTabs
-                    tabs={referenceTabs}
-                    initiallyOpen={false}
+                    tabs={resultTabs}
+                    defaultTabId="formula"
+                    initiallyOpen
                     className="mt-2"
                   />
                 )}
-
-                <fieldset className="pt-1">
-                   <legend className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</legend>
-                   <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3">
-                   <RadioGroup
-                     name="result-format"
-                     value={numberFormat}
-                     onValueChange={(value: string) => {
-                         setNumberFormat(value as NumberFormat);
-                         handleActualFormatChange(value as NumberFormat, 'user_choice');
-                     }}
-                     className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
-                     aria-label="Choose number format for the result"
-                   >
-                     <div className="flex items-center gap-2">
-                       <RadioGroupItem
-                         value="normal"
-                         id="format-normal"
-                         disabled={isNormalFormatDisabled}
-                        />
-                       <Label
-                         htmlFor="format-normal"
-                         className={cn(
-                           'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition',
-                           isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary',
-                         )}
-                       >
-                         Normal (e.g., 1,234.56)
-                       </Label>
-                     </div>
-                     <div className="flex items-center gap-2">
-                       <RadioGroupItem value="scientific" id="format-scientific" />
-                       <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">Scientific (e.g., 1.23E+6)</Label>
-                     </div>
-                   </RadioGroup>
-                   </div>
-                </fieldset>
-                </div> 
+                <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
+                  <DialogTrigger asChild>
+                    <div />
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
+                    <DialogHeader className="sr-only">
+                      <DialogTitle>Calculator</DialogTitle>
+                    </DialogHeader>
+                    <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              </div>
             </form>
           </Form>
         </CardContent>
       </Card>
+     </div>
   </>
   );
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
+// Hide scrollbars for custom dropdowns
+function GlobalStyles() {
+  return (
+    <style jsx global>{`
+      .hide-scrollbar::-webkit-scrollbar {
+        width: 0px;
+        height: 0px;
+      }
+      .hide-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+    `}</style>
+  );
+}
