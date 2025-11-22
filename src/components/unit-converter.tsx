@@ -2823,7 +2823,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       <div className="relative">
         <div
           className={cn(
-            "group relative flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 pr-16 text-base font-semibold text-primary transition-colors duration-700 sm:gap-4",
+            "group relative flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 pr-16 text-base font-semibold text-primary transition-colors duration-700 overflow-hidden sm:gap-4",
             resultHighlightPulse &&
               'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
           )}
@@ -2930,25 +2930,26 @@ return (
       <Card
         id="converter"
         className={cn(
-          "relative flex h-full w-full flex-col overflow-visible rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
-          "sm:bg-card/90 sm:border-border/60 sm:shadow-lg sm:backdrop-blur-sm bg-transparent border-transparent shadow-none",
+          "relative flex h-full w-full flex-col overflow-visible rounded-2xl",
+          "border border-transparent bg-transparent shadow-none",
+          "sm:border-border/60 sm:bg-card/90 sm:shadow-lg sm:backdrop-blur-sm",
           className
         )}
         aria-labelledby="unit-converter-title"
       >
-        <CardContent className={cn("flex flex-grow flex-col px-2 pt-5 pb-3 sm:px-2 sm:py-5 border border-transparent sm:border-border/60 bg-transparent sm:bg-transparent")}>
+        <CardContent className={cn("flex flex-grow flex-col px-2 pt-3 pb-3 bg-transparent sm:px-4 sm:py-5")}>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
           </div>
           <Form {...form}>
-            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-5 sm:gap-6">
-              <div className="flex flex-1 flex-col gap-5 sm:gap-6">
+            <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-4 sm:gap-6">
+              <div className="flex flex-1 flex-col gap-4 sm:gap-6">
                 <FormField
                   control={form.control}
                   name="category"
                   render={() => (
                     <FormItem>
-                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-2 py-2 shadow-lg shadow-primary/10 sm:px-3 sm:py-4">
+                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-2 py-2 shadow-lg shadow-primary/10 sm:px-4 sm:py-4">
                         <div className="mb-2 flex items-center gap-2">
                           <Label
                             htmlFor="conversion-search"
@@ -3057,7 +3058,7 @@ return (
                   )}
                 />
 
-                <div className="rounded-2xl border border-border/40 bg-transparent px-2 py-2 text-center sm:px-3 sm:py-3">
+                <div className="rounded-2xl border border-border/40 bg-transparent px-2 py-2 text-center sm:px-4 sm:py-3">
                   <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     OR
                   </div>
