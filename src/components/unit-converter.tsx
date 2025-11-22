@@ -27,6 +27,7 @@ import {
   ArrowUpRight,
   Check,
   Info,
+  Search,
 } from 'lucide-react';
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -263,6 +264,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [fromMenuOpen, setFromMenuOpen] = React.useState(false);
   const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
   const [fromCalcHover, setFromCalcHover] = React.useState(false);
+  const [fromCalcButtonFocused, setFromCalcButtonFocused] = React.useState(false);
   const [fromMenuCategory, setFromMenuCategory] = React.useState<UnitCategory | null>(null);
   const [toMenuOpen, setToMenuOpen] = React.useState(false);
   const [toMenuCategory, setToMenuCategory] = React.useState<UnitCategory | null>(null);
@@ -270,6 +272,12 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [toCopyHover, setToCopyHover] = React.useState(false);
   const [fromMenuMaxHeight, setFromMenuMaxHeight] = React.useState<number | null>(null);
   const [toMenuMaxHeight, setToMenuMaxHeight] = React.useState<number | null>(null);
+  const [menuScrollState, setMenuScrollState] = React.useState({
+    from: { atTop: true, atBottom: false, scrollable: false },
+    to: { atTop: true, atBottom: false, scrollable: false },
+  });
+  const fromMenuListRef = React.useRef<HTMLDivElement | null>(null);
+  const toMenuListRef = React.useRef<HTMLDivElement | null>(null);
   const [fromUnitFilter, setFromUnitFilter] = React.useState('');
   const [toUnitFilter, setToUnitFilter] = React.useState('');
   const [isSwapped, setIsSwapped] = React.useState(false);
@@ -331,6 +339,26 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     return clamped;
   }, []);
 
+  const updateMenuScrollState = React.useCallback((side: 'from' | 'to', target: HTMLElement) => {
+    const atTop = target.scrollTop <= 1;
+    const atBottom = target.scrollTop + target.clientHeight >= target.scrollHeight - 1;
+    const scrollable = target.scrollHeight - target.clientHeight > 1;
+    setMenuScrollState((prev) => ({
+      ...prev,
+      [side]: { atTop, atBottom, scrollable },
+    }));
+  }, []);
+
+  const refreshMenuScrollState = React.useCallback(
+    (side: 'from' | 'to') => {
+      const ref = side === 'from' ? fromMenuListRef.current : toMenuListRef.current;
+      if (ref) {
+        updateMenuScrollState(side, ref);
+      }
+    },
+    [updateMenuScrollState],
+  );
+
   React.useEffect(() => {
     if (!fromMenuOpen) {
       setFromMenuMaxHeight(null);
@@ -338,7 +366,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
     const maxHeight = computeMenuMaxHeight(fromTriggerRef.current);
     setFromMenuMaxHeight(maxHeight);
-  }, [fromMenuOpen, computeMenuMaxHeight]);
+    requestAnimationFrame(() => refreshMenuScrollState('from'));
+  }, [fromMenuOpen, computeMenuMaxHeight, refreshMenuScrollState]);
 
   React.useEffect(() => {
     if (!toMenuOpen) {
@@ -347,7 +376,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     }
     const maxHeight = computeMenuMaxHeight(toTriggerRef.current);
     setToMenuMaxHeight(maxHeight);
-  }, [toMenuOpen, computeMenuMaxHeight]);
+    requestAnimationFrame(() => refreshMenuScrollState('to'));
+  }, [toMenuOpen, computeMenuMaxHeight, refreshMenuScrollState]);
   const hasToggleFavorites = typeof onToggleFavorite === 'function';
   const getUnitDisplayName = React.useCallback(
     (category: UnitCategory | "", symbol: string) => {
@@ -589,6 +619,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       (normalizedFilter
         ? filteredCategories[0]?.option.value ?? null
         : rhfCategory ?? filteredCategories[0]?.option.value ?? null);
+    const activeCategory = menuCategory ?? defaultOpenCategory;
+    const activeCategoryUnits =
+      filteredCategories.find(({ option }) => option.value === activeCategory)?.units ?? [];
+    const selectedUnitSymbol = side === 'from' ? rhfFromUnit : rhfToUnit;
 
     const emptyState = (
       <DropdownMenuContent
@@ -620,64 +654,136 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     const menuMaxHeight = side === 'from' ? fromMenuMaxHeight : toMenuMaxHeight;
     const computedMaxHeight =
       menuMaxHeight !== null ? `${menuMaxHeight}px` : 'min(calc(100vh - 120px), 480px)';
+    const listMaxHeight =
+      menuMaxHeight !== null
+        ? `${Math.max(menuMaxHeight - 120, 220)}px`
+        : 'calc(min(calc(100vh - 120px), 480px) - 120px)';
 
     if (!isTouch) {
       return (
       <DropdownMenuContent
         side="bottom"
-        align="end"
-        sideOffset={6}
-        avoidCollisions={false}
-        className="min-w-[16rem] max-h-[60vh] overflow-y-auto"
-        style={{ maxHeight: computedMaxHeight }}
+        align={side === 'from' ? 'start' : 'end'}
+        sideOffset={8}
+        collisionPadding={{ top: 12, bottom: 12, left: 16, right: 16 }}
+        className="min-w-[30rem] overflow-visible"
+        style={{ maxHeight: computedMaxHeight, maxWidth: 'calc(100vw - 32px)' }}
       >
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="px-1 pb-1">
           <Input
             autoFocus
-              placeholder="Search units…"
-              value={filter}
-              onChange={(event) => setFilter(event.target.value)}
-              className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
-            />
-          </div>
-          {filteredCategories.map(({ option, units }) => (
-            <DropdownMenuSub
-              key={`${side}-${option.value}`}
-              defaultOpen={
-                option.value === defaultOpenCategory &&
-                (normalizedFilter === '' || option.value === rhfCategory)
-              }
+            placeholder="Search units…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+          />
+        </div>
+        <div className="relative">
+          <div className="flex gap-3" style={{ maxHeight: listMaxHeight }}>
+            <div
+              ref={side === 'from' ? fromMenuListRef : toMenuListRef}
+              onScroll={(e) => updateMenuScrollState(side, e.currentTarget)}
+              className="max-h-[60vh] w-[14rem] shrink-0 overflow-y-auto overflow-x-hidden pl-3 pr-2 pt-6 pb-6"
+              style={{ maxHeight: listMaxHeight, scrollbarWidth: 'thin', direction: 'rtl' }}
             >
-              <DropdownMenuSubTrigger
-                data-current={option.value === rhfCategory || undefined}
-                className={cn(
-                  'flex items-center justify-between gap-2',
-                  option.value === rhfCategory && 'font-semibold text-primary',
+              <div style={{ direction: 'ltr' }}>
+                <div className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                  Category
+                </div>
+                {filteredCategories.map(({ option }) => {
+                  const isActiveCategory = option.value === (menuCategory ?? defaultOpenCategory);
+                  return (
+                    <DropdownMenuItem
+                      key={`${side}-${option.value}`}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        setMenuCategory(option.value);
+                      }}
+                      onMouseEnter={() => setMenuCategory(option.value)}
+                      onFocus={() => setMenuCategory(option.value)}
+                      data-current={option.value === rhfCategory || undefined}
+                      className={cn(
+                        'flex items-center justify-between gap-2',
+                        option.value === rhfCategory && 'font-semibold text-primary',
+                        isActiveCategory && 'bg-muted/40',
+                      )}
+                    >
+                      <span>{option.title}</span>
+                      <ChevronRight className="h-4 w-4 opacity-70" aria-hidden="true" />
+                    </DropdownMenuItem>
+                  );
+                })}
+              </div>
+            </div>
+            <div
+              className="relative w-[18rem] shrink-0 overflow-hidden rounded-lg border border-border/50 bg-[hsl(var(--card))]/70"
+              style={{ maxHeight: listMaxHeight }}
+            >
+              <div
+                className="h-full overflow-y-auto overflow-x-hidden px-3 py-6"
+                style={{ scrollbarWidth: 'thin', direction: 'ltr' }}
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 mb-2">
+                  Units
+                </div>
+                {activeCategoryUnits.length > 0 ? (
+                  activeCategoryUnits.map((unit) => (
+                    <button
+                      key={unit.symbol}
+                      onClick={() => {
+                        if (!activeCategory) return;
+                        onUnitSelect(activeCategory, unit.symbol);
+                        if (side === 'from') {
+                          setFromMenuOpen(false);
+                        } else {
+                          setToMenuOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm text-left transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                        unit.symbol === selectedUnitSymbol
+                          ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
+                          : undefined,
+                      )}
+                    >
+                      <span className="whitespace-normal break-words leading-snug">{unit.name}</span>
+                      <span className="ml-2 shrink-0 text-muted-foreground">({unit.symbol})</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-xs text-muted-foreground">No units found.</div>
                 )}
-              >
-                <span>{option.title}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent
-                className="min-w-[12rem] overflow-y-auto max-h-[60vh]"
-                style={{ maxHeight: computedMaxHeight }}
-              >
-                {units.map((unit) => (
-                  <DropdownMenuItem
-                    key={unit.symbol}
-                    onSelect={() => onUnitSelect(option.value, unit.symbol)}
-                    className="text-sm"
-                  >
-                    {unit.name} ({unit.symbol})
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          ))}
-        </DropdownMenuContent>
-      );
-    }
+              </div>
+            </div>
+          </div>
+          {menuScrollState[side].scrollable && (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 top-0 flex h-6 items-center justify-center bg-[hsl(var(--card))]/95">
+                <ChevronsUpDown
+                  className={cn(
+                    'h-4 w-4 transition-opacity',
+                    menuScrollState[side].atTop ? 'opacity-20' : 'opacity-80 rotate-180',
+                  )}
+                  aria-hidden="true"
+                />
+              </div>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-6 items-center justify-center bg-[hsl(var(--card))]/95">
+                <ChevronsUpDown
+                  className={cn(
+                    'h-4 w-4 transition-opacity',
+                    menuScrollState[side].atBottom ? 'opacity-20' : 'opacity-80',
+                  )}
+                  aria-hidden="true"
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </DropdownMenuContent>
+    );
+  }
 
     return (
       <DropdownMenuContent
@@ -685,7 +791,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         align="end"
         sideOffset={6}
         avoidCollisions={false}
-        className="min-w-[14rem] max-h-[60vh] overflow-y-auto"
+        className="min-w-[14rem] overflow-visible"
         style={{ maxHeight: computedMaxHeight }}
       >
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
@@ -699,52 +805,75 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
           />
         </div>
-        {filteredCategories.map(({ option, units }) => {
-          const isActiveCategory = option.value === rhfCategory;
-          const isExpanded =
-            menuCategory === option.value ||
-            (normalizedFilter !== '' && menuCategory === null && option.value === filteredCategories[0]?.option.value) ||
-            option.value === defaultOpenCategory;
+        <div className="relative">
+          <div
+            ref={side === 'from' ? fromMenuListRef : toMenuListRef}
+            onScroll={(e) => updateMenuScrollState(side, e.currentTarget)}
+            className="max-h-[60vh] overflow-y-auto hide-scrollbar pt-5 pb-5"
+            style={{ maxHeight: computedMaxHeight, scrollbarWidth: 'none' }}
+          >
+            {filteredCategories.map(({ option, units }) => {
+              const isActiveCategory = option.value === rhfCategory;
+              const isExpanded =
+                menuCategory === option.value ||
+                (normalizedFilter !== '' && menuCategory === null && option.value === filteredCategories[0]?.option.value) ||
+                option.value === defaultOpenCategory;
 
-          return (
-            <div key={`${side}-${option.value}`} className="flex flex-col">
-              <DropdownMenuItem
-                onSelect={(event) => {
-                  event.preventDefault();
-                  setMenuCategory((current) =>
-                    current === option.value ? null : option.value,
-                  );
-                }}
-                className={cn(
-                  'flex items-center justify-between gap-2',
-                  isActiveCategory && 'font-semibold text-primary',
-                )}
-              >
-                <span>{option.title}</span>
-                <ChevronRight
-                  className={cn(
-                    'h-4 w-4 transition-transform',
-                    isExpanded && 'translate-x-0.5',
+              return (
+                <div key={`${side}-${option.value}`} className="flex flex-col">
+                  <DropdownMenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      setMenuCategory((current) =>
+                        current === option.value ? null : option.value,
+                      );
+                    }}
+                    className={cn(
+                      'flex items-center justify-between gap-2',
+                      isActiveCategory && 'font-semibold text-primary',
+                    )}
+                  >
+                    <span>{option.title}</span>
+                    <ChevronRight
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        isExpanded && 'translate-x-0.5',
+                      )}
+                      aria-hidden="true"
+                    />
+                  </DropdownMenuItem>
+                  {isExpanded && (
+                    <div className="ml-3 border-l border-border/60 pl-2">
+                      {units.map((unit) => (
+                        <DropdownMenuItem
+                          key={unit.symbol}
+                          onSelect={() => onUnitSelect(option.value, unit.symbol)}
+                          className="pl-4 text-sm"
+                        >
+                          {unit.name} ({unit.symbol})
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
                   )}
-                  aria-hidden="true"
-                />
-              </DropdownMenuItem>
-              {isExpanded && (
-                <div className="ml-3 border-l border-border/60 pl-2">
-                  {units.map((unit) => (
-                    <DropdownMenuItem
-                      key={unit.symbol}
-                      onSelect={() => onUnitSelect(option.value, unit.symbol)}
-                      className="pl-4 text-sm"
-                    >
-                      {unit.name} ({unit.symbol})
-                    </DropdownMenuItem>
-                  ))}
+                </div>
+              );
+            })}
+          </div>
+          {(!menuScrollState[side].atTop || !menuScrollState[side].atBottom) && (
+            <>
+              {!menuScrollState[side].atTop && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 flex h-5 items-center justify-center bg-[hsl(var(--card))]/95 text-muted-foreground/70">
+                  <ChevronsUpDown className="h-4 w-4 rotate-180 opacity-80" />
                 </div>
               )}
-            </div>
-          );
-        })}
+              {!menuScrollState[side].atBottom && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-5 items-center justify-center bg-[hsl(var(--card))]/95 text-muted-foreground/70">
+                  <ChevronsUpDown className="h-4 w-4 opacity-80" />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </DropdownMenuContent>
     );
   };
@@ -782,10 +911,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   );
 
   const clampTriggerWidth = React.useCallback((textWidth: number) => {
-    const padding = 32; // padding plus caret space
-    const desired = textWidth + padding;
-    const minWidth = 96;
-    const maxWidth = 320;
+    const padding = 40; // horizontal padding for text
+    const caretSpace = 24; // space for chevrons and gap
+    const desired = textWidth + padding + caretSpace;
+    const minWidth = 128;
+    const maxWidth = 460;
     return Math.max(minWidth, Math.min(desired, maxWidth));
   }, []);
 
@@ -1956,6 +2086,16 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     setTextCopyState((state) => (state === 'success' ? 'idle' : state));
   }, [rhfCategory, rhfFromUnit, rhfToUnit, formattedResultString, rhfValue, showPlaceholder]);
 
+  const prevCalculatorOpenRef = React.useRef(isCalculatorOpen);
+  React.useEffect(() => {
+    if (prevCalculatorOpenRef.current && !isCalculatorOpen) {
+      setFromCalcHover(false);
+      setFromCalcButtonFocused(false);
+      setFromFieldFocused(false);
+    }
+    prevCalculatorOpenRef.current = isCalculatorOpen;
+  }, [isCalculatorOpen]);
+
   const resolveCurrencyPairRate = React.useCallback((): number | null => {
     if (rhfCategory !== 'Currency') return null;
     if (!fxRates || !rhfFromUnit || !rhfToUnit) return null;
@@ -2475,53 +2615,69 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       );
     }
 
+    const fromUnitFull = getUnitDisplayName(rhfCategory, rhfFromUnit) ?? rhfFromUnit;
+    const toUnitFull = getUnitDisplayName(rhfCategory, rhfToUnit) ?? rhfToUnit;
+
     return (
       <div className="relative">
         <div
           className={cn(
-            "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
+            "group flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 text-base font-semibold text-primary transition-colors duration-700 sm:gap-4",
             resultHighlightPulse &&
               'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
           )}
         >
-          <div className="flex flex-1 items-center gap-2 text-left">
+          <div className="flex flex-1 flex-col gap-2.5 text-left">
             <span className="truncate">
-              {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+              {formatFromValue(Number(rhfValue), precisionMode)}
+              <span className="ml-1 hidden lg:inline">{fromUnitFull}</span>
+              <span className="ml-1 lg:hidden">{rhfFromUnit}</span>
+              {' = '}
+              {formattedResultString}
+              <span className="ml-1 hidden lg:inline">{toUnitFull}</span>
+              <span className="ml-1 lg:hidden">{rhfToUnit}</span>
             </span>
-            <button
-              type="button"
-              onClick={handleCopyTextualResult}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-              aria-label="Copy textual result to clipboard"
-            >
-              {textCopyState === 'success' ? (
-                <Check className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <Copy className="h-4 w-4" />
+            <div className="mt-2 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleCopyTextualResult}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
+                aria-label="Copy textual result to clipboard"
+              >
+                {textCopyState === 'success' ? (
+                  <Check className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                <span>Copy</span>
+              </button>
+              {(onSaveFavoriteProp || hasToggleFavorites) && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
+                  disabled={finalSaveDisabled || showPlaceholder}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent",
+                  )}
+                  aria-label={favoriteButtonLabel}
+                >
+                  <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
+                  <span>{activeFavorite ? 'Saved' : 'Add to favorites'}</span>
+                </Button>
               )}
-            </button>
+              {currentConversionPairUrl && (
+                <Link
+                  href={currentConversionPairUrl}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
+                  aria-label="Open detailed conversion page"
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                  <span>Details</span>
+                </Link>
+              )}
+            </div>
           </div>
-          {(onSaveFavoriteProp || hasToggleFavorites) && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
-              disabled={finalSaveDisabled || showPlaceholder}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-primary transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
-              aria-label={favoriteButtonLabel}
-            >
-              <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
-            </Button>
-          )}
-          {currentConversionPairUrl && (
-            <Link
-              href={currentConversionPairUrl}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-              aria-label="Open detailed conversion page"
-            >
-              <ArrowUpRight className="h-4 w-4" />
-            </Link>
-          )}
         </div>
       </div>
     );
@@ -2565,11 +2721,12 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
 return (
   <>
+    <GlobalStyles />
      <div className="w-full max-w-none mx-auto px-4 md:px-6">
       <Card
         id="converter"
         className={cn(
-          "relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
+          "relative flex h-full w-full flex-col overflow-visible rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
           className
         )}
         aria-labelledby="unit-converter-title"
@@ -2606,13 +2763,16 @@ return (
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent
+                                side="bottom"
                                 align="start"
-                                className="max-w-[260px] whitespace-normal break-words text-xs leading-relaxed"
+                                sideOffset={10}
+                                collisionPadding={{ top: 80, bottom: 16, left: 12, right: 12 }}
+                                className="max-w-[320px] whitespace-normal break-words rounded-xl border border-border/60 bg-card/95 px-3 py-2 text-xs leading-relaxed shadow-lg z-[70]"
                               >
                                 <div className="space-y-2">
                                   <div>
                                     <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                      TRY CONVERSIONS EG.
+                                      Try conversions eg.
                                     </p>
                                     <div className="flex flex-wrap gap-1.5">
                                       <button
@@ -2635,7 +2795,7 @@ return (
                                   </div>
                                   <div>
                                     <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                      OR FIND CATEGORY EG.
+                                      Or find category eg.
                                     </p>
                                     <div className="flex flex-wrap gap-1.5">
                                       <button
@@ -2670,6 +2830,7 @@ return (
                               autoFocusOnMount={shouldAutoFocusFinder}
                               onAutoFocusComplete={handleFinderAutoFocusComplete}
                               onNumericValue={handleFinderNumericValue}
+                              prefixIcon={<Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
                             />
                           ) : (
                             <Button
@@ -2691,11 +2852,11 @@ return (
                   )}
                 />
 
-                <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Quick tip
+                <div className="rounded-2xl border border-border/40 bg-transparent px-4 py-3 text-center">
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    OR
                   </div>
-                  <p className="mt-2 text-sm text-muted-foreground">
+                  <p className="text-[13px] text-muted-foreground/80">
                     Enter a value, choose your units, and copy the result instantly.
                   </p>
                 </div>
@@ -2759,7 +2920,7 @@ return (
                                 </FormItem>
                               )}
                             />
-                            {(fromFieldFocused || fromCalcHover) && (
+                            {(fromFieldFocused || fromCalcHover || fromCalcButtonFocused) && (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -2767,6 +2928,8 @@ return (
                                 onMouseEnter={() => setFromCalcHover(true)}
                                 onMouseLeave={() => setFromCalcHover(false)}
                                 onMouseDown={() => setFromFieldFocused(true)}
+                                onFocus={() => setFromCalcButtonFocused(true)}
+                                onBlur={() => setFromCalcButtonFocused(false)}
                                 className="h-11 w-9 shrink-0 rounded-none text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none disabled:text-muted-foreground disabled:hover:bg-transparent"
                                 aria-label="Open calculator"
                               >
@@ -2801,9 +2964,10 @@ return (
                                       <button
                                         ref={fromTriggerRef}
                                         type="button"
-                                        className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
                                         style={{
-                                          width: fromTriggerWidth ?? undefined,
+                                          width: fromTriggerWidth ? `${fromTriggerWidth}px` : undefined,
+                                          maxWidth: '100%',
                                         }}
                                       >
                                         {rhfFromUnit && currentFromUnit ? (
@@ -2928,9 +3092,10 @@ return (
                                       <button
                                         ref={toTriggerRef}
                                         type="button"
-                                        className="flex h-11 w-auto items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
                                         style={{
-                                          width: toTriggerWidth ?? undefined,
+                                          width: toTriggerWidth ? `${toTriggerWidth}px` : undefined,
+                                          maxWidth: '100%',
                                         }}
                                       >
                                         {rhfToUnit && currentToUnit ? (
@@ -3011,3 +3176,19 @@ return (
 }));
 
 UnitConverter.displayName = 'UnitConverter';
+
+// Hide scrollbars for custom dropdowns
+function GlobalStyles() {
+  return (
+    <style jsx global>{`
+      .hide-scrollbar::-webkit-scrollbar {
+        width: 0px;
+        height: 0px;
+      }
+      .hide-scrollbar {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+    `}</style>
+  );
+}

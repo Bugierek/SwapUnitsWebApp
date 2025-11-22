@@ -64,7 +64,7 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="flex w-full max-w-xs flex-col items-center gap-2 rounded-3xl border border-border/70 bg-[hsl(var(--control-background))] px-6 py-5 text-center text-sm font-medium text-foreground shadow-[0_14px_45px_-35px_rgba(79,70,229,0.55)]">
+          <div className="flex w-full max-w-full md:max-w-[280px] lg:max-w-xs flex-col items-center gap-2 rounded-3xl border border-border/70 bg-[hsl(var(--control-background))] px-6 py-5 text-center text-sm font-medium text-foreground shadow-[0_14px_45px_-35px_rgba(79,70,229,0.55)]">
             <span className="text-xs uppercase tracking-[0.4em] text-muted-foreground">Sessions tracked</span>
             <span className="text-2xl font-semibold text-foreground">
               {visitCount !== null ? visitCount.toLocaleString() : '—'}

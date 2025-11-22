@@ -9,6 +9,7 @@ import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
 import { ResponsiveFavoriteLabel } from '@/components/responsive-favorite-label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,13 +61,13 @@ export const PresetList = React.memo(function PresetListComponent({
     };
 
     return (
-        <Card className={cn("flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-md backdrop-blur-sm", className)} aria-label="Favorite and Common Unit Conversions">
+        <Card className={cn("group flex w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-md backdrop-blur-sm max-h-[520px] xl:max-h-[calc(100vh-240px)] h-auto", className)} aria-label="Favorite and Common Unit Conversions">
             {/* My Favorites Section */}
-            <CardHeader className="flex-shrink-0 border-b border-border/60 px-[1.125rem] py-[0.9rem]">
+            <CardHeader className="flex-shrink-0 border-b border-border/60 px-[1.125rem] py-[0.8rem]">
                  <div className="flex items-center justify-between gap-3">
-                    <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <Star className="h-4 w-4" aria-hidden="true" />
+                    <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <Star className="h-3 w-3" aria-hidden="true" />
                         </span>
                         Saved favorites
                     </CardTitle>
@@ -77,9 +78,9 @@ export const PresetList = React.memo(function PresetListComponent({
                                                             size="sm"
                                                             onClick={() => setIsClearFavoritesDialogOpen(true)}
                                                             aria-label="Clear all favorites"
-                                                            className="h-8 rounded-full border-border/60 bg-[hsl(var(--control-background))] px-[0.675rem] text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground transition hover:border-primary/50 hover:text-primary"
+                                                            className="h-8 rounded-full border-border/60 bg-transparent px-3 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground opacity-0 transition hover:border-primary/50 hover:text-primary hover:bg-[hsl(var(--control-background))] group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
                                                     >
-                                                            Clear All
+                                                            Clear all
                                                     </Button>
 
                                                     <AlertDialog open={isClearFavoritesDialogOpen} onOpenChange={setIsClearFavoritesDialogOpen}>
@@ -110,7 +111,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                         )}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow px-[1.125rem] pb-[1.35rem] pt-[1.125rem]">
+            <CardContent className="flex-grow px-[1.125rem] pb-[0.65rem] pt-[0.75rem]">
                 {isLoadingFavorites ? (
                      <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-[0.9rem] py-[1.125rem] text-center">
                         <p className="text-sm font-medium text-muted-foreground">Loading your saved conversions…</p>
@@ -122,8 +123,11 @@ export const PresetList = React.memo(function PresetListComponent({
                         <p className="text-xs text-muted-foreground">Save a conversion from the main panel to build your list.</p>
                     </div>
                 ) : (
-                    <div className="space-y-2.5">
-                        <ul className="space-y-2.5">
+                    <ScrollArea
+                      className="max-h-[260px] pr-3 overflow-y-auto scrollbar-thin transition-[background-color] duration-200 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-border/60 group-hover:[&::-webkit-scrollbar-thumb]:bg-border/60"
+                    >
+                    <div className="space-y-1">
+                        <ul className="space-y-1">
                             {favorites.map((fav) => {
                                 const labels = getFavoriteLabels(fav);
                                 return (
@@ -132,7 +136,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-semibold text-foreground transition hover:bg-primary/10 group-hover/fav-item:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-[0.82rem] font-semibold text-foreground transition hover:bg-primary/10 group-hover/fav-item:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
                                             onClick={() => onFavoriteSelect(fav)}
                                             aria-label={`Select favorite: ${labels.full}`}
                                             title={labels.full}
@@ -150,7 +154,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                         <Button
                                             variant="ghost"
                                             size="icon"
-                                            className="h-8 w-8 shrink-0 rounded-full text-muted-foreground opacity-0 transition invisible group-hover/fav-item:visible group-hover/fav-item:opacity-100 group-focus-within/fav-item:visible group-focus-within/fav-item:opacity-100 hover:bg-destructive hover:text-white focus-visible:bg-destructive focus-visible:text-white focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:opacity-100 focus-visible:visible"
+                                            className="ml-1 h-8 w-8 shrink-0 rounded-full text-muted-foreground opacity-0 transition invisible group-hover/fav-item:visible group-hover/fav-item:opacity-100 group-focus-within/fav-item:visible group-focus-within/fav-item:opacity-100 hover:bg-destructive hover:text-white focus-visible:bg-destructive focus-visible:text-white focus-visible:ring-2 focus-visible:ring-destructive/30 focus-visible:opacity-100 focus-visible:visible"
                                             onClick={(e) => {
                                                 e.stopPropagation(); 
                                                 onRemoveFavorite(fav.id);
@@ -165,52 +169,7 @@ export const PresetList = React.memo(function PresetListComponent({
                             );})}
                         </ul>
                     </div>
-                )}
-            </CardContent>
-            {/* Common Conversions Section */}
-            <CardHeader className="flex-shrink-0 border-t border-border/60 px-[1.125rem] py-[0.9rem]">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <List className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    Common conversions
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="flex-grow px-[1.125rem] pb-[1.35rem] pt-[1.125rem]"> 
-                 {visibleCommonPresets.length === 0 && !isLoadingFavorites ? (
-                     <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-[0.9rem] py-[1.8rem] text-center">
-                        <p className="text-sm font-semibold text-foreground">No suggestions yet</p>
-                        <p className="text-xs text-muted-foreground">Add favorites to refine this list.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-2.5">
-                        <ul className="space-y-2.5">
-                            {visibleCommonPresets.map((preset, index) => {
-                                const displayLabel = formatPresetLabel(preset);
-                                return (
-                                <li key={`${preset.category}-${preset.name}-${index}`} className="w-full">
-                                  <Button
-                                      variant="ghost"
-                                      className="flex w-full items-center gap-3 rounded-lg px-3 py-1.5 text-left text-sm font-semibold text-foreground transition hover:bg-primary/10"
-                                      onClick={() => onPresetSelect(preset)} 
-                                      aria-label={`Select preset: ${displayLabel}`}
-                                  >
-                                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                          <UnitIcon category={preset.category} className="h-4 w-4 shrink-0" aria-hidden="true" />
-                                      </span>
-                                      <span className="min-w-0 flex-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                                          {displayLabel}
-                                      </span>
-                                  </Button>
-                                </li>
-                            );})}
-                        </ul>
-                        {hiddenCommonCount > 0 && (
-                            <p className="rounded-lg bg-[hsl(var(--control-background))] px-3 py-2 text-center text-[0.7rem] font-medium text-muted-foreground shadow-sm">
-                                {hiddenCommonCount} more suggestions available once you clear space or use favorites.
-                            </p>
-                        )}
-                    </div>
+                    </ScrollArea>
                 )}
             </CardContent>
         </Card>

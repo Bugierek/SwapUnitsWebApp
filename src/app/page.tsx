@@ -215,32 +215,36 @@ export default function Home() {
         <main className="flex-1">
           <Toaster />
           <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 px-4 pb-14 pt-8 sm:px-6 lg:px-10" id="top-nav-content">
-            <div className="grid gap-7 xl:grid-cols-[280px_minmax(0,2fr)_280px] xl:items-stretch 2xl:grid-cols-[320px_minmax(0,2.2fr)_320px]">
-              <HistoryList
-                items={history}
-                onHistorySelect={onDesktopHistoryItemSelect}
-                onClearHistory={clearHistory}
-                className="hidden xl:flex xl:h-full xl:flex-col xl:sticky xl:top-28"
-                isLoading={isLoadingHistory}
-              />
+            <div className="grid gap-7 xl:grid-cols-[minmax(0,1.85fr)_minmax(280px,0.95fr)] xl:items-start">
               <UnitConverter
                 ref={unitConverterRef}
                 className="min-h-[560px] lg:h-full"
                 onResultCopied={handleResultCopied}
                 onToggleFavorite={handleToggleFavorite}
-          favorites={favorites}
+                favorites={favorites}
                 disableAddFavoriteButton={disableAddFavoriteButton}
               />
-              <PresetList
-                presetsToDisplay={displayPresetsForListDesktop}
-                onPresetSelect={onDesktopPresetSelect}
-                favorites={favorites}
-                onFavoriteSelect={onDesktopPresetSelect}
-                onRemoveFavorite={removeFavorite}
-                onClearAllFavorites={clearAllFavorites}
-                className="hidden xl:flex xl:h-full xl:flex-col xl:sticky xl:top-28"
-                isLoadingFavorites={isLoadingFavorites}
-              />
+
+              {/* Right sidebar: history + favorites stacked on all xl+ */}
+              <div className="hidden xl:flex h-full flex-col gap-6 xl:sticky xl:top-28">
+                <HistoryList
+                  items={history}
+                  onHistorySelect={onDesktopHistoryItemSelect}
+                  onClearHistory={clearHistory}
+                  className="h-full flex-col"
+                  isLoading={isLoadingHistory}
+                />
+                <PresetList
+                  presetsToDisplay={displayPresetsForListDesktop}
+                  onPresetSelect={onDesktopPresetSelect}
+                  favorites={favorites}
+                  onFavoriteSelect={onDesktopPresetSelect}
+                  onRemoveFavorite={removeFavorite}
+                  onClearAllFavorites={clearAllFavorites}
+                  className="h-full flex-col"
+                  isLoadingFavorites={isLoadingFavorites}
+                />
+              </div>
             </div>
           </div>
         </main>

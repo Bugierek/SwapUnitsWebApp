@@ -111,7 +111,7 @@ export function SiteTopbar({
   );
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+    <header className="sticky top-0 z-[60] border-b border-border/50 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-10">
         <div className="flex items-center gap-2">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -369,13 +369,13 @@ export function SiteTopbar({
           SwapUnits
         </Link>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <div className="hidden text-right md:block">
             <p className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">Built for accuracy</p>
             <p className="text-sm font-medium text-foreground">History & favorites stay local</p>
           </div>
           <ThemeToggle />
-          <BookmarkButton />
+          <BookmarkButton className="pr-3.5 pl-3" />
         </div>
       </div>
     </header>

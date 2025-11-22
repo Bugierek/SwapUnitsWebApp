@@ -50,6 +50,7 @@ export interface ConversionComboboxProps {
   autoFocusOnMount?: boolean;
   onAutoFocusComplete?: () => void;
   onNumericValue?: (value: number) => void;
+  prefixIcon?: React.ReactNode;
 }
 
 const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;
@@ -177,6 +178,7 @@ export function ConversionCombobox({
   autoFocusOnMount = false,
   onAutoFocusComplete,
   onNumericValue,
+  prefixIcon,
 }: ConversionComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
@@ -732,37 +734,47 @@ export function ConversionCombobox({
 
   return (
     <div ref={containerRef} className={cn('relative', triggerClassName)}>
-      <Input
-        ref={inputRef}
-        type="text"
-        id={resolvedInputId}
-        name={resolvedInputId}
-        value={displayValue}
-        placeholder={placeholder}
-        disabled={disabled}
-        onFocus={() => {
-          setSearch(committedInput);
-          requestAnimationFrame(() => inputRef.current?.select());
-        }}
-        onChange={(event) => {
-          const updated = event.target.value;
-          setCommittedInput(updated);
-          setSearch(updated);
-          setOpen(true);
-        }}
-        onClick={() => {
-          if (!open && !disabled) {
+      <div className="relative">
+        {prefixIcon && (
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+            {prefixIcon}
+          </span>
+        )}
+        <Input
+          ref={inputRef}
+          type="text"
+          id={resolvedInputId}
+          name={resolvedInputId}
+          value={displayValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          onFocus={() => {
+            setSearch(committedInput);
+            requestAnimationFrame(() => inputRef.current?.select());
+          }}
+          onChange={(event) => {
+            const updated = event.target.value;
+            setCommittedInput(updated);
+            setSearch(updated);
             setOpen(true);
-          }
-        }}
-        onKeyDown={handleKeyDown}
-        className="h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
-        aria-autocomplete="list"
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-controls={open ? listId : undefined}
-        aria-activedescendant={activeDescendant}
-      />
+          }}
+          onClick={() => {
+            if (!open && !disabled) {
+              setOpen(true);
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          className={cn(
+            'h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60',
+            prefixIcon ? 'pl-9' : '',
+          )}
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-controls={open ? listId : undefined}
+          aria-activedescendant={activeDescendant}
+        />
+      </div>
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-xl">

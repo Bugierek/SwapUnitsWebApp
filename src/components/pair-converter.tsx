@@ -21,6 +21,7 @@ import {
   type FormattedConversionValue,
   type PrecisionMode,
 } from '@/lib/number-format';
+import { cn } from '@/lib/utils';
 
 interface PairConverterProps {
   category: UnitCategory;
@@ -393,15 +394,31 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           </div>
         </div>
 
-  <div className="order-2 flex lg:self-end items-center justify-center">
+        <div className="order-2 flex items-center justify-center lg:self-end">
           <Button
-            variant="outline"
+            type="button"
+            variant="ghost"
             size="icon"
             onClick={() => setIsSwapped((prev) => !prev)}
-            className="flex h-12 w-12 items-center justify-center rounded-full border-border/60 text-foreground transition hover:border-primary/60 hover:text-primary"
+            className="h-11 w-full rounded-xl border border-border/60 p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
             aria-label="Swap conversion direction"
           >
-            <ArrowLeftRight className="h-5 w-5" aria-hidden="true" />
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className={cn('transition-transform text-primary', isSwapped && 'rotate-180 scale-x-[-1]')}
+              aria-hidden="true"
+            >
+              <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                <path d="M8 16H3v5" />
+              </g>
+            </svg>
           </Button>
         </div>
 
