@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/form';
 import type { MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
 import {
@@ -2534,17 +2534,6 @@ return (
         )}
         aria-labelledby="unit-converter-title"
       >
-        <CardHeader className="border-b border-border/60 px-5 py-5">
-          <div className="flex items-center gap-3 text-xl font-semibold text-foreground" id="unit-converter-title">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <FlaskConical className="h-5 w-5" aria-hidden="true" />
-            </span>
-            SwapUnits Converter
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Enter a value, choose your units, and copy the result instantly.
-          </p>
-        </CardHeader>
         <CardContent className={cn("flex flex-grow flex-col px-5 py-5")}>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {screenReaderText}
@@ -2660,7 +2649,15 @@ return (
                   )}
                 />
 
-                
+                <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                    Quick tip
+                  </div>
+                  <p className="mt-2 text-sm text-foreground">
+                    Enter a value, choose your units, and copy the result instantly.
+                  </p>
+                </div>
+
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
                     <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
@@ -2793,10 +2790,10 @@ return (
                       <div className="flex w-full items-center justify-center pt-6 sm:w-auto">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           onClick={handleSwapClick}
                           disabled={!rhfFromUnit || !rhfToUnit}
-                          className="h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
+                          className="h-11 w-full rounded-xl border border-border/60 p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
                           aria-label="Swap units"
                         >
                           <svg
@@ -2840,7 +2837,7 @@ return (
                               variant="ghost"
                               onClick={handleCopy}
                               disabled={showPlaceholder}
-                              className="h-11 w-9 shrink-0 rounded-none text-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                              className="h-11 w-9 shrink-0 rounded-none text-muted-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
                               aria-label="Copy numeric result to clipboard"
                             >
                               {resultCopyState === 'success' ? (
