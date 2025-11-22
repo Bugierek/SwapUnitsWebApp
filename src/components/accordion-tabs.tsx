@@ -91,13 +91,13 @@ export function AccordionTabs({
         className,
       )}
     >
-      <div className="grid grid-cols-2 border-b border-border/60 text-[0.72rem] border-solid">
+      <div className="grid grid-flow-col auto-cols-fr border-b border-border/60 text-[0.72rem] border-solid">
         {availableTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             className={cn(
-              'h-10 font-semibold transition border-solid',
+              'h-10 w-full px-3 font-semibold transition border-solid',
               tab.id === activeTab
                 ? 'border-b-2 border-primary bg-primary/5 text-primary'
                 : 'border-b-2 border-transparent hover:text-primary hover:border-muted-foreground/40',

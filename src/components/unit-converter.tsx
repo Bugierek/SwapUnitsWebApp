@@ -4,30 +4,21 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import type { MeasurementCategoryOption } from '@/components/measurement-category-dropdown';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
 import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
 import {
-  ArrowRightLeft,
   FlaskConical,
   Copy,
   Star,
@@ -47,7 +38,7 @@ import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useImperativeHandle, forwardRef } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import type { ConversionComboboxProps } from './combobox';
+import type { ConversionComboboxProps, ConversionComboboxItem } from './combobox';
 import {
   Dialog,
   DialogContent,
@@ -72,6 +63,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
@@ -89,10 +83,10 @@ const formSchema = z.object({
   fromUnit: z.string().min(1, "Please select an input unit"),
   toUnit: z.string().min(1, "Please select an output unit"),
   value: z.union([
-     z.literal(''),
-     z.coerce.number({ invalid_type_error: "Please enter a valid number" })
-        .or(z.nan())
-   ]).optional(),
+    z.literal(''),
+    z.number(),
+    z.nan(),
+  ]).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -258,8 +252,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const fxErrorRef = React.useRef<string | null>(null);
   const fxLastAttemptRef = React.useRef<number | null>(null);
   const FX_RETRY_COOLDOWN_MS = 5000;
-  const isFullPrecision = precisionMode === 'full';
   const prefersTouch = useIsCoarsePointer();
+  const isTouch = prefersTouch;
   const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const fromTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const toTriggerRef = React.useRef<HTMLButtonElement | null>(null);
@@ -277,7 +271,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as Resolver<FormData>,
     mode: 'onChange',
     defaultValues: {
       category: defaultCategory,
@@ -528,6 +522,184 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return getUnitsForCategory(rhfCategory);
   }, [rhfCategory]);
 
+  const renderUnitMenuContent = (side: 'from' | 'to') => {
+    const filter = side === 'from' ? fromUnitFilter : toUnitFilter;
+    const setFilter = side === 'from' ? setFromUnitFilter : setToUnitFilter;
+    const menuCategory = side === 'from' ? fromMenuCategory : toMenuCategory;
+    const setMenuCategory = side === 'from' ? setFromMenuCategory : setToMenuCategory;
+    const label = side === 'from' ? 'From unit' : 'To unit';
+    const onUnitSelect =
+      side === 'from' ? handleFromUnitMenuSelect : handleToUnitMenuSelect;
+
+    const normalizedFilter = filter.trim().toLowerCase();
+    const filteredCategories = menuCategoryOptions
+      .map((option) => {
+        const units = getUnitsForCategory(option.value).filter((unit) => {
+          if (!normalizedFilter) return true;
+          const symbol = unit.symbol.toLowerCase();
+          const name = unit.name.toLowerCase();
+          return symbol.includes(normalizedFilter) || name.includes(normalizedFilter);
+        });
+        return { option, units };
+      })
+      .filter(({ units }) => units.length > 0);
+
+    const defaultOpenCategory =
+      menuCategory ??
+      (normalizedFilter
+        ? filteredCategories[0]?.option.value ?? null
+        : rhfCategory ?? filteredCategories[0]?.option.value ?? null);
+
+    const emptyState = (
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        avoidCollisions={false}
+        className="min-w-[14rem] max-h-[60vh] overflow-y-auto"
+      >
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-1 pb-1">
+          <Input
+            autoFocus
+            placeholder="Search units…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+          />
+        </div>
+        <div className="px-3 py-2 text-xs text-muted-foreground">No units found.</div>
+      </DropdownMenuContent>
+    );
+
+    if (!filteredCategories.length) {
+      return emptyState;
+    }
+
+    if (!isTouch) {
+      return (
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        avoidCollisions={false}
+        className="min-w-[16rem] max-h-[60vh] overflow-y-auto"
+      >
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-1 pb-1">
+          <Input
+            autoFocus
+              placeholder="Search units…"
+              value={filter}
+              onChange={(event) => setFilter(event.target.value)}
+              className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+            />
+          </div>
+          {filteredCategories.map(({ option, units }) => (
+            <DropdownMenuSub
+              key={`${side}-${option.value}`}
+              defaultOpen={
+                option.value === defaultOpenCategory &&
+                (normalizedFilter === '' || option.value === rhfCategory)
+              }
+            >
+              <DropdownMenuSubTrigger
+                data-current={option.value === rhfCategory || undefined}
+                className={cn(
+                  'flex items-center justify-between gap-2',
+                  option.value === rhfCategory && 'font-semibold text-primary',
+                )}
+              >
+                <span>{option.title}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-h-64 min-w-[12rem] overflow-y-auto">
+                {units.map((unit) => (
+                  <DropdownMenuItem
+                    key={unit.symbol}
+                    onSelect={() => onUnitSelect(option.value, unit.symbol)}
+                    className="text-sm"
+                  >
+                    {unit.name} ({unit.symbol})
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          ))}
+        </DropdownMenuContent>
+      );
+    }
+
+    return (
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={6}
+        avoidCollisions={false}
+        className="min-w-[14rem] max-h-[60vh] overflow-y-auto"
+      >
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <div className="px-1 pb-1">
+          <Input
+            autoFocus
+            placeholder="Search units…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
+          />
+        </div>
+        {filteredCategories.map(({ option, units }) => {
+          const isActiveCategory = option.value === rhfCategory;
+          const isExpanded =
+            menuCategory === option.value ||
+            (normalizedFilter !== '' && menuCategory === null && option.value === filteredCategories[0]?.option.value) ||
+            option.value === defaultOpenCategory;
+
+          return (
+            <div key={`${side}-${option.value}`} className="flex flex-col">
+              <DropdownMenuItem
+                onSelect={(event) => {
+                  event.preventDefault();
+                  setMenuCategory((current) =>
+                    current === option.value ? null : option.value,
+                  );
+                }}
+                className={cn(
+                  'flex items-center justify-between gap-2',
+                  isActiveCategory && 'font-semibold text-primary',
+                )}
+              >
+                <span>{option.title}</span>
+                <ChevronRight
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    isExpanded && 'translate-x-0.5',
+                  )}
+                  aria-hidden="true"
+                />
+              </DropdownMenuItem>
+              {isExpanded && (
+                <div className="ml-3 border-l border-border/60 pl-2">
+                  {units.map((unit) => (
+                    <DropdownMenuItem
+                      key={unit.symbol}
+                      onSelect={() => onUnitSelect(option.value, unit.symbol)}
+                      className="pl-4 text-sm"
+                    >
+                      {unit.name} ({unit.symbol})
+                    </DropdownMenuItem>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </DropdownMenuContent>
+    );
+  };
+
   const currentFromUnit = React.useMemo(
     () => currentUnitsForCategory.find((unit) => unit.symbol === rhfFromUnit),
     [currentUnitsForCategory, rhfFromUnit],
@@ -617,7 +789,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return () => window.removeEventListener('resize', handleResize);
   }, [evaluateLabelWidths]);
 
-  const unitConversionPairs = React.useMemo(() => {
+  const unitConversionPairs = React.useMemo<ConversionComboboxItem[]>(() => {
     const orderedCategories: UnitCategory[] = [
       ...categoryDisplayOrder,
       ...Object.keys(unitData).filter(
@@ -625,10 +797,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       ),
     ]
       .filter((category, index, arr) => arr.indexOf(category) === index)
-      .filter((category): category is UnitCategory => !!unitData[category]);
+      .filter((category): category is UnitCategory => !!unitData[category as UnitCategory]);
 
-    return orderedCategories.flatMap((category) => {
-      const data = unitData[category];
+    return orderedCategories.flatMap<ConversionComboboxItem>((category) => {
+      const data = unitData[category as UnitCategory];
       if (!data) return [];
 
       if (category === 'SI Prefixes') {
@@ -668,7 +840,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       }
 
       const units = getUnitsForCategory(category);
-      return units.flatMap((fromUnit) =>
+      return units.flatMap<ConversionComboboxItem>((fromUnit) =>
         units
           .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
           .map((toUnit) => {
@@ -715,6 +887,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               keywordsLower: keywords.map((keyword) => keyword.toLowerCase()),
               pairUrl,
               kind: 'unit' as const,
+              siPrefixMeta: undefined,
             };
           }),
       );
@@ -1160,8 +1333,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       }
 
       // Final safety: ensure we have concrete symbols.
-      let safeFrom = fromUnitSymbol ?? availableSymbols[0] ?? '';
-      let safeTo =
+      const safeFrom = fromUnitSymbol ?? availableSymbols[0] ?? '';
+      const safeTo =
         toUnitSymbol ??
         availableSymbols.find((sym) => sym !== safeFrom) ??
         safeFrom;
@@ -1406,7 +1579,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       }
 
       const normalizedValue = normalizeNumericInputValue(numericValue);
-      setValue('value', normalizedValue, { shouldValidate: true, shouldDirty: true });
+      const valueForForm = typeof normalizedValue === 'number' ? normalizedValue : numericValue;
+      setValue('value', valueForForm, { shouldValidate: true, shouldDirty: true });
       setLastValidInputValue(numericValue);
 
       const currentValues = getValues();
@@ -1873,6 +2047,55 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     fxRates?.date,
   ]);
 
+  const handleCopyTextualResult = React.useCallback(async () => {
+    const currentRawFormValue = getValues("value");
+    const numericFromValue = Number(currentRawFormValue);
+
+    const textToCopy = showPlaceholder || !conversionResult
+      ? ''
+      : `${formatFromValue(numericFromValue, precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
+
+    if (!textToCopy) return;
+
+    const copied = await copyTextToClipboard(textToCopy);
+    if (copied) {
+      setTextCopyState('success');
+      if (
+        onResultCopied &&
+        rhfCategory &&
+        conversionResult &&
+        isFinite(numericFromValue) &&
+        String(currentRawFormValue).trim() !== '' &&
+        String(currentRawFormValue).trim() !== '-'
+      ) {
+        onResultCopied({
+          category: rhfCategory,
+          fromValue: numericFromValue,
+          fromUnit: rhfFromUnit,
+          toValue: conversionResult.value,
+          toUnit: rhfToUnit,
+        });
+      }
+    } else {
+      toast({
+        title: "Copy Failed",
+        description: "Clipboard access is blocked. Please copy the text manually.",
+        variant: "destructive",
+      });
+    }
+  }, [
+    showPlaceholder,
+    conversionResult,
+    formattedResultString,
+    rhfToUnit,
+    rhfFromUnit,
+    getValues,
+    toast,
+    onResultCopied,
+    rhfCategory,
+    precisionMode,
+  ]);
+
   const formulaContentNode = React.useMemo(() => {
     if (!generalFormula && !dynamicFormula) {
       return (
@@ -1892,61 +2115,204 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       </div>
     );
   }, [generalFormula, dynamicFormula]);
-  const referenceTabs = React.useMemo<AccordionTabItem[]>(() => {
+  const resultTabContent = React.useMemo(() => {
+    if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Enter a value and pick both units to see the result and formula.
+        </p>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="relative">
+          <div
+            className={cn(
+              "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
+              resultHighlightPulse &&
+                'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
+            )}
+          >
+            <div className="flex flex-1 items-center gap-2 text-left">
+              <span className="truncate">
+                {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyTextualResult}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                aria-label="Copy textual result to clipboard"
+              >
+                {textCopyState === 'success' ? (
+                  <Check className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {currentConversionPairUrl && (
+              <Link
+                href={currentConversionPairUrl}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+                aria-label="Open detailed conversion page"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 md:px-2.5 md:py-2.5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Formula
+          </div>
+          {formulaContentNode}
+        </div>
+      </div>
+    );
+  }, [
+    conversionResult,
+    currentConversionPairUrl,
+    formulaContentNode,
+    formattedResultString,
+    handleCopyTextualResult,
+    precisionMode,
+    resultHighlightPulse,
+    rhfCategory,
+    rhfFromUnit,
+    rhfToUnit,
+    rhfValue,
+    showPlaceholder,
+    textCopyState,
+  ]);
+
+  const sourcesTabContent = React.useMemo(() => {
+    if (conversionSources.length === 0) return null;
+    return (
+      <ul className="space-y-3 text-xs text-muted-foreground">
+        {conversionSources.map((source) => (
+          <li key={source.id} className="leading-relaxed">
+            <p className="text-sm font-semibold text-foreground">{source.title}</p>
+            <p className="mt-1">
+              <span className="font-medium text-foreground">{source.organization}</span>.{' '}
+              {source.summary}{' '}
+              <a
+                href={source.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                View source
+              </a>
+              {source.id === 'nist-guide-si' && (
+                <>
+                  {' '}·{' '}
+                  <Link
+                    href="/standards/nist-si-tenfold"
+                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                  >
+                    View SI table
+                  </Link>
+                </>
+              )}
+            </p>
+          </li>
+        ))}
+      </ul>
+    );
+  }, [conversionSources]);
+
+  const formattingTabContent = React.useMemo(() => (
+    <div className="space-y-6 text-sm text-foreground">
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result format</p>
+        <RadioGroup
+          name="result-format"
+          value={numberFormat}
+          onValueChange={(value: string) => {
+            setNumberFormat(value as NumberFormat);
+            handleActualFormatChange(value as NumberFormat, 'user_choice');
+          }}
+          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
+          aria-label="Choose number format for the result"
+        >
+          <div className="flex items-center gap-2">
+            <RadioGroupItem
+              value="normal"
+              id="format-normal"
+              disabled={isNormalFormatDisabled}
+            />
+            <Label
+              htmlFor="format-normal"
+              className={cn(
+                'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition',
+                isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary',
+              )}
+            >
+              Normal (e.g., 1,234.56)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="scientific" id="format-scientific" />
+            <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">Scientific (e.g., 1.23E+6)</Label>
+          </div>
+        </RadioGroup>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Precision</p>
+        <RadioGroup
+          name="precision-mode"
+          value={precisionMode}
+          onValueChange={(value: string) => setPrecisionMode(value as PrecisionMode)}
+          className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
+          aria-label="Choose precision mode"
+        >
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="rounded" id="precision-rounded" />
+            <Label htmlFor="precision-rounded" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">
+              Rounded (readable)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="full" id="precision-full" />
+            <Label htmlFor="precision-full" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">
+              Full precision
+            </Label>
+          </div>
+        </RadioGroup>
+        <p className="text-xs text-muted-foreground">
+          Rounded shows up to four decimals for clarity; Full precision shows the raw computed value when available.
+        </p>
+      </div>
+    </div>
+  ), [numberFormat, precisionMode, isNormalFormatDisabled, handleActualFormatChange]);
+
+  const resultTabs = React.useMemo<AccordionTabItem[]>(() => {
     const tabs: AccordionTabItem[] = [
       {
-        id: 'formula',
-        label: 'Formula',
-        content: formulaContentNode,
+        id: 'result',
+        label: 'Result',
+        content: resultTabContent,
       },
     ];
 
-    if (conversionSources.length > 0) {
+    if (sourcesTabContent) {
       tabs.push({
         id: 'sources',
         label: 'Sources',
-        content: (
-          <ul className="space-y-3 text-xs text-muted-foreground">
-            {conversionSources.map((source) => (
-              <li key={source.id} className="leading-relaxed">
-                <p className="text-sm font-semibold text-foreground">{source.title}</p>
-                <p className="mt-1">
-                  <span className="font-medium text-foreground">{source.organization}</span>.{' '}
-                  {source.summary}{' '}
-                  <a
-                    href={source.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="font-semibold text-primary underline-offset-2 hover:underline"
-                  >
-                    View source
-                  </a>
-                  {source.id === 'nist-guide-si' && (
-                    <>
-                      {' '}
-                      ·{' '}
-                      <Link
-                        href="/standards/nist-si-tenfold"
-                        className="font-semibold text-primary underline-offset-2 hover:underline"
-                      >
-                        View SI table
-                      </Link>
-                    </>
-                  )}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ),
+        content: sourcesTabContent,
       });
     }
 
+    tabs.push({
+      id: 'formatting',
+      label: 'Formatting',
+      content: formattingTabContent,
+    });
+
     return tabs;
-  }, [formulaContentNode, conversionSources]);
-  const showPrecisionControls = false;
-  const handlePrecisionToggle = React.useCallback(() => {
-    setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
-  }, []);
+  }, [resultTabContent, sourcesTabContent, formattingTabContent]);
 
  const handleSwapClick = React.useCallback(() => {
     const currentFromUnit = getValues("fromUnit");
@@ -1966,7 +2332,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
 
     const normalizedValue = normalizeNumericInputValue(newInputValue);
-    setValue("value", normalizedValue, { shouldValidate: true, shouldDirty: true });
+    const valueForForm =
+      typeof normalizedValue === 'number'
+        ? normalizedValue
+        : typeof newInputValue === 'number'
+          ? newInputValue
+          : '';
+    setValue("value", valueForForm, { shouldValidate: true, shouldDirty: true });
     if (newInputValue !== undefined) {
       setLastValidInputValue(newInputValue);
     }
@@ -2036,43 +2408,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         });
     }
   }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfFromUnit, getValues]);
-
-  const handleCopyTextualResult = React.useCallback(async () => {
-    const currentRawFormValue = getValues("value");
-    const numericFromValue = Number(currentRawFormValue);
-
-    const textToCopy = showPlaceholder || !conversionResult 
-        ? '' 
-        : `${formatFromValue(numericFromValue, precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`;
-    
-    if (!textToCopy) return;
-
-    const copied = await copyTextToClipboard(textToCopy);
-    if (copied) {
-        setTextCopyState('success');
-        if (
-            onResultCopied &&
-            rhfCategory &&
-            conversionResult &&
-            isFinite(numericFromValue) &&
-            String(currentRawFormValue).trim() !== '' && String(currentRawFormValue).trim() !== '-'
-        ) {
-            onResultCopied({
-                category: rhfCategory,
-                fromValue: numericFromValue,
-                fromUnit: rhfFromUnit,
-                toValue: conversionResult.value,
-                toUnit: rhfToUnit,
-            });
-        }
-    } else {
-        toast({
-            title: "Copy Failed",
-            description: "Clipboard access is blocked. Please copy the text manually.",
-            variant: "destructive",
-        });
-    }
-  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, rhfFromUnit, getValues, toast, onResultCopied, rhfCategory, precisionMode]);
 
 
   const handleSaveToFavoritesInternal = React.useCallback(() => {
@@ -2153,10 +2488,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
 return (
   <>
-     <Card
+     <div className="w-full max-w-none mx-auto px-4 md:px-6">
+      <Card
         id="converter"
         className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
+          "relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/90 shadow-lg backdrop-blur-sm",
           className
         )}
         aria-labelledby="unit-converter-title"
@@ -2182,7 +2518,7 @@ return (
                 <FormField
                   control={form.control}
                   name="category"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <div className="mb-1 flex items-center gap-2">
                         <Label
@@ -2250,7 +2586,7 @@ return (
                           </Tooltip>
                         </TooltipProvider>
                       </div>
-                      <div className="relative mb-6">
+                      <div className="relative mb-8 md:mb-10">
                         {ComboboxComponent ? (
                           <ComboboxComponent
                             key={finderVersion}
@@ -2290,17 +2626,20 @@ return (
                 
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">
-                    <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1.5fr)]">
-                      <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                        <FormField
-                          control={form.control}
-                          name="value"
-                          render={({ field }) => (
-                            <FormItem className="flex items-stretch space-y-0 border-r border-border/60">
+                    <div className="order-2 grid w-full gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          From
+                        </div>
+                        <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <FormField
+                            control={form.control}
+                            name="value"
+                            render={({ field }) => (
+                              <FormItem className="flex items-stretch space-y-0 border-r border-border/60">
                               <FormControl>
                                 <Input
                                   id="value-input"
-                                  name="from-value"
                                   type="text"
                                   inputMode="decimal"
                                   placeholder="Enter value"
@@ -2388,95 +2727,15 @@ return (
                                       <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="min-w-[14rem]"
-                                  >
-                                    <DropdownMenuLabel>From unit</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <div className="px-1 pb-1">
-                                      <Input
-                                        autoFocus
-                                        placeholder="Search units…"
-                                        value={fromUnitFilter}
-                                        onChange={(event) =>
-                                          setFromUnitFilter(event.target.value)
-                                        }
-                                        className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
-                                      />
-                                    </div>
-                                    {menuCategoryOptions.map((option) => {
-                                      const isActiveCategory = option.value === rhfCategory;
-                                      const normalizedFilter = fromUnitFilter.trim().toLowerCase();
-                                      const allUnits = getUnitsForCategory(option.value);
-                                      const units =
-                                        normalizedFilter === ''
-                                          ? allUnits
-                                          : allUnits.filter((unit) => {
-                                              const symbol = unit.symbol.toLowerCase();
-                                              const name = unit.name.toLowerCase();
-                                              return (
-                                                symbol.includes(normalizedFilter) ||
-                                                name.includes(normalizedFilter)
-                                              );
-                                            });
-                                      if (units.length === 0) {
-                                        return null;
-                                      }
-                                      const isExpanded =
-                                        fromMenuCategory === option.value ||
-                                        (normalizedFilter !== '' &&
-                                          fromMenuCategory === null);
-                                      return (
-                                        <div key={`from-${option.value}`} className="flex flex-col">
-                                          <DropdownMenuItem
-                                            onSelect={(event) => {
-                                              // Toggle category list without closing the whole menu.
-                                              event.preventDefault();
-                                              setFromMenuCategory((current) =>
-                                                current === option.value ? null : option.value,
-                                              );
-                                            }}
-                                            className={cn(
-                                              'flex items-center justify-between gap-2',
-                                              isActiveCategory && 'font-semibold text-primary',
-                                            )}
-                                          >
-                                            <span>{option.title}</span>
-                                            <ChevronRight
-                                              className={cn(
-                                                'h-4 w-4 transition-transform',
-                                                isExpanded && 'translate-x-0.5',
-                                              )}
-                                              aria-hidden="true"
-                                            />
-                                          </DropdownMenuItem>
-                                          {isExpanded && (
-                                            <div className="ml-3 border-l border-border/60 pl-2">
-                                              {units.map((unit) => (
-                                                <DropdownMenuItem
-                                                  key={unit.symbol}
-                                                  onSelect={() =>
-                                                    handleFromUnitMenuSelect(option.value, unit.symbol)
-                                                  }
-                                                  className="pl-4 text-sm"
-                                                >
-                                                  {unit.name} ({unit.symbol})
-                                                </DropdownMenuItem>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </DropdownMenuContent>
+                                  {renderUnitMenuContent('from')}
                                 </DropdownMenu>
                               </FormControl>
                             </FormItem>
                           )}
                         />
                       </div>
-                      <div className="flex w-full items-center justify-center sm:w-auto">
+                      </div>
+                      <div className="flex w-full items-center justify-center pt-6 sm:w-auto">
                         <Button
                           type="button"
                           variant="outline"
@@ -2485,13 +2744,32 @@ return (
                           className="h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
                           aria-label="Swap units"
                         >
-                          <ArrowRightLeft className={cn('h-4 w-4 transition-transform', isSwapped && 'rotate-180 scale-x-[-1]')} aria-hidden="true" />
+                          <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className={cn('transition-transform text-primary', isSwapped && 'rotate-180 scale-x-[-1]')}
+                            aria-hidden="true"
+                          >
+                            <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                              <path d="M21 3v5h-5" />
+                              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                              <path d="M8 16H3v5" />
+                            </g>
+                          </svg>
                         </Button>
                       </div>
-                      <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
-                        <div className="flex items-stretch">
-                          <Input
-                            id="conversion-result"
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          To
+                        </div>
+                        <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <div className="flex items-stretch">
+                            <Input
+                              id="conversion-result"
                             name="conversion-result"
                             ref={resultInputRef}
                             readOnly
@@ -2506,9 +2784,9 @@ return (
                         <FormField
                           control={form.control}
                           name="toUnit"
-                          render={() => (
-                            <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
-                              <FormControl>
+                            render={() => (
+                              <FormItem className="min-w-[112px] max-w-[320px] space-y-0">
+                                <FormControl>
                                 <DropdownMenu
                                   open={toMenuOpen}
                                   onOpenChange={(open) => {
@@ -2554,86 +2832,7 @@ return (
                                       <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden="true" />
                                     </button>
                                   </DropdownMenuTrigger>
-                                  <DropdownMenuContent
-                                    align="end"
-                                    className="min-w-[14rem]"
-                                  >
-                                    <DropdownMenuLabel>To unit</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <div className="px-1 pb-1">
-                                      <Input
-                                        autoFocus
-                                        placeholder="Search units…"
-                                        value={toUnitFilter}
-                                        onChange={(event) =>
-                                          setToUnitFilter(event.target.value)
-                                        }
-                                        className="h-8 w-full rounded-md border border-border/60 bg-[hsl(var(--control-background))] px-2 text-xs"
-                                      />
-                                    </div>
-                                    {menuCategoryOptions.map((option) => {
-                                      const isActiveCategory = option.value === rhfCategory;
-                                      const normalizedFilter = toUnitFilter.trim().toLowerCase();
-                                      const allUnits = getUnitsForCategory(option.value);
-                                      const units =
-                                        normalizedFilter === ''
-                                          ? allUnits
-                                          : allUnits.filter((unit) => {
-                                              const symbol = unit.symbol.toLowerCase();
-                                              const name = unit.name.toLowerCase();
-                                              return (
-                                                symbol.includes(normalizedFilter) ||
-                                                name.includes(normalizedFilter)
-                                              );
-                                            });
-                                      if (units.length === 0) {
-                                        return null;
-                                      }
-                                      const isExpanded =
-                                        toMenuCategory === option.value ||
-                                        (normalizedFilter !== '' && toMenuCategory === null);
-                                      return (
-                                        <div key={`to-${option.value}`} className="flex flex-col">
-                                          <DropdownMenuItem
-                                            onSelect={(event) => {
-                                              event.preventDefault();
-                                              setToMenuCategory((current) =>
-                                                current === option.value ? null : option.value,
-                                              );
-                                            }}
-                                            className={cn(
-                                              'flex items-center justify-between gap-2',
-                                              isActiveCategory && 'font-semibold text-primary',
-                                            )}
-                                          >
-                                            <span>{option.title}</span>
-                                            <ChevronRight
-                                              className={cn(
-                                                'h-4 w-4 transition-transform',
-                                                isExpanded && 'translate-x-0.5',
-                                              )}
-                                              aria-hidden="true"
-                                            />
-                                          </DropdownMenuItem>
-                                          {isExpanded && (
-                                            <div className="ml-3 border-l border-border/60 pl-2">
-                                              {units.map((unit) => (
-                                                <DropdownMenuItem
-                                                  key={unit.symbol}
-                                                  onSelect={() =>
-                                                    handleToUnitMenuSelect(option.value, unit.symbol)
-                                                  }
-                                                  className="pl-4 text-sm"
-                                                >
-                                                  {unit.name} ({unit.symbol})
-                                                </DropdownMenuItem>
-                                              ))}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </DropdownMenuContent>
+                                  {renderUnitMenuContent('to')}
                                 </DropdownMenu>
                               </FormControl>
                             </FormItem>
@@ -2641,7 +2840,9 @@ return (
                         />
                       </div>
                     </div>
-                    <div className="order-1 grid w-full gap-3 sm:grid-cols-[minmax(0,1.5fr)_auto_minmax(0,1.5fr)]">
+                    {/* End of from/to grid */}
+                    </div>
+                    <div className="order-3 grid w-full grid-cols-3 gap-3 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,2fr)] xl:grid-cols-[minmax(0,2.5fr)_auto_minmax(0,2.5fr)]">
                       <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
                         <DialogTrigger asChild>
                           <Button
@@ -2693,49 +2894,6 @@ return (
                 )}
 
 
-                {showPrecisionControls && !showPlaceholder && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <TooltipProvider delayDuration={150}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              className="hidden h-6 w-6 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary lg:inline-flex"
-                              aria-label="How precision is calculated"
-                            >
-                              <Info className="h-3.5 w-3.5" aria-hidden="true" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="top"
-                            align="start"
-                            sideOffset={6}
-                            className="max-w-sm text-xs text-muted-foreground"
-                          >
-                            {actualFormatUsed === 'scientific'
-                              ? 'Scientific notation already shows the exact value computed from our unit factors.'
-                              : isFullPrecision
-                                ? 'Full precision shows additional decimal places using the exact conversion factors from our standards-backed sources (NIST Guide to SI, ASTM, IEC, etc.).'
-                                : 'Rounded results show up to four digits after the decimal for readability. Switch to full precision to inspect the raw calculation.'}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <span>{isFullPrecision ? 'Full precision result' : 'Rounded result (4 decimals max)'}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7"
-                      onClick={handlePrecisionToggle}
-                      disabled={actualFormatUsed === 'scientific'}
-                    >
-                      {isFullPrecision ? 'Show rounded' : 'Show full precision'}
-                    </Button>
-                  </div>
-                )}
-                
                  {/* Textual Conversion Result Display */}
                 {fxStatusMessage && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -2743,94 +2901,20 @@ return (
                   </div>
                 )}
 
-                {!showPlaceholder && conversionResult && rhfCategory && rhfFromUnit && rhfToUnit && (
-                  <div className="relative">
-                    <div
-                      className={cn(
-                        "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
-                        resultHighlightPulse &&
-                          'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
-                      )}
-                    >
-                      <div className="flex flex-1 items-center gap-2 text-left">
-                        <span className="truncate">
-                          {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleCopyTextualResult}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                          aria-label="Copy textual result to clipboard"
-                        >
-                          {textCopyState === 'success' ? (
-                            <Check className="h-4 w-4 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
-                      {currentConversionPairUrl && (
-                        <Link
-                          href={currentConversionPairUrl}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                          aria-label="Open detailed conversion page"
-                        >
-                          <ArrowUpRight className="h-4 w-4" />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {referenceTabs.length > 0 && (
+                {resultTabs.length > 0 && (
                   <AccordionTabs
-                    tabs={referenceTabs}
-                    initiallyOpen={false}
+                    tabs={resultTabs}
+                    defaultTabId="result"
+                    initiallyOpen
                     className="mt-2"
                   />
                 )}
-
-                <fieldset className="pt-1">
-                   <legend className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result formatting</legend>
-                   <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3">
-                   <RadioGroup
-                     name="result-format"
-                     value={numberFormat}
-                     onValueChange={(value: string) => {
-                         setNumberFormat(value as NumberFormat);
-                         handleActualFormatChange(value as NumberFormat, 'user_choice');
-                     }}
-                     className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-start"
-                     aria-label="Choose number format for the result"
-                   >
-                     <div className="flex items-center gap-2">
-                       <RadioGroupItem
-                         value="normal"
-                         id="format-normal"
-                         disabled={isNormalFormatDisabled}
-                        />
-                       <Label
-                         htmlFor="format-normal"
-                         className={cn(
-                           'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition',
-                           isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary',
-                         )}
-                       >
-                         Normal (e.g., 1,234.56)
-                       </Label>
-                     </div>
-                     <div className="flex items-center gap-2">
-                       <RadioGroupItem value="scientific" id="format-scientific" />
-                       <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">Scientific (e.g., 1.23E+6)</Label>
-                     </div>
-                   </RadioGroup>
-                   </div>
-                </fieldset>
-                </div> 
+              </div>
             </form>
           </Form>
         </CardContent>
       </Card>
+     </div>
   </>
   );
 }));

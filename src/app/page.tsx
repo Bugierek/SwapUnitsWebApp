@@ -214,13 +214,13 @@ export default function Home() {
 
         <main className="flex-1">
           <Toaster />
-          <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-14 pt-8 sm:px-6 lg:px-10" id="top-nav-content">
-            <div className="grid gap-7 lg:grid-cols-[minmax(260px,320px)_minmax(0,1.75fr)_minmax(260px,320px)] lg:items-stretch xl:grid-cols-[320px_minmax(0,1.4fr)_320px] 2xl:grid-cols-[360px_minmax(0,1.6fr)_360px]">
+          <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-5 px-4 pb-14 pt-8 sm:px-6 lg:px-10" id="top-nav-content">
+            <div className="grid gap-7 xl:grid-cols-[280px_minmax(0,2fr)_280px] xl:items-stretch 2xl:grid-cols-[320px_minmax(0,2.2fr)_320px]">
               <HistoryList
                 items={history}
                 onHistorySelect={onDesktopHistoryItemSelect}
                 onClearHistory={clearHistory}
-                className="hidden lg:flex lg:h-full lg:flex-col xl:sticky xl:top-28"
+                className="hidden xl:flex xl:h-full xl:flex-col xl:sticky xl:top-28"
                 isLoading={isLoadingHistory}
               />
               <UnitConverter
@@ -238,7 +238,7 @@ export default function Home() {
                 onFavoriteSelect={onDesktopPresetSelect}
                 onRemoveFavorite={removeFavorite}
                 onClearAllFavorites={clearAllFavorites}
-                className="hidden lg:flex lg:h-full lg:flex-col xl:sticky xl:top-28"
+                className="hidden xl:flex xl:h-full xl:flex-col xl:sticky xl:top-28"
                 isLoadingFavorites={isLoadingFavorites}
               />
             </div>

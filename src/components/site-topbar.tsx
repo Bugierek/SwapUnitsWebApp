@@ -112,7 +112,7 @@ export function SiteTopbar({
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/50 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <div className="mx-auto flex w-full max-w-[1360px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-10">
+      <div className="mx-auto flex w-full max-w-[1480px] items-center justify-between gap-2 px-4 py-3 sm:px-6 lg:px-10">
         <div className="flex items-center gap-2">
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
@@ -120,7 +120,7 @@ export function SiteTopbar({
                 variant="ghost"
                 size="icon"
                 aria-label="Open navigation"
-                className="lg:hidden rounded-full border border-border/60 bg-[hsl(var(--card))]/90 text-foreground transition hover:bg-[hsl(var(--card))] dark:bg-[hsl(var(--card))]/70 dark:hover:bg-[hsl(var(--card))]/90"
+                className="xl:hidden rounded-full border border-border/60 bg-[hsl(var(--card))]/90 text-foreground transition hover:bg-[hsl(var(--card))] dark:bg-[hsl(var(--card))]/70 dark:hover:bg-[hsl(var(--card))]/90"
               >
                 <Menu className="h-5 w-5" />
               </Button>

@@ -17,7 +17,7 @@ const findLeadingNumericValue = (value: string): number => {
   return match ? Number(match[0]) : NaN;
 };
 
-type ConversionComboboxItem = {
+export type ConversionComboboxItem = {
   value: string;
   category: UnitCategory;
   categoryLabel: string;
