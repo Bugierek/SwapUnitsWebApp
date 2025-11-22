@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeftRight, Copy, Check, Info } from 'lucide-react';
+import { Copy, Check, Info } from 'lucide-react';
 
 import type { UnitCategory, ConversionHistoryItem } from '@/types';
 import { Input } from '@/components/ui/input';

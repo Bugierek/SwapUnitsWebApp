@@ -238,8 +238,6 @@ export default function Home() {
                   isLoading={isLoadingHistory}
                 />
                 <PresetList
-                  presetsToDisplay={displayPresetsForListDesktop}
-                  onPresetSelect={onDesktopPresetSelect}
                   favorites={favorites}
                   onFavoriteSelect={onDesktopPresetSelect}
                   onRemoveFavorite={removeFavorite}

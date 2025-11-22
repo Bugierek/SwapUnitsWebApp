@@ -63,9 +63,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
@@ -2897,6 +2894,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     finalSaveDisabled,
     handleSaveToFavoritesInternal,
     handleToggleFavoriteInternal,
+    getUnitDisplayName,
     hasToggleFavorites,
     onSaveFavoriteProp,
     rhfCategory,
@@ -3169,6 +3167,7 @@ return (
                                         ref={fromTriggerRef}
                                         type="button"
                                         className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        data-testid="from-unit-trigger"
                                         style={{
                                           width: fromTriggerWidth ? `${fromTriggerWidth}px` : undefined,
                                           maxWidth: '100%',
@@ -3297,6 +3296,7 @@ return (
                                         ref={toTriggerRef}
                                         type="button"
                                         className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        data-testid="to-unit-trigger"
                                         style={{
                                           width: toTriggerWidth ? `${toTriggerWidth}px` : undefined,
                                           maxWidth: '100%',
