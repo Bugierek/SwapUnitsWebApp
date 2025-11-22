@@ -190,7 +190,7 @@ export function ConversionPairPageContent({
             </ol>
           </nav>
 
-          <section className="space-y-5 rounded-3xl border border-border/60 bg-card px-6 py-8 shadow-lg">
+          <section className="hidden space-y-5 rounded-3xl border border-border/60 bg-card px-6 py-8 shadow-lg sm:block">
             <div className="space-y-3">
               <Badge variant="outline" className="rounded-full border-border/60 bg-primary/5 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.25em] text-primary">
                 {categoryInfo.title}
