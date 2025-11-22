@@ -2586,114 +2586,116 @@ return (
                   name="category"
                   render={() => (
                     <FormItem>
-                      <div className="mb-1 flex items-center gap-2">
-                        <Label
-                          htmlFor="conversion-search"
-                          className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground"
-                        >
-                          Conversion finder
-                        </Label>
-                        <TooltipProvider delayDuration={150}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                className="hidden h-5 w-5 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
-                                aria-label="How the conversion finder understands your input"
-                              >
-                                <Info className="h-3.5 w-3.5" aria-hidden="true" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                              align="start"
-                              className="max-w-[260px] whitespace-normal break-words text-xs leading-relaxed"
-                            >
-                              <div className="space-y-2">
-                                <div>
-                                  <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                    TRY CONVERSIONS EG.
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleFinderExampleSelect(finderExamples.value)}
-                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                      aria-label={`Use ${finderExamples.value} in the conversion finder`}
-                                    >
-                                      {finderExamples.value}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleFinderExampleSelect(finderExamples.units)}
-                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                      aria-label={`Use ${finderExamples.units} in the conversion finder`}
-                                    >
-                                      {finderExamples.units}
-                                    </button>
-                                  </div>
-                                </div>
-                                <div>
-                                  <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                    OR FIND CATEGORY EG.
-                                  </p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleFinderExampleSelect(finderExamples.category)}
-                                      className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                      aria-label={`Use ${finderExamples.category} as the category`}
-                                    >
-                                      {finderExamples.category}
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
-                      <div className="relative mb-8 md:mb-10">
-                        {ComboboxComponent ? (
-                          <ComboboxComponent
-                            key={finderVersion}
-                            items={conversionPairs}
-                            value={selectedConversionPairValue}
-                            onChange={() => {
-                              // Selection is handled via onParsedConversion; no-op here.
-                            }}
-                            placeholder={"Type '100 kg to g', unit(s), or a category"}
-                            inputId="conversion-search"
-                            onParsedConversion={handleParsedConversion}
-                            onParseError={handleParseError}
-                            presetQuery={finderPresetQuery}
-                            autoFocusOnMount={shouldAutoFocusFinder}
-                            onAutoFocusComplete={handleFinderAutoFocusComplete}
-                            onNumericValue={handleFinderNumericValue}
-                          />
-                        ) : (
-                          <Button
-                            type="button"
-                            id="conversion-search"
-                            variant="outline"
-                            disabled
-                            className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
-                            aria-busy="true"
+                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-4 shadow-lg shadow-primary/10">
+                        <div className="mb-2 flex items-center gap-2">
+                          <Label
+                            htmlFor="conversion-search"
+                            className="text-xs font-semibold uppercase tracking-[0.25em] text-primary"
                           >
-                            Loading conversions…
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
-                          </Button>
-                        )}
+                            Conversion finder
+                          </Label>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="hidden h-5 w-5 items-center justify-center rounded-full border border-primary/50 text-primary transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
+                                  aria-label="How the conversion finder understands your input"
+                                >
+                                  <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                align="start"
+                                className="max-w-[260px] whitespace-normal break-words text-xs leading-relaxed"
+                              >
+                                <div className="space-y-2">
+                                  <div>
+                                    <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      TRY CONVERSIONS EG.
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFinderExampleSelect(finderExamples.value)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${finderExamples.value} in the conversion finder`}
+                                      >
+                                        {finderExamples.value}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFinderExampleSelect(finderExamples.units)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${finderExamples.units} in the conversion finder`}
+                                      >
+                                        {finderExamples.units}
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                      OR FIND CATEGORY EG.
+                                    </p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleFinderExampleSelect(finderExamples.category)}
+                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                        aria-label={`Use ${finderExamples.category} as the category`}
+                                      >
+                                        {finderExamples.category}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="relative">
+                          {ComboboxComponent ? (
+                            <ComboboxComponent
+                              key={finderVersion}
+                              items={conversionPairs}
+                              value={selectedConversionPairValue}
+                              onChange={() => {
+                                // Selection is handled via onParsedConversion; no-op here.
+                              }}
+                              placeholder={"Type '100 kg to g', unit(s), or a category"}
+                              inputId="conversion-search"
+                              onParsedConversion={handleParsedConversion}
+                              onParseError={handleParseError}
+                              presetQuery={finderPresetQuery}
+                              autoFocusOnMount={shouldAutoFocusFinder}
+                              onAutoFocusComplete={handleFinderAutoFocusComplete}
+                              onNumericValue={handleFinderNumericValue}
+                            />
+                          ) : (
+                            <Button
+                              type="button"
+                              id="conversion-search"
+                              variant="outline"
+                              disabled
+                              className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
+                              aria-busy="true"
+                            >
+                              Loading conversions…
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <div className="rounded-2xl border border-primary/25 bg-primary/5 px-4 py-4">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                <div className="rounded-2xl border border-border/60 bg-card/70 px-4 py-4">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Quick tip
                   </div>
-                  <p className="mt-2 text-sm text-foreground">
+                  <p className="mt-2 text-sm text-muted-foreground">
                     Enter a value, choose your units, and copy the result instantly.
                   </p>
                 </div>
