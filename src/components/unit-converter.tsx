@@ -2115,75 +2115,30 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       </div>
     );
   }, [generalFormula, dynamicFormula]);
-  const resultTabContent = React.useMemo(() => {
+  const formulaTabContent = React.useMemo(() => {
     if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return (
         <p className="text-sm text-muted-foreground">
-          Enter a value and pick both units to see the result and formula.
+          Enter a value and pick both units to see the formula.
         </p>
       );
     }
 
     return (
-      <div className="space-y-4">
-        <div className="relative">
-          <div
-            className={cn(
-              "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
-              resultHighlightPulse &&
-                'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
-            )}
-          >
-            <div className="flex flex-1 items-center gap-2 text-left">
-              <span className="truncate">
-                {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
-              </span>
-              <button
-                type="button"
-                onClick={handleCopyTextualResult}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                aria-label="Copy textual result to clipboard"
-              >
-                {textCopyState === 'success' ? (
-                  <Check className="h-4 w-4 text-emerald-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-            {currentConversionPairUrl && (
-              <Link
-                href={currentConversionPairUrl}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
-                aria-label="Open detailed conversion page"
-              >
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-            )}
-          </div>
+      <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 md:px-2.5 md:py-2.5">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Formula
         </div>
-        <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 md:px-2.5 md:py-2.5">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Formula
-          </div>
-          {formulaContentNode}
-        </div>
+        {formulaContentNode}
       </div>
     );
   }, [
     conversionResult,
-    currentConversionPairUrl,
     formulaContentNode,
-    formattedResultString,
-    handleCopyTextualResult,
-    precisionMode,
-    resultHighlightPulse,
     rhfCategory,
     rhfFromUnit,
     rhfToUnit,
-    rhfValue,
     showPlaceholder,
-    textCopyState,
   ]);
 
   const sourcesTabContent = React.useMemo(() => {
@@ -2288,12 +2243,74 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     </div>
   ), [numberFormat, precisionMode, isNormalFormatDisabled, handleActualFormatChange]);
 
+  const resultBanner = React.useMemo(() => {
+    if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
+      return (
+        <div className="rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 text-sm text-muted-foreground">
+          Enter a value and pick both units to see the result.
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-3 text-base font-semibold text-primary transition-colors duration-700 sm:gap-3",
+            resultHighlightPulse &&
+              'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
+          )}
+        >
+          <div className="flex flex-1 items-center gap-2 text-left">
+            <span className="truncate">
+              {`${formatFromValue(Number(rhfValue), precisionMode)} ${rhfFromUnit} = ${formattedResultString} ${rhfToUnit}`}
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyTextualResult}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+              aria-label="Copy textual result to clipboard"
+            >
+              {textCopyState === 'success' ? (
+                <Check className="h-4 w-4 text-emerald-500" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          {currentConversionPairUrl && (
+            <Link
+              href={currentConversionPairUrl}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[hsl(var(--control-background))] text-primary transition hover:bg-primary/10"
+              aria-label="Open detailed conversion page"
+            >
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }, [
+    conversionResult,
+    currentConversionPairUrl,
+    formattedResultString,
+    handleCopyTextualResult,
+    precisionMode,
+    resultHighlightPulse,
+    rhfCategory,
+    rhfFromUnit,
+    rhfToUnit,
+    rhfValue,
+    showPlaceholder,
+    textCopyState,
+  ]);
+
   const resultTabs = React.useMemo<AccordionTabItem[]>(() => {
     const tabs: AccordionTabItem[] = [
       {
-        id: 'result',
-        label: 'Result',
-        content: resultTabContent,
+        id: 'formula',
+        label: 'Formula',
+        content: formulaTabContent,
       },
     ];
 
@@ -2312,7 +2329,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     });
 
     return tabs;
-  }, [resultTabContent, sourcesTabContent, formattingTabContent]);
+  }, [formulaTabContent, sourcesTabContent, formattingTabContent]);
 
  const handleSwapClick = React.useCallback(() => {
     const currentFromUnit = getValues("fromUnit");
@@ -2895,6 +2912,8 @@ return (
 
 
                  {/* Textual Conversion Result Display */}
+                {resultBanner}
+
                 {fxStatusMessage && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {fxStatusMessage}
@@ -2904,7 +2923,7 @@ return (
                 {resultTabs.length > 0 && (
                   <AccordionTabs
                     tabs={resultTabs}
-                    defaultTabId="result"
+                    defaultTabId="formula"
                     initiallyOpen
                     className="mt-2"
                   />
