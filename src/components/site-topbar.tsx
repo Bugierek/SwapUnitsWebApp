@@ -350,7 +350,7 @@ export function SiteTopbar({
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden text-right md:block">
+          <div className="hidden text-right lg:block">
             <p className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">Built for accuracy</p>
             <p className="text-sm font-medium text-foreground">History & favorites stay local</p>
           </div>

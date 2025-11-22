@@ -849,6 +849,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     const menuMaxHeight = side === 'from' ? fromMenuMaxHeight : toMenuMaxHeight;
     const computedMaxHeight =
       menuMaxHeight !== null ? `${menuMaxHeight}px` : 'min(calc(100vh - 120px), 480px)';
+    const touchContentMaxHeight = 'min(calc(100vh - 140px), 420px)';
+    const touchListMaxHeight = 'min(calc(100vh - 180px), 360px)';
     const listMaxHeight =
       menuMaxHeight !== null
         ? `${Math.max(menuMaxHeight - 120, 220)}px`
@@ -986,10 +988,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       <DropdownMenuContent
         side="bottom"
         align="end"
-        sideOffset={6}
-        avoidCollisions={false}
-        className="min-w-[14rem] overflow-visible"
-        style={{ maxHeight: computedMaxHeight }}
+        sideOffset={4}
+        avoidCollisions
+        collisionPadding={{ top: 12, bottom: 12, left: 8, right: 8 }}
+        className="min-w-[14rem] w-[min(90vw,22rem)] overflow-hidden rounded-xl"
+        style={{ maxHeight: isTouch ? touchContentMaxHeight : computedMaxHeight }}
       >
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -1007,8 +1010,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           <div
             ref={side === 'from' ? fromMenuListRef : toMenuListRef}
             onScroll={(e) => updateMenuScrollState(side, e.currentTarget)}
-            className="max-h-[60vh] overflow-y-auto hide-scrollbar pt-5 pb-5"
-            style={{ maxHeight: computedMaxHeight, scrollbarWidth: 'none' }}
+            className="overflow-y-auto hide-scrollbar pt-3 pb-3"
+            style={{ maxHeight: isTouch ? touchListMaxHeight : computedMaxHeight, scrollbarWidth: 'none' }}
           >
             {filteredCategories.map(({ option, units }) => {
               const isActiveCategory = option.value === rhfCategory;
