@@ -1,0 +1,307 @@
+"use client";
+
+import * as React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { unitData, categoryDisplayOrder } from "@/lib/unit-data";
+import type { UnitCategory } from "@/types";
+import { SiteTopbar } from "@/components/site-topbar";
+import { Footer } from "@/components/footer";
+import {
+  ArrowUpRight,
+  Copy,
+  Ruler,
+  Scale,
+  Thermometer,
+  Clock3,
+  Gauge,
+  Square,
+  Box,
+  Zap,
+  Wind,
+  Fuel,
+  HardDrive,
+  Activity,
+  Bitcoin,
+  Coins,
+  Sigma,
+} from "lucide-react";
+
+export default function WidgetBuilderPage() {
+  const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {
+    Length: <Ruler className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Mass: <Scale className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Temperature: <Thermometer className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Time: <Clock3 className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Pressure: <Gauge className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Area: <Square className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Volume: <Box className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Energy: <Zap className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Speed: <Wind className="h-4 w-4 text-primary" aria-hidden="true" />,
+    "Fuel Economy": <Fuel className="h-4 w-4 text-primary" aria-hidden="true" />,
+    "Data Storage": <HardDrive className="h-4 w-4 text-primary" aria-hidden="true" />,
+    "Data Transfer Rate": <Activity className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Bitcoin: <Bitcoin className="h-4 w-4 text-primary" aria-hidden="true" />,
+    Currency: <Coins className="h-4 w-4 text-primary" aria-hidden="true" />,
+    "SI Unit Prefixes": <Sigma className="h-4 w-4 text-primary" aria-hidden="true" />,
+  };
+  const [selectedCategories, setSelectedCategories] = React.useState<Record<UnitCategory, boolean>>(() => {
+    const initial = {} as Record<UnitCategory, boolean>;
+    categoryDisplayOrder.forEach((cat) => {
+      initial[cat] = true;
+    });
+    return initial;
+  });
+
+  const [selectedUnits, setSelectedUnits] = React.useState<Record<string, boolean>>(() => {
+    // Start with no units explicitly selected; empty means "include all units".
+    return {};
+  });
+  const [width, setWidth] = React.useState("100%");
+  const [height, setHeight] = React.useState("500px");
+
+  const toggleCategory = (cat: UnitCategory) => {
+    setSelectedCategories((prev) => {
+      const selectedCount = Object.values(prev).filter(Boolean).length;
+      // Keep at least one category selected
+      if (prev[cat] && selectedCount <= 1) {
+        return prev;
+      }
+      return { ...prev, [cat]: !prev[cat] };
+    });
+  };
+
+  const toggleUnit = (unitSymbol: string) => {
+    setSelectedUnits((prev) => ({ ...prev, [unitSymbol]: !prev[unitSymbol] }));
+  };
+
+  const chosenCategories = categoryDisplayOrder.filter((cat) => selectedCategories[cat]);
+  const chosenUnits = Object.keys(selectedUnits).filter((k) => selectedUnits[k]);
+
+  const query = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (chosenCategories.length) params.set("categories", chosenCategories.join(","));
+    if (chosenUnits.length) params.set("units", chosenUnits.join(","));
+    if (width.trim()) params.set("width", width.trim());
+    if (height.trim()) params.set("height", height.trim());
+    return params.toString();
+  }, [chosenCategories, chosenUnits]);
+
+  const iframeSrc = `https://swapunits.com/widget?${query}`;
+
+  const normalizeDimension = (val: string) => {
+    if (!val) return undefined;
+    return val.trim();
+  };
+
+  const normalizedWidth = normalizeDimension(width) ?? "100%";
+  const normalizedHeight = normalizeDimension(height) ?? "520px";
+  const heightPx = Number.parseFloat(normalizedHeight);
+  const previewMinHeight = Math.min(Math.max(heightPx && heightPx > 0 ? heightPx : 0, 550), 820);
+  const heightStyle = /[a-zA-Z%]/.test(normalizedHeight) ? normalizedHeight : undefined;
+
+  const [copyState, setCopyState] = React.useState<"idle" | "success">("idle");
+
+  const iframeCode = `<iframe src="${iframeSrc}" width="${normalizedWidth}" height="${normalizedHeight}" style="border:0; border-radius:16px;" loading="lazy" title="SwapUnits widget"></iframe>`;
+  const [previewSrc, setPreviewSrc] = React.useState<string>(() => `/widget?${query}`);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPreviewSrc(`${window.location.origin}/widget?${query}`);
+    } else {
+      setPreviewSrc(`/widget?${query}`);
+    }
+  }, [query]);
+
+  return (
+    <>
+      <SiteTopbar />
+      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-12 pt-8 sm:px-6 lg:px-10">
+        <div className="flex flex-col gap-3 text-left">
+          <h1 className="text-2xl font-semibold text-foreground">Widget builder</h1>
+          <p className="text-sm text-muted-foreground">
+            Build a customized SwapUnits widget. Choose categories and units to include, adjust the size, then copy the iframe code.{" "}
+            <span className="font-semibold text-primary">Powered by SwapUnits</span> branding is included automatically.
+          </p>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[3.2fr_2.3fr] xl:grid-cols-[3.6fr_2.6fr]">
+          <Card className="border-border/60 bg-card/90">
+            <CardHeader>
+              <CardTitle>Configure</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-8">
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Categories</h3>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {categoryDisplayOrder.map((cat) => (
+                  <label
+                    key={cat}
+                    className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm text-foreground transition hover:border-primary/60"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!selectedCategories[cat]}
+                      onChange={() => toggleCategory(cat as UnitCategory)}
+                      className="h-4 w-4"
+                    />
+                    <span className="flex items-center gap-2">
+                      {categoryIcons[cat as UnitCategory]}
+                      {unitData[cat as UnitCategory].name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Units (optional)</h3>
+              <p className="text-xs text-muted-foreground">
+                Leave all unchecked to include every unit in the selected categories. Checkboxes narrow the list.
+              </p>
+              <div className="max-h-80 space-y-3 overflow-y-auto rounded-lg border border-border/50 p-3">
+                {categoryDisplayOrder
+                  .filter((cat) => selectedCategories[cat])
+                  .map((cat) => (
+                    <div key={`units-${cat}`} className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{unitData[cat as UnitCategory].name}</p>
+                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                        {unitData[cat as UnitCategory].units.map((u) => (
+                          <label
+                            key={u.symbol}
+                            className={
+                              "flex items-center gap-2 rounded border border-border/40 px-2 py-1 text-sm transition hover:border-primary/60" +
+                              (selectedUnits[u.symbol] ? " border-primary/60 bg-primary/5" : "")
+                            }
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!selectedUnits[u.symbol]}
+                              onChange={() => toggleUnit(u.symbol)}
+                              className="h-4 w-4"
+                            />
+                            <span className="truncate">
+                              {u.name} ({u.symbol})
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Widget size</h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-sm text-foreground">
+                  Width
+                  <Input value={width} onChange={(e) => setWidth(e.target.value)} />
+                </label>
+                <label className="flex flex-col gap-1 text-sm text-foreground">
+                  Height
+                  <Input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="520" />
+                </label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-4">
+          <Card className="border-border/60 bg-card/90">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Embed code</CardTitle>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(iframeCode);
+                      setCopyState("success");
+                      setTimeout(() => setCopyState("idle"), 1200);
+                    } catch {
+                      // ignore
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-primary/60 hover:text-primary"
+                  aria-label="Copy iframe code"
+                >
+                  {copyState === "success" ? (
+                    <>
+                      <span className="text-emerald-500">✓</span>
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" aria-hidden="true" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Textarea value={iframeCode} readOnly className="h-40 text-xs font-mono" />
+              <p className="text-xs text-muted-foreground">Powered by SwapUnits</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-dashed border-primary/40 bg-card/70">
+            <CardHeader>
+              <CardTitle>Preview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(() => {
+                const widthValue = normalizedWidth;
+                const pxMatch = widthValue.match(/^(\d+(?:\.\d+)?)px$/);
+                const iframeWidth = pxMatch ? `${Number(pxMatch[1])}px` : widthValue;
+                return (
+                  <div className="flex justify-center">
+                    <div
+                      className="w-full overflow-hidden rounded-2xl border border-border/60 bg-card/90 px-4 py-3"
+                      style={{ maxWidth: pxMatch ? `${Number(pxMatch[1]) + 32}px` : "640px", minWidth: "320px" }}
+                    >
+                      <iframe
+                        key={query}
+                        src={previewSrc}
+                        title="Widget preview"
+                        scrolling="no"
+                        style={{
+                          width: iframeWidth,
+                          maxWidth: "100%",
+                          height: heightStyle ?? `${previewMinHeight}px`,
+                          minHeight: `${previewMinHeight}px`,
+                          display: "block",
+                          border: "0",
+                          borderRadius: "16px",
+                          margin: "0 auto",
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+              <p className="text-xs text-muted-foreground">
+                This is the live widget with your current selections.
+              </p>
+              <div className="flex justify-end">
+                <a
+                  href={previewSrc}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm font-medium text-primary transition hover:border-primary/70 hover:bg-primary/5"
+                >
+                  Open full preview
+                  <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
