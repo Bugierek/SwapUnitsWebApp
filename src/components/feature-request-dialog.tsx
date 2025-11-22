@@ -70,7 +70,11 @@ export function FeatureRequestDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+        >
           Request Conversion Pair
         </Button>
       </DialogTrigger>

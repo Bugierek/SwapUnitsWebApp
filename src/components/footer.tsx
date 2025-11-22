@@ -2,6 +2,7 @@
 'use client'; // Convert to client component for useEffect and useState
 
 import * as React from 'react';
+import { Github } from 'lucide-react';
 import { CryptoTipDialog } from '@/components/crypto-tip-dialog';
 import { FeatureRequestDialog } from '@/components/feature-request-dialog';
 
@@ -48,11 +49,26 @@ export function Footer() {
         <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <div className="max-w-2xl space-y-3 text-sm text-muted-foreground">
             <p className="text-base font-semibold text-foreground">
-              &copy; {currentYear} SwapUnits.com · Built for precise, everyday conversions.
+              &copy; {currentYear} SwapUnits.com · Built for precise, everyday conversions. Open source.
             </p>
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <CryptoTipDialog />
               <FeatureRequestDialog />
+              <a
+                href="https://github.com/Bugierek/SwapUnitsWebApp"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+              >
+                <Github className="h-4 w-4" aria-hidden="true" />
+                GitHub
+              </a>
+              <a
+                href="/widget-builder"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+              >
+                Build widget
+              </a>
             </div>
             <p>
               Your history, favorites, and formatting preferences stay local to your device so you can focus on results—not settings.

@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Coffee } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -103,8 +104,13 @@ export function CryptoTipDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          Buy me a coffee ☕
+        <Button
+          variant="ghost"
+          size="sm"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+        >
+          <Coffee className="h-4 w-4" aria-hidden="true" />
+          Buy me a coffee
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
