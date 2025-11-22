@@ -39,6 +39,18 @@ export function AccordionTabs({
     () => availableTabs.map((tab) => tab.id),
     [availableTabs],
   );
+
+  const [isDesktop, setIsDesktop] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
   const hasAvailableTabs = availableTabIds.length > 0;
   const preferredTab = React.useMemo(() => {
     if (!hasAvailableTabs) {
@@ -83,6 +95,13 @@ export function AccordionTabs({
     }
   };
 
+  const handleTabHover = (tabId: string) => {
+    if (!isDesktop) return;
+    if (activeTab === tabId && isOpen) return;
+    setActiveTab(tabId);
+    if (!isOpen) setIsOpen(true);
+  };
+
   return (
     <div
       className={cn(
@@ -104,6 +123,7 @@ export function AccordionTabs({
             )}
             aria-pressed={tab.id === activeTab}
             onClick={() => handleTabClick(tab.id)}
+            onMouseEnter={() => handleTabHover(tab.id)}
           >
             {tab.label}
           </button>
