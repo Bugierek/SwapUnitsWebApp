@@ -14,12 +14,16 @@ const normalizeUnitForSlug = (unit: string): string =>
     .replace(/\^2|²/g, '2')
     .replace(/\^3|³/g, '3');
 
-const denormalizeUnitFromSlug = (slugUnit: string): string =>
-  slugUnit
+const denormalizeUnitFromSlug = (slugUnit: string): string => {
+  let val = slugUnit
     .replace(/-per-/g, '/')
     .replace(/deg/g, '°')
     .replace(/plus/g, '+')
     .replace(/-/g, ' ');
+  // Restore common superscripts for area/volume
+  val = val.replace(/2\b/g, '²').replace(/3\b/g, '³');
+  return val;
+};
 
 const encodeUnit = (unit: string): string => normalizeUnitForSlug(unit);
 const decodeUnit = (value: string): string => denormalizeUnitFromSlug(value);
