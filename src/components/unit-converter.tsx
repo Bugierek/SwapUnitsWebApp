@@ -412,6 +412,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const resultInputRef = React.useRef<HTMLInputElement | null>(null);
   const resultHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasAppliedHighlightRef = React.useRef(false);
+  const fromFieldRef = React.useRef<HTMLDivElement | null>(null);
+  const toFieldRef = React.useRef<HTMLDivElement | null>(null);
   const [fromUnitHighlight, setFromUnitHighlight] = React.useState(false);
   const [toUnitHighlight, setToUnitHighlight] = React.useState(false);
   const unitHighlightTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -3082,7 +3084,10 @@ return (
                         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                           From
                         </div>
-                        <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                        <div
+                          ref={fromFieldRef}
+                          className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background"
+                        >
                           <div
                             className="flex items-stretch border-r border-border/60"
                             onMouseEnter={() => setFromCalcHover(true)}
@@ -3168,6 +3173,11 @@ return (
                                             ? (rhfCategory as UnitCategory)
                                             : null,
                                         );
+                                        if (isTouch) {
+                                          requestAnimationFrame(() => {
+                                            fromFieldRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                          });
+                                        }
                                       } else {
                                         setFromMenuCategory(null);
                                         setFromUnitFilter('');
@@ -3242,7 +3252,10 @@ return (
                         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                           To
                         </div>
-                        <div className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background">
+                        <div
+                          ref={toFieldRef}
+                          className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background"
+                        >
                           <div
                             className="flex items-stretch border-r border-border/60"
                             onMouseEnter={() => setToCopyHover(true)}
@@ -3296,6 +3309,11 @@ return (
                                             ? (rhfCategory as UnitCategory)
                                             : null,
                                         );
+                                        if (isTouch) {
+                                          requestAnimationFrame(() => {
+                                            toFieldRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                          });
+                                        }
                                       } else {
                                         setToMenuCategory(null);
                                         setToUnitFilter('');
