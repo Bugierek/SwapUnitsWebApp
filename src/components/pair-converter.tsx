@@ -23,6 +23,7 @@ import {
   type PrecisionMode,
 } from '@/lib/number-format';
 import { cn } from '@/lib/utils';
+import { useIsCoarsePointer } from '@/hooks/use-pointer-capabilities';
 
 interface PairConverterProps {
   category: UnitCategory;
@@ -66,6 +67,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
   const [fromCalcHover, setFromCalcHover] = React.useState(false);
   const [fromCalcButtonFocused, setFromCalcButtonFocused] = React.useState(false);
+  const isTouch = useIsCoarsePointer();
 
   const activeFrom = isSwapped ? toUnit : fromUnit;
   const activeTo = isSwapped ? fromUnit : toUnit;
@@ -402,8 +404,16 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               placeholder={`Enter ${activeFrom.symbol}`}
+              inputMode="decimal"
+              enterKeyHint="done"
               onFocus={() => setFromFieldFocused(true)}
               onBlur={() => setFromFieldFocused(false)}
+              onKeyDown={(event) => {
+                if (isTouch && event.key === 'Enter') {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }
+              }}
               className="h-full flex-1 border-0 bg-transparent px-3 text-lg font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
             />
             {showCalculatorButton && (

@@ -3115,10 +3115,17 @@ return (
                                       id="value-input"
                                       type="text"
                                       inputMode="decimal"
+                                      enterKeyHint="done"
                                       placeholder="Enter value"
                                       {...field}
                                       onFocus={() => setFromFieldFocused(true)}
                                       onBlur={() => setFromFieldFocused(false)}
+                                      onKeyDown={(e) => {
+                                        if (isTouch && e.key === 'Enter') {
+                                          e.preventDefault();
+                                          e.currentTarget.blur();
+                                        }
+                                      }}
                                       onChange={(e) => {
                                         const rawValue = e.target.value;
                                         if (
