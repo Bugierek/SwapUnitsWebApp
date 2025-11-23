@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Copy, Check, Info } from 'lucide-react';
+import { Copy, Check, Info, Calculator } from 'lucide-react';
 
 import type { UnitCategory, ConversionHistoryItem } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,7 @@ import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
 import { getUnitsForCategory } from '@/lib/unit-data';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { useToast } from '@/hooks/use-toast';
+import SimpleCalculator from '@/components/simple-calculator';
 import {
   formatConversionValue,
   getDecimalPrecisionFromInput,
@@ -61,6 +62,10 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [fxError, setFxError] = React.useState<string | null>(null);
   const [isFetchingFx, setIsFetchingFx] = React.useState(false);
   const isFullPrecision = precisionMode === 'full';
+  const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
+  const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
+  const [fromCalcHover, setFromCalcHover] = React.useState(false);
+  const [fromCalcButtonFocused, setFromCalcButtonFocused] = React.useState(false);
 
   const activeFrom = isSwapped ? toUnit : fromUnit;
   const activeTo = isSwapped ? fromUnit : toUnit;
@@ -199,6 +204,15 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     const timeout = window.setTimeout(() => setCopyState('idle'), 1500);
     return () => window.clearTimeout(timeout);
   }, [copyState]);
+
+  const handleCalculatorValueSent = React.useCallback((valueFromCalculator: string) => {
+    const numericValue = parseFloat(valueFromCalculator);
+    if (!Number.isNaN(numericValue)) {
+      setInputValue(String(numericValue));
+      setCopyState('idle');
+    }
+    setIsCalculatorOpen(false);
+  }, []);
 
   const applyHistorySelect = React.useCallback((item: ConversionHistoryItem): boolean => {
     const matchesForward = item.fromUnit === fromUnit.symbol && item.toUnit === toUnit.symbol;
@@ -360,6 +374,8 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     return `${inputFormatted} ${activeFrom.symbol} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
   }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result, category]);
 
+  const showCalculatorButton = fromFieldFocused || fromCalcHover || fromCalcButtonFocused;
+
   return (
     <div className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg">
       <div className="flex flex-wrap items-center gap-3">
@@ -386,8 +402,25 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               value={inputValue}
               onChange={(event) => setInputValue(event.target.value)}
               placeholder={`Enter ${activeFrom.symbol}`}
-              className="h-full bg-transparent border-0 px-3 text-lg font-semibold text-foreground flex-1"
+              onFocus={() => setFromFieldFocused(true)}
+              onBlur={() => setFromFieldFocused(false)}
+              className="h-full flex-1 border-0 bg-transparent px-3 text-lg font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
             />
+            {showCalculatorButton && (
+              <button
+                type="button"
+                onClick={() => setIsCalculatorOpen(true)}
+                onMouseEnter={() => setFromCalcHover(true)}
+                onMouseLeave={() => setFromCalcHover(false)}
+                onFocus={() => setFromCalcButtonFocused(true)}
+                onBlur={() => setFromCalcButtonFocused(false)}
+                onMouseDown={(event) => event.preventDefault()}
+                className="flex h-full items-center gap-2 border-l border-border/60 px-3 text-primary transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label="Open calculator"
+              >
+                <Calculator className="h-4 w-4" aria-hidden="true" />
+              </button>
+            )}
             <div className="flex items-center justify-center px-3 text-sm font-semibold text-muted-foreground border-l border-border/60">
               {activeFrom.symbol}
             </div>
@@ -546,6 +579,27 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         Results update as you type. Swap the direction to convert back from {activeTo.symbol} to{' '}
         {activeFrom.symbol}.
       </p>
+
+      {isCalculatorOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setIsCalculatorOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl border border-border/60 bg-card p-3 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <SimpleCalculator onSendValue={handleCalculatorValueSent} onClose={() => setIsCalculatorOpen(false)} />
+            <div className="mt-3 flex justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setIsCalculatorOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
