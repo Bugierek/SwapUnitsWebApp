@@ -128,6 +128,8 @@ export function SiteTopbar({
             <SheetContent
               side="left"
               className="w-full max-w-[360px] border-r border-border/60 bg-background/95 p-0 sm:max-w-[400px]"
+              onInteractOutside={() => setIsSheetOpen(false)}
+              onEscapeKeyDown={() => setIsSheetOpen(false)}
             >
               <ScrollArea className="h-full">
                 <SheetHeader className="border-b border-border/60 px-5 py-4">
