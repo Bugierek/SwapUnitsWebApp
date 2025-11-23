@@ -12,8 +12,8 @@ import type { UnitCategory } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { SiteTopbar } from '@/components/site-topbar';
 import { Footer } from '@/components/footer';
+import { CategoryTopbarBridge } from '@/components/category-topbar-bridge';
 
 type CategoryPageParams = {
   slug: string;
@@ -128,10 +128,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         url: buildConversionPairUrl(info.category, fromUnit.symbol, toUnit.symbol),
       })),
   );
+  const topbarPresets = topPresets;
 
   return (
     <div className="min-h-screen bg-background">
-      <SiteTopbar history={[]} favorites={[]} presets={[]} />
+      <CategoryTopbarBridge presets={topbarPresets} />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-4 pb-16 pt-12 sm:px-6 lg:px-8">
       <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <ol className="flex items-center gap-2">

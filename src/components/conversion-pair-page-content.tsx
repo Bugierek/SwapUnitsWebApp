@@ -156,6 +156,13 @@ export function ConversionPairPageContent({
     navigateToPair(fav.category, fav.fromUnit, fav.toUnit, 1);
   }, [navigateToPair]);
 
+  const handlePresetSelect = React.useCallback(
+    (preset: Preset | FavoriteItem) => {
+      navigateToPair(preset.category as UnitCategory, preset.fromUnit, preset.toUnit, 1);
+    },
+    [navigateToPair],
+  );
+
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_rgba(79,70,229,0.12),transparent_55%),_radial-gradient(ellipse_at_bottom,_rgba(14,165,233,0.08),transparent_60%)]" />
@@ -170,6 +177,7 @@ export function ConversionPairPageContent({
         favorites={favorites}
         isLoadingFavorites={isLoadingFavorites}
         onFavoriteSelect={handleFavoriteSelect}
+        onPresetSelect={handlePresetSelect}
       />
 
       <main className="flex-1">

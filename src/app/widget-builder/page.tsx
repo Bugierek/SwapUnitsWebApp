@@ -4,10 +4,14 @@ import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { unitData, categoryDisplayOrder } from "@/lib/unit-data";
+import { unitData, categoryDisplayOrder, getFilteredAndSortedPresets } from "@/lib/unit-data";
 import type { UnitCategory } from "@/types";
 import { SiteTopbar } from "@/components/site-topbar";
 import { Footer } from "@/components/footer";
+import { useConversionHistory } from "@/hooks/use-conversion-history";
+import { useFavorites } from "@/hooks/use-favorites";
+import { buildConversionPairUrl } from "@/lib/conversion-pairs";
+import { useRouter } from "next/navigation";
 import {
   ArrowUpRight,
   Copy,
@@ -29,6 +33,54 @@ import {
 } from "lucide-react";
 
 export default function WidgetBuilderPage() {
+  const router = useRouter();
+  const { history, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
+  const { favorites, removeFavorite, clearAllFavorites, isLoadingFavorites } = useFavorites();
+
+  const topbarPresets = React.useMemo(
+    () => getFilteredAndSortedPresets(favorites).slice(0, 10),
+    [favorites],
+  );
+
+  const navigateToPair = React.useCallback(
+    (category: UnitCategory, from: string, to: string, value?: number | string | null) => {
+      const base = buildConversionPairUrl(category, from, to);
+      const qs = value !== undefined && value !== null ? `?value=${encodeURIComponent(String(value))}` : "";
+      router.push(`${base}${qs}`);
+    },
+    [router],
+  );
+
+  const handleHistorySelect = React.useCallback(
+    (item: any) => {
+      if (item.meta?.kind === "si-prefix") {
+        const params = new URLSearchParams({
+          from: item.meta.fromPrefixSymbol,
+          to: item.meta.toPrefixSymbol,
+          value: item.meta.inputText ?? String(item.fromValue),
+        });
+        router.push(`${item.meta.route}?${params.toString()}`);
+        return;
+      }
+      navigateToPair(item.category as UnitCategory, item.fromUnit, item.toUnit, item.fromValue);
+    },
+    [navigateToPair, router],
+  );
+
+  const handleFavoriteSelect = React.useCallback(
+    (fav: any) => {
+      navigateToPair(fav.category, fav.fromUnit, fav.toUnit, 1);
+    },
+    [navigateToPair],
+  );
+
+  const handlePresetSelect = React.useCallback(
+    (preset: any) => {
+      navigateToPair(preset.category, preset.fromUnit, preset.toUnit, 1);
+    },
+    [navigateToPair],
+  );
+
   const builderCategories = React.useMemo(() => categoryDisplayOrder, []);
 
   const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {
@@ -131,7 +183,19 @@ export default function WidgetBuilderPage() {
 
   return (
     <>
-      <SiteTopbar />
+      <SiteTopbar
+        history={history}
+        isLoadingHistory={isLoadingHistory}
+        onHistorySelect={handleHistorySelect}
+        clearHistory={clearHistory}
+        favorites={favorites}
+        isLoadingFavorites={isLoadingFavorites}
+        onFavoriteSelect={handleFavoriteSelect}
+        onRemoveFavorite={removeFavorite}
+        onClearAllFavorites={clearAllFavorites}
+        presets={topbarPresets}
+        onPresetSelect={handlePresetSelect}
+      />
       <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-12 pt-8 sm:px-6 lg:px-10">
         <div className="flex flex-col gap-3 text-left">
           <h1 className="text-2xl font-semibold text-foreground">Widget builder</h1>
