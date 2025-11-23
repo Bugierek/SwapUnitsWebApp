@@ -22,14 +22,7 @@ const denormalizeUnitFromSlug = (slugUnit: string): string =>
     .replace(/-/g, ' ');
 
 const encodeUnit = (unit: string): string => normalizeUnitForSlug(unit);
-const decodeUnit = (value: string): string => {
-  const denormalized = denormalizeUnitFromSlug(value);
-  // If it looks like a currency code (letters only, short), normalize to uppercase.
-  if (/^[a-z]+$/i.test(denormalized) && denormalized.length <= 4) {
-    return denormalized.toUpperCase();
-  }
-  return denormalized;
-};
+const decodeUnit = (value: string): string => denormalizeUnitFromSlug(value);
 
 export const buildConversionPairSlug = (fromSymbol: string, toSymbol: string): string =>
   `${encodeUnit(fromSymbol)}${delimiter}${encodeUnit(toSymbol)}`;
@@ -40,9 +33,11 @@ export const parseConversionPairSlug = (
   const parts = slug.split(delimiter);
   if (parts.length !== 2) return null;
   try {
+    const fromPart = decodeURIComponent(parts[0]);
+    const toPart = decodeURIComponent(parts[1]);
     return {
-      fromSymbol: decodeUnit(parts[0]),
-      toSymbol: decodeUnit(parts[1]),
+      fromSymbol: decodeUnit(fromPart),
+      toSymbol: decodeUnit(toPart),
     };
   } catch {
     return null;

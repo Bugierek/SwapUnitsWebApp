@@ -148,8 +148,12 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
   const { fromSymbol, toSymbol } = pair;
   const unitEntry = unitData[categoryInfo.category];
   const units = unitEntry?.units ?? [];
-  const fromUnitDetails = units.find((unit) => unit.symbol === fromSymbol);
-  const toUnitDetails = units.find((unit) => unit.symbol === toSymbol);
+  const matchSymbol = (sym: string) =>
+    units.find((unit) => unit.symbol === sym) ??
+    units.find((unit) => unit.symbol.toLowerCase() === sym.toLowerCase());
+
+  const fromUnitDetails = matchSymbol(fromSymbol);
+  const toUnitDetails = matchSymbol(toSymbol);
 
   if (!fromUnitDetails || !toUnitDetails) {
     notFound();
