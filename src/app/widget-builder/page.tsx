@@ -88,7 +88,8 @@ export default function WidgetBuilderPage() {
     return params.toString();
   }, [chosenCategories, chosenUnits]);
 
-  const iframeSrc = `https://swapunits.com/widget?${query}`;
+  const embedBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com').replace(/\/$/, '');
+  const iframeSrc = `${embedBaseUrl}/widget?${query}`;
 
   const normalizeDimension = (val: string) => {
     if (!val) return undefined;
@@ -284,6 +285,10 @@ export default function WidgetBuilderPage() {
               })()}
               <p className="text-xs text-muted-foreground">
                 This is the live widget with your current selections.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                To embed: copy the iframe code above and paste it into your site where you want the converter to appear. The width/height and selected
+                categories/units are encoded in the iframe URL.
               </p>
               <div className="flex justify-end">
                 <a

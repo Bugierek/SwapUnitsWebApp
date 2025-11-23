@@ -4,8 +4,32 @@ import type { UnitCategory } from '@/types';
 
 const delimiter = '-to-';
 
-const encodeUnit = (unit: string): string => encodeURIComponent(unit);
-const decodeUnit = (value: string): string => decodeURIComponent(value);
+const normalizeUnitForSlug = (unit: string): string =>
+  unit
+    .replace(/µ/g, 'u')
+    .replace(/°/g, 'deg')
+    .replace(/\+/g, 'plus')
+    .replace(/\//g, '-per-')
+    .replace(/\s+/g, '-')
+    .replace(/\^2|²/g, '2')
+    .replace(/\^3|³/g, '3');
+
+const denormalizeUnitFromSlug = (slugUnit: string): string =>
+  slugUnit
+    .replace(/-per-/g, '/')
+    .replace(/deg/g, '°')
+    .replace(/plus/g, '+')
+    .replace(/-/g, ' ');
+
+const encodeUnit = (unit: string): string => normalizeUnitForSlug(unit);
+const decodeUnit = (value: string): string => {
+  const denormalized = denormalizeUnitFromSlug(value);
+  // If it looks like a currency code (letters only, short), normalize to uppercase.
+  if (/^[a-z]+$/i.test(denormalized) && denormalized.length <= 4) {
+    return denormalized.toUpperCase();
+  }
+  return denormalized;
+};
 
 export const buildConversionPairSlug = (fromSymbol: string, toSymbol: string): string =>
   `${encodeUnit(fromSymbol)}${delimiter}${encodeUnit(toSymbol)}`;

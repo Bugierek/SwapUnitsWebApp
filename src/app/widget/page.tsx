@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { unitData, categoryDisplayOrder } from "@/lib/unit-data";
 import type { UnitCategory } from "@/types";
 import { convertUnitsDetailed } from "@/lib/conversion-math";
+import type { FxRatesResponse, CurrencyCode } from "@/lib/fx";
 import { Copy as CopyIcon, Check as CheckIcon, RefreshCw, ChevronDown } from "lucide-react";
 
 type AllowedUnitsMap = Record<UnitCategory, { symbol: string; name: string }[]>;
@@ -93,12 +94,34 @@ export default function WidgetPage() {
   const [copyState, setCopyState] = React.useState<"idle" | "success">("idle");
   const widthStyle = React.useMemo(() => parseDimension(widthParam), [widthParam]);
   const heightStyle = React.useMemo(() => parseDimension(heightParam), [heightParam]);
+  const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
+  const [fxStatus, setFxStatus] = React.useState<string | null>(null);
+  const [fxLoading, setFxLoading] = React.useState(false);
 
   React.useEffect(() => {
     if (category && !availableCategories.includes(category)) {
       setCategory(availableCategories[0] ?? null);
     }
   }, [category, availableCategories]);
+
+  // Fetch FX rates when needed (currency conversions)
+  React.useEffect(() => {
+    const hasCurrency = availableCategories.includes("Currency");
+    if (!hasCurrency || fxRates || fxLoading) return;
+    setFxLoading(true);
+    setFxStatus("Loading live FX rates…");
+    fetch("/api/fx?base=EUR")
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed FX fetch");
+        const data: FxRatesResponse = await res.json();
+        setFxRates(data);
+        setFxStatus(null);
+      })
+      .catch(() => {
+        setFxStatus("Live FX rates unavailable");
+      })
+      .finally(() => setFxLoading(false));
+  }, [availableCategories, fxRates, fxLoading]);
 
   React.useEffect(() => {
     const units = category ? allowedUnits[category] ?? [] : [];
@@ -125,13 +148,18 @@ export default function WidgetPage() {
   const result = React.useMemo(() => {
     const numeric = Number(value);
     if (!category || !fromUnit || !toUnit || !Number.isFinite(numeric)) return null;
+    const fxContext =
+      category === "Currency" && fxRates
+        ? { base: fxRates.base as CurrencyCode, rates: fxRates.rates }
+        : undefined;
     return convertUnitsDetailed({
       category,
       fromUnit,
       toUnit,
       value: numeric,
+      fxContext,
     });
-  }, [category, fromUnit, toUnit, value]);
+  }, [category, fromUnit, toUnit, value, fxRates]);
 
   const handleCopy = async () => {
     if (!result) return;
@@ -282,6 +310,7 @@ export default function WidgetPage() {
             </>
           )}
         </Button>
+        {fxStatus && <div className="text-center text-xs text-muted-foreground">{fxStatus}</div>}
       </div>
     </div>
   );

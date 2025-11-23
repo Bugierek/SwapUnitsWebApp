@@ -1,6 +1,4 @@
-# Allow all crawlers access to all content
 User-agent: *
 Allow: /
 
-# Specify the location of the sitemap
-Sitemap: /sitemap.xml
+Sitemap: https://swapunits.com/sitemap.xml

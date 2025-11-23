@@ -1,22 +1,25 @@
-import { MetadataRoute } from 'next';
+import type { MetadataRoute } from "next";
+import { categoryDisplayOrder } from "@/lib/unit-data";
+import { getCategorySlug } from "@/lib/category-info";
 
-// Replace with your actual deployed URL
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:9002';
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://swapunits.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: siteUrl,
-      lastModified: new Date(), // Update automatically on build
-      changeFrequency: 'monthly', // How often the content is likely to change
-      priority: 1, // Priority for the homepage (1.0 is highest)
-    },
-    // Add other static pages here if needed
-    // {
-    //   url: `${siteUrl}/about`,
-    //   lastModified: new Date(),
-    //   changeFrequency: 'yearly',
-    //   priority: 0.8,
-    // },
+  const now = new Date();
+
+  const entries: MetadataRoute.Sitemap = [
+    { url: `${baseUrl}/`, lastModified: now },
+    { url: `${baseUrl}/widget`, lastModified: now },
+    { url: `${baseUrl}/widget-builder`, lastModified: now },
   ];
+
+  categoryDisplayOrder.forEach((category) => {
+    const slug = getCategorySlug(category);
+    entries.push({
+      url: `${baseUrl}/measurements/${slug}`,
+      lastModified: now,
+    });
+  });
+
+  return entries;
 }

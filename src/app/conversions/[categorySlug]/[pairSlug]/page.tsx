@@ -7,6 +7,7 @@ import { unitData, getUnitsForCategory, getPresetsForCategory } from '@/lib/unit
 import { convertNumericValue } from '@/lib/conversion-math';
 import type { UnitCategory } from '@/types';
 import { ConversionPairPageContent } from '@/components/conversion-pair-page-content';
+import { buildBreadcrumbJsonLd, buildFaqJsonLd, defaultFaqForPair } from '@/lib/structured-data';
 
 type PageParams = {
   categorySlug: string;
@@ -186,19 +187,31 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
   const navbarPresets = getPresetsForCategory(categoryInfo.category).slice(0, 12);
   const formulaInsight = formulaDescription(categoryInfo.category, fromSymbol, toSymbol);
 
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: 'Home', url: '/' },
+    { name: categoryInfo.title, url: `/measurements/${categorySlug}` },
+    { name: `${fromSymbol} to ${toSymbol}`, url: `/conversions/${categorySlug}/${pairSlug}` },
+  ]);
+
+  const faqJsonLd = buildFaqJsonLd(defaultFaqForPair(fromSymbol, toSymbol, categoryInfo.category));
+
   return (
-    <ConversionPairPageContent
-      categoryInfo={categoryInfo}
-      fromSymbol={fromSymbol}
-      toSymbol={toSymbol}
-      fromUnit={{ symbol: fromSymbol, name: fromUnitDetails.name }}
-      toUnit={{ symbol: toSymbol, name: toUnitDetails.name }}
-      formulaInsight={formulaInsight}
-      exampleRows={exampleRows}
-      reverseExampleRows={reverseExampleRows}
-      otherUnits={otherUnits.map((unit) => ({ symbol: unit.symbol, name: unit.name }))}
-      navbarPresets={navbarPresets}
-      initialValue={initialValue}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <ConversionPairPageContent
+        categoryInfo={categoryInfo}
+        fromSymbol={fromSymbol}
+        toSymbol={toSymbol}
+        fromUnit={{ symbol: fromSymbol, name: fromUnitDetails.name }}
+        toUnit={{ symbol: toSymbol, name: toUnitDetails.name }}
+        formulaInsight={formulaInsight}
+        exampleRows={exampleRows}
+        reverseExampleRows={reverseExampleRows}
+        otherUnits={otherUnits.map((unit) => ({ symbol: unit.symbol, name: unit.name }))}
+        navbarPresets={navbarPresets}
+        initialValue={initialValue}
+      />
+    </>
   );
 }
