@@ -29,6 +29,11 @@ import {
 } from "lucide-react";
 
 export default function WidgetBuilderPage() {
+  const builderCategories = React.useMemo(
+    () => categoryDisplayOrder.filter((cat) => cat !== "SI Unit Prefixes"),
+    [],
+  );
+
   const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {
     Length: <Ruler className="h-4 w-4 text-primary" aria-hidden="true" />,
     Mass: <Scale className="h-4 w-4 text-primary" aria-hidden="true" />,
@@ -48,8 +53,8 @@ export default function WidgetBuilderPage() {
   };
   const [selectedCategories, setSelectedCategories] = React.useState<Record<UnitCategory, boolean>>(() => {
     const initial = {} as Record<UnitCategory, boolean>;
-    categoryDisplayOrder.forEach((cat) => {
-      initial[cat] = true;
+    builderCategories.forEach((cat) => {
+      initial[cat as UnitCategory] = true;
     });
     return initial;
   });
@@ -76,17 +81,32 @@ export default function WidgetBuilderPage() {
     setSelectedUnits((prev) => ({ ...prev, [unitSymbol]: !prev[unitSymbol] }));
   };
 
-  const chosenCategories = categoryDisplayOrder.filter((cat) => selectedCategories[cat]);
+  const chosenCategories = builderCategories.filter((cat) => selectedCategories[cat as UnitCategory]);
   const chosenUnits = Object.keys(selectedUnits).filter((k) => selectedUnits[k]);
+
+  const effectiveUnits = React.useMemo(() => {
+    const finalUnits: string[] = [];
+    chosenCategories.forEach((cat) => {
+      const availableUnits = unitData[cat as UnitCategory].units;
+      const checked = availableUnits.filter((u) => selectedUnits[u.symbol]);
+      if (checked.length > 0) {
+        finalUnits.push(...checked.map((u) => u.symbol));
+      } else {
+        // None checked in this category → include all units for that category.
+        finalUnits.push(...availableUnits.map((u) => u.symbol));
+      }
+    });
+    return finalUnits;
+  }, [chosenCategories, selectedUnits]);
 
   const query = React.useMemo(() => {
     const params = new URLSearchParams();
     if (chosenCategories.length) params.set("categories", chosenCategories.join(","));
-    if (chosenUnits.length) params.set("units", chosenUnits.join(","));
+    if (effectiveUnits.length) params.set("units", effectiveUnits.join(","));
     if (width.trim()) params.set("width", width.trim());
     if (height.trim()) params.set("height", height.trim());
     return params.toString();
-  }, [chosenCategories, chosenUnits]);
+  }, [chosenCategories, effectiveUnits]);
 
   const embedBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com').replace(/\/$/, '');
   const iframeSrc = `${embedBaseUrl}/widget?${query}`;
@@ -134,16 +154,38 @@ export default function WidgetBuilderPage() {
             </CardHeader>
             <CardContent className="space-y-8">
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Categories</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Categories</h3>
+                <label className="flex items-center gap-2 text-xs text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={chosenCategories.length === builderCategories.length}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSelectedCategories((prev) => {
+                        const next = { ...prev };
+                        builderCategories.forEach((cat) => {
+                          next[cat as UnitCategory] = checked;
+                        });
+                        // Keep Length always selected
+                        next['Length'] = true;
+                        return next;
+                      });
+                    }}
+                    className="h-4 w-4"
+                  />
+                  <span className="font-semibold">All</span>
+                </label>
+              </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {categoryDisplayOrder.map((cat) => (
+                {builderCategories.map((cat) => (
                   <label
                     key={cat}
                     className="flex items-center gap-2 rounded-lg border border-border/50 px-3 py-2 text-sm text-foreground transition hover:border-primary/60"
                   >
                     <input
                       type="checkbox"
-                      checked={!!selectedCategories[cat]}
+                      checked={!!selectedCategories[cat as UnitCategory]}
                       onChange={() => toggleCategory(cat as UnitCategory)}
                       className="h-4 w-4"
                     />
