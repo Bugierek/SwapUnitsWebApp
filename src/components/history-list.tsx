@@ -71,6 +71,27 @@ const getHistoryCategoryLabel = (item: ConversionHistoryItem): string => {
 export const HistoryList = React.memo(function HistoryListComponent({ items, onHistorySelect, onClearHistory, className, isLoading }: HistoryListProps) {
     const { toast } = useToast(); 
     const [isClearDialogOpen, setIsClearDialogOpen] = React.useState(false);
+    const [highlightId, setHighlightId] = React.useState<string | null>(null);
+    const prevIdsRef = React.useRef<Set<string>>(new Set(items.map((i) => i.id)));
+
+    // Highlight newly added history entries (e.g., after copy in main app)
+    React.useEffect(() => {
+      const prev = prevIdsRef.current;
+      const next = new Set(items.map((i) => i.id));
+      let newId: string | null = null;
+      for (const id of next) {
+        if (!prev.has(id)) {
+          newId = id;
+          break;
+        }
+      }
+      prevIdsRef.current = next;
+      if (newId) {
+        setHighlightId(newId);
+        const timer = setTimeout(() => setHighlightId(null), 750);
+        return () => clearTimeout(timer);
+      }
+    }, [items]);
 
     const handleCopyHistoryItem = React.useCallback(async (item: ConversionHistoryItem) => {
         const textToCopy = `${formatHistoryNumber(item.fromValue)} ${item.fromUnit} → ${formatHistoryNumber(item.toValue)} ${item.toUnit}`;
@@ -169,12 +190,16 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                 {items.map((item) => {
                                     const categoryLabel = getHistoryCategoryLabel(item);
                                     const isSiPrefix = item.meta?.kind === 'si-prefix';
+                                    const isHighlight = highlightId === item.id;
                                     return (
                                     <li key={item.id} className="w-full">
-                                        <div className="group/history-item flex items-center gap-2 rounded-xl px-1 py-1 transition-colors">
+                                        <div className="group/history-item flex items-center gap-2 rounded-xl px-1 py-1 transition duration-500">
                                             <button
                                                 type="button"
-                                                className="flex flex-1 items-start gap-3 rounded-lg px-3 py-1.5 text-left text-[0.82rem] font-semibold text-foreground transition group-hover/history-item:bg-primary/10 focus:outline-none focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
+                                                className={cn(
+                                                  "flex flex-1 items-start gap-3 rounded-lg px-3 py-1.5 text-left text-[0.82rem] font-semibold text-foreground transition group-hover/history-item:bg-primary/10 focus:outline-none focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40",
+                                                  isHighlight && "bg-primary/10",
+                                                )}
                                                 onClick={() => onHistorySelect(item)}
                                                 aria-label={`Apply conversion: ${formatHistoryNumber(item.fromValue)} ${item.fromUnit} to ${formatHistoryNumber(item.toValue)} ${item.toUnit}`}
                                             >

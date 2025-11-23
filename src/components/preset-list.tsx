@@ -4,12 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { FavoriteItem } from '@/types'; 
 import { Star, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
 import { ResponsiveFavoriteLabel } from '@/components/responsive-favorite-label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,8 +39,27 @@ export const PresetList = React.memo(function PresetListComponent({
     isLoadingFavorites 
 }: PresetListProps) {
     const [isClearFavoritesDialogOpen, setIsClearFavoritesDialogOpen] = React.useState(false);
+    const [highlightId, setHighlightId] = React.useState<string | null>(null);
+    const prevIdsRef = React.useRef<Set<string>>(new Set(favorites.map(f => f.id)));
     const { toast } = useToast();
 
+    React.useEffect(() => {
+      const prev = prevIdsRef.current;
+      const next = new Set(favorites.map((f) => f.id));
+      let newId: string | null = null;
+      for (const id of next) {
+        if (!prev.has(id)) {
+          newId = id;
+          break;
+        }
+      }
+      prevIdsRef.current = next;
+      if (newId) {
+        setHighlightId(newId);
+        const timer = setTimeout(() => setHighlightId(null), 750);
+        return () => clearTimeout(timer);
+      }
+    }, [favorites]);
     const getFavoriteLabels = React.useCallback((fav: FavoriteItem) => {
         const trimmed = fav.name?.trim() ?? '';
         const full = trimmed.length > 0 ? trimmed : `${fav.fromUnit} → ${fav.toUnit}`;
@@ -124,9 +143,15 @@ export const PresetList = React.memo(function PresetListComponent({
                         <ul className="space-y-1">
                             {favorites.map((fav) => {
                                 const labels = getFavoriteLabels(fav);
+                                const isHighlight = highlightId === fav.id;
                                 return (
                                 <li key={fav.id} className="w-full">
-                                    <div className="group/fav-item flex items-center gap-2 rounded-xl px-1 py-1 transition-colors">
+                                    <div
+                                      className={cn(
+                                        "group/fav-item flex items-center gap-2 rounded-xl px-1 py-1 transition duration-500",
+                                        isHighlight && "bg-primary/10",
+                                      )}
+                                    >
                                         <Button
                                             type="button"
                                             variant="ghost"

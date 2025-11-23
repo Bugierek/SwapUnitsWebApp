@@ -2826,6 +2826,45 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
     return (
       <div className="relative">
+        {(onSaveFavoriteProp || hasToggleFavorites) && (
+          <div className="absolute right-3 top-3 z-[2]">
+            <button
+              type="button"
+              onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
+              disabled={finalSaveDisabled || showPlaceholder}
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-[hsl(var(--control-background))] text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent",
+              )}
+              aria-label={favoriteButtonLabel}
+            >
+              <Star
+                className={cn(
+                  'h-4 w-4 flex-shrink-0',
+                  activeFavorite
+                    ? 'fill-primary text-primary'
+                    : !finalSaveDisabled && !showPlaceholder
+                      ? 'text-primary'
+                      : 'text-muted-foreground',
+                )}
+              />
+            </button>
+          </div>
+        )}
+
+        {currentConversionPairUrl && (
+          <Link
+            href={currentConversionPairUrl}
+            className="group/details absolute right-3 bottom-3 flex h-8 flex-row-reverse items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 text-[11px] font-medium text-primary transition-all duration-400 hover:border-primary/60 hover:bg-primary/10"
+            aria-label="Open detailed conversion page"
+            style={{ zIndex: 2 }}
+          >
+            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] transition-all duration-400 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
+              Details
+            </span>
+          </Link>
+        )}
+
         <div
           className={cn(
             "group relative flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 pr-16 text-base font-semibold text-primary transition-colors duration-700 overflow-hidden sm:gap-4",
@@ -2833,18 +2872,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
           )}
         >
-          {currentConversionPairUrl && (
-            <Link
-              href={currentConversionPairUrl}
-              className="group/details absolute right-3 top-3 flex flex-row-reverse items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 py-1 text-[11px] font-medium text-primary transition-all duration-400 hover:border-primary/60 hover:bg-primary/10"
-              aria-label="Open detailed conversion page"
-            >
-              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] transition-all duration-400 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
-                Details
-              </span>
-            </Link>
-          )}
           <div className="flex flex-1 flex-col gap-2.5 text-left">
             <span className="truncate">
               {formatFromValue(Number(rhfValue), precisionMode)}
@@ -2859,7 +2886,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               <button
                 type="button"
                 onClick={handleCopyTextualResult}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
                 aria-label="Copy textual result to clipboard"
               >
                 {textCopyState === 'success' ? (
@@ -2874,21 +2901,6 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                   </>
                 )}
               </button>
-              {(onSaveFavoriteProp || hasToggleFavorites) && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
-                  disabled={finalSaveDisabled || showPlaceholder}
-                  className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2.5 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent",
-                  )}
-                  aria-label={favoriteButtonLabel}
-                >
-                  <Star className={cn('h-4 w-4', activeFavorite ? 'fill-primary text-primary' : (!finalSaveDisabled && !showPlaceholder) ? 'text-primary' : 'text-muted-foreground')} />
-                  <span>{activeFavorite ? 'Saved' : 'Add to favorites'}</span>
-                </Button>
-              )}
             </div>
           </div>
         </div>
