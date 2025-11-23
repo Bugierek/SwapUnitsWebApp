@@ -13,6 +13,11 @@ import { Copy as CopyIcon, Check as CheckIcon, RefreshCw, ChevronDown } from "lu
 type AllowedUnitsMap = Record<UnitCategory, { symbol: string; name: string }[]>;
 type UnitLookup = { symbol: string; name: string; category: UnitCategory };
 
+type UnitFilters = {
+  byCategory?: Map<UnitCategory, Set<string>>;
+  legacy?: Set<string> | null;
+};
+
 const parseParams = (search: URLSearchParams) => {
   const catParam = search.get("categories");
   const unitParam = search.get("units");
@@ -24,19 +29,49 @@ const parseParams = (search: URLSearchParams) => {
     .map((c) => c.trim())
     .filter((c): c is UnitCategory => c in unitData);
 
-  const units = new Set<string>();
+  const byCategory = new Map<UnitCategory, Set<string>>();
+  const legacyUnits = new Set<string>();
   if (unitParam) {
-    unitParam.split(",").forEach((u) => units.add(u.trim()));
+    unitParam.split(",").forEach((raw) => {
+      const u = raw.trim();
+      if (!u) return;
+      const colonIndex = u.indexOf(":");
+      if (colonIndex > 0) {
+        const cat = u.slice(0, colonIndex) as UnitCategory;
+        const sym = u.slice(colonIndex + 1);
+        if (cat && sym && (cat in unitData)) {
+          if (!byCategory.has(cat)) byCategory.set(cat, new Set());
+          byCategory.get(cat)?.add(sym);
+          return;
+        }
+      }
+      legacyUnits.add(u);
+    });
   }
 
-  return { categories, units: units.size ? units : null, finder, width, height };
+  return {
+    categories,
+    unitFilters: {
+      byCategory: byCategory.size ? byCategory : undefined,
+      legacy: legacyUnits.size ? legacyUnits : null,
+    } as UnitFilters,
+    finder,
+    width,
+    height,
+  };
 };
 
-const buildAllowedUnits = (cats: UnitCategory[], unitSet: Set<string> | null): AllowedUnitsMap => {
+const buildAllowedUnits = (cats: UnitCategory[], filters: UnitFilters): AllowedUnitsMap => {
   const map: AllowedUnitsMap = {} as AllowedUnitsMap;
   cats.forEach((cat) => {
     const all = unitData[cat]?.units ?? [];
-    const filtered = unitSet ? all.filter((u) => unitSet.has(u.symbol)) : all;
+    let filtered = all;
+    const catUnits = filters.byCategory?.get(cat);
+    if (catUnits) {
+      filtered = all.filter((u) => catUnits.has(u.symbol));
+    } else if (filters.legacy) {
+      filtered = all.filter((u) => filters.legacy?.has(u.symbol));
+    }
     if (filtered.length > 0) {
       map[cat] = filtered;
     }
@@ -69,8 +104,11 @@ const parseDimension = (input: string) => {
 
 export default function WidgetPage() {
   const search = useSearchParams();
-  const { categories, units, width: widthParam, height: heightParam } = React.useMemo(() => parseParams(search), [search]);
-  const allowedUnits = React.useMemo(() => buildAllowedUnits(categories, units), [categories, units]);
+  const { categories, unitFilters, width: widthParam, height: heightParam } = React.useMemo(() => parseParams(search), [search]);
+  const allowedUnits = React.useMemo(
+    () => buildAllowedUnits(categories, unitFilters),
+    [categories, unitFilters],
+  );
   const unitLookup = React.useMemo(() => buildUnitLookup(allowedUnits), [allowedUnits]);
 
   const availableCategories = React.useMemo(
@@ -91,7 +129,8 @@ export default function WidgetPage() {
   const [fromUnit, setFromUnit] = React.useState<string>(initialUnits[0]?.symbol ?? "");
   const [toUnit, setToUnit] = React.useState<string>(initialUnits[1]?.symbol ?? initialUnits[0]?.symbol ?? "");
   const [value, setValue] = React.useState("1");
-  const [copyState, setCopyState] = React.useState<"idle" | "success">("idle");
+  const [copyStateValue, setCopyStateValue] = React.useState<"idle" | "success">("idle");
+  const [copyStateFull, setCopyStateFull] = React.useState<"idle" | "success">("idle");
   const widthStyle = React.useMemo(() => parseDimension(widthParam), [widthParam]);
   const heightStyle = React.useMemo(() => parseDimension(heightParam), [heightParam]);
   const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
@@ -161,19 +200,33 @@ export default function WidgetPage() {
     });
   }, [category, fromUnit, toUnit, value, fxRates]);
 
-  const handleCopy = async () => {
+  const handleCopyValue = async () => {
     if (!result) return;
     try {
       await navigator.clipboard.writeText(`${formatNumber(result.value)} ${toUnit}`);
-      setCopyState("success");
-      setTimeout(() => setCopyState("idle"), 1200);
+      setCopyStateValue("success");
+      setTimeout(() => setCopyStateValue("idle"), 1200);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleCopyFull = async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${fromValueDisplay} ${fromUnitName} = ${formatNumber(result.value)} ${toUnitName}`,
+      );
+      setCopyStateFull("success");
+      setTimeout(() => setCopyStateFull("idle"), 1200);
     } catch {
       // ignore
     }
   };
 
   React.useEffect(() => {
-    setCopyState("idle");
+    setCopyStateValue("idle");
+    setCopyStateFull("idle");
   }, [value, fromUnit, toUnit, category]);
 
   const findUnit = (term: string) => {
@@ -187,6 +240,22 @@ export default function WidgetPage() {
       }) ?? null
     );
   };
+
+  const fromUnitName = React.useMemo(() => {
+    const scoped = category ? allowedUnits[category]?.find((u) => u.symbol === fromUnit)?.name : undefined;
+    if (scoped) return scoped;
+    return unitLookup.find((u) => u.symbol === fromUnit)?.name ?? fromUnit;
+  }, [category, allowedUnits, fromUnit, unitLookup]);
+
+  const toUnitName = React.useMemo(() => {
+    const scoped = category ? allowedUnits[category]?.find((u) => u.symbol === toUnit)?.name : undefined;
+    if (scoped) return scoped;
+    return unitLookup.find((u) => u.symbol === toUnit)?.name ?? toUnit;
+  }, [category, allowedUnits, toUnit, unitLookup]);
+  const fromValueDisplay = React.useMemo(() => {
+    const n = Number(value);
+    return Number.isFinite(n) ? formatNumber(n) : "";
+  }, [value]);
 
   return (
     <div className="min-h-screen bg-background px-4 py-5 text-foreground">
@@ -272,17 +341,30 @@ export default function WidgetPage() {
 
           <div className="space-y-1">
             <label className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">To</label>
-            <div className="flex overflow-hidden rounded-xl border border-primary/50 bg-primary/5 pr-1">
+            <div className="flex overflow-hidden rounded-xl border border-border/60 bg-card">
               <Input
                 value={result ? formatNumber(result.value) : ""}
                 readOnly
                 className="h-11 flex-1 rounded-none border-0 bg-transparent px-4 text-base font-semibold text-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                 placeholder="Result"
               />
+              <button
+                type="button"
+                onClick={handleCopyValue}
+                disabled={!result}
+                className="flex h-11 items-center border-l border-border/60 px-3 text-primary transition hover:bg-primary/10 disabled:opacity-50"
+                aria-label="Copy result value"
+              >
+                {copyStateValue === "success" ? (
+                  <CheckIcon className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                ) : (
+                  <CopyIcon className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
               <select
                 value={toUnit}
                 onChange={(e) => setToUnit(e.target.value)}
-                className="h-11 min-w-[104px] max-w-[168px] border-l border-primary/50 bg-primary/5 px-3 pr-8 text-sm"
+                className="h-11 min-w-[104px] max-w-[168px] border-l border-border/60 bg-card px-3 pr-8 text-sm"
               >
                 {categoryUnits.map((u) => (
                   <option key={u.symbol} value={u.symbol}>
@@ -294,13 +376,23 @@ export default function WidgetPage() {
           </div>
         </div>
 
+        <div className="rounded-xl border border-primary/60 bg-primary/5 px-4 py-3 text-sm text-foreground">
+          {result ? (
+            <span className="font-semibold">
+              {fromValueDisplay} {fromUnitName} = {formatNumber(result.value)} {toUnitName}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Enter a value to see the full result.</span>
+          )}
+        </div>
+
         <Button
           variant="outline"
           className="w-full rounded-full border-primary/50 px-4 py-3 text-primary hover:border-primary hover:bg-primary/10"
-          onClick={handleCopy}
+          onClick={handleCopyFull}
           disabled={!result}
         >
-          {copyState === "success" ? (
+          {copyStateFull === "success" ? (
             <>
               <CheckIcon className="h-4 w-4 text-emerald-500" /> Copied!
             </>

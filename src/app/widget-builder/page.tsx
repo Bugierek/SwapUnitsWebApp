@@ -29,10 +29,7 @@ import {
 } from "lucide-react";
 
 export default function WidgetBuilderPage() {
-  const builderCategories = React.useMemo(
-    () => categoryDisplayOrder.filter((cat) => cat !== "SI Unit Prefixes"),
-    [],
-  );
+  const builderCategories = React.useMemo(() => categoryDisplayOrder, []);
 
   const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {
     Length: <Ruler className="h-4 w-4 text-primary" aria-hidden="true" />,
@@ -60,11 +57,11 @@ export default function WidgetBuilderPage() {
   });
 
   const [selectedUnits, setSelectedUnits] = React.useState<Record<string, boolean>>(() => {
-    // Start with no units explicitly selected; empty means "include all units".
+    // Keyed as `${category}:${symbol}`; empty means "include all units" for that category.
     return {};
   });
   const [width, setWidth] = React.useState("100%");
-  const [height, setHeight] = React.useState("500px");
+  const [height, setHeight] = React.useState("520px");
 
   const toggleCategory = (cat: UnitCategory) => {
     setSelectedCategories((prev) => {
@@ -77,24 +74,21 @@ export default function WidgetBuilderPage() {
     });
   };
 
-  const toggleUnit = (unitSymbol: string) => {
-    setSelectedUnits((prev) => ({ ...prev, [unitSymbol]: !prev[unitSymbol] }));
+  const toggleUnit = (cat: UnitCategory, unitSymbol: string) => {
+    const key = `${cat}:${unitSymbol}`;
+    setSelectedUnits((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const chosenCategories = builderCategories.filter((cat) => selectedCategories[cat as UnitCategory]);
-  const chosenUnits = Object.keys(selectedUnits).filter((k) => selectedUnits[k]);
-
   const effectiveUnits = React.useMemo(() => {
     const finalUnits: string[] = [];
     chosenCategories.forEach((cat) => {
       const availableUnits = unitData[cat as UnitCategory].units;
-      const checked = availableUnits.filter((u) => selectedUnits[u.symbol]);
+      const checked = availableUnits.filter((u) => selectedUnits[`${cat}:${u.symbol}`]);
       if (checked.length > 0) {
-        finalUnits.push(...checked.map((u) => u.symbol));
-      } else {
-        // None checked in this category → include all units for that category.
-        finalUnits.push(...availableUnits.map((u) => u.symbol));
+        finalUnits.push(...checked.map((u) => `${cat}:${u.symbol}`));
       }
+      // If none are checked for this category, we send nothing; widget will include all units for that category by default.
     });
     return finalUnits;
   }, [chosenCategories, selectedUnits]);
@@ -215,13 +209,13 @@ export default function WidgetBuilderPage() {
                             key={u.symbol}
                             className={
                               "flex items-center gap-2 rounded border border-border/40 px-2 py-1 text-sm transition hover:border-primary/60" +
-                              (selectedUnits[u.symbol] ? " border-primary/60 bg-primary/5" : "")
+                              (selectedUnits[`${cat}:${u.symbol}`] ? " border-primary/60 bg-primary/5" : "")
                             }
                           >
                             <input
                               type="checkbox"
-                              checked={!!selectedUnits[u.symbol]}
-                              onChange={() => toggleUnit(u.symbol)}
+                              checked={!!selectedUnits[`${cat}:${u.symbol}`]}
+                              onChange={() => toggleUnit(cat as UnitCategory, u.symbol)}
                               className="h-4 w-4"
                             />
                             <span className="truncate">
