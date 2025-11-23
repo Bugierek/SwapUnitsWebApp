@@ -22,6 +22,7 @@ import { BookmarkButton } from '@/components/bookmark-button';
 import { UnitIcon } from '@/components/unit-icon';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ResponsiveFavoriteLabel } from '@/components/responsive-favorite-label';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +76,7 @@ export function SiteTopbar({
   presets = [],
   onPresetSelect,
 }: SiteTopbarProps) {
+  const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = React.useState(false);
   const [isHistoryConfirmOpen, setIsHistoryConfirmOpen] = React.useState(false);
   const [isFavoritesConfirmOpen, setIsFavoritesConfirmOpen] = React.useState(false);
@@ -86,13 +88,25 @@ export function SiteTopbar({
     clearHistory?.();
     setIsHistoryConfirmOpen(false);
     setIsSheetOpen(false);
-  }, [clearHistory]);
+    toast({
+      title: 'History cleared',
+      description: 'Your recent conversions were removed.',
+      variant: 'success',
+      duration: 3000,
+    });
+  }, [clearHistory, toast]);
 
   const handleConfirmClearFavorites = React.useCallback(() => {
     onClearAllFavorites?.();
     setIsFavoritesConfirmOpen(false);
     setIsSheetOpen(false);
-  }, [onClearAllFavorites]);
+    toast({
+      title: 'Favorites cleared',
+      description: 'Your saved favorites were removed.',
+      variant: 'success',
+      duration: 3000,
+    });
+  }, [onClearAllFavorites, toast]);
 
   const getFavoriteLabels = React.useCallback((fav: FavoriteItem) => {
     const trimmed = fav.name?.trim() ?? '';
@@ -156,7 +170,7 @@ export function SiteTopbar({
                   </SheetTitle>
                 </SheetHeader>
 
-                <div className="space-y-6 px-5 pb-16 pt-5 text-sm">
+                <div className="space-y-6 px-5 pb-24 pt-5 text-sm">
                   <section className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 font-semibold text-foreground">
@@ -184,7 +198,7 @@ export function SiteTopbar({
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleConfirmClearHistory}>Clear history</AlertDialogAction>
+                              <AlertDialogAction onClick={handleConfirmClearHistory}>Yes, clear</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -265,14 +279,14 @@ export function SiteTopbar({
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Remove all favorites?</AlertDialogTitle>
+                              <AlertDialogTitle>Clear favorites?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This deletes every saved conversion from your favorites list. This action cannot be undone.
+                                This will remove all saved conversions from your favorites list. This action cannot be undone.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={handleConfirmClearFavorites}>Remove</AlertDialogAction>
+                              <AlertDialogAction onClick={handleConfirmClearFavorites}>Yes, clear</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>

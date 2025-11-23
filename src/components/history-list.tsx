@@ -129,13 +129,19 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                   </AlertDialogCancel>
                                   <AlertDialogAction
                                     className="rounded-lg"
-                                    onClick={() => {
-                                      onClearHistory?.();
-                                      setIsClearDialogOpen(false);
-                                    }}
-                                  >
-                                    Yes, clear
-                                  </AlertDialogAction>
+                                      onClick={() => {
+                                        onClearHistory?.();
+                                        setIsClearDialogOpen(false);
+                                        toast({
+                                          title: 'History cleared',
+                                          description: 'Your recent conversions were removed.',
+                                          variant: 'success',
+                                          duration: 3000,
+                                        });
+                                      }}
+                                    >
+                                      Yes, clear
+                                    </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>

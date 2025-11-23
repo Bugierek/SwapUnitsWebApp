@@ -17,8 +17,8 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      // Changed positioning: Use fixed, center-center relative to viewport.
-      "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] flex max-h-screen w-full flex-col p-4 md:max-w-[420px]",
+      // Centered in viewport, above sheets/menus. Pointer events disabled so overlays don't block clicks.
+      "pointer-events-none fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2000] flex max-h-screen w-full max-w-[420px] flex-col gap-3 p-0",
       className
     )}
     {...props}
@@ -29,17 +29,17 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 const toastVariants = cva(
   // Base styles: Removed flex properties. The container is now a simple block element.
   // Layout is handled entirely within toaster.tsx, allowing for custom structures.
-  "group pointer-events-auto relative w-full overflow-hidden rounded-md border shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative w-full overflow-hidden rounded-md border shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full bg-card text-foreground",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground", // Padding is applied in toaster.tsx
+        default: "border border-border/60 bg-card text-foreground", // Padding is applied in toaster.tsx
         destructive:
-          "destructive group border-destructive bg-destructive text-destructive-foreground", // Padding is applied in toaster.tsx
-        success: // Orange border, background is handled in toaster.tsx
-          "success group border-accent",
-        confirmation: // Green border, background is handled in toaster.tsx
-          "confirmation group border-secondary",
+          "destructive group border-red-500 bg-destructive text-destructive-foreground", // Padding is applied in toaster.tsx
+        success: // Success (green)
+          "success group border-emerald-500",
+        confirmation: // Treat confirmation as success (green)
+          "confirmation group border-emerald-500",
       },
     },
     defaultVariants: {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { FavoriteItem } from '@/types'; 
 import { Star, X } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { UnitIcon } from './unit-icon';
 import { cn } from "@/lib/utils";
 import { Progress } from '@/components/ui/progress';
@@ -38,6 +39,7 @@ export const PresetList = React.memo(function PresetListComponent({
     isLoadingFavorites 
 }: PresetListProps) {
     const [isClearFavoritesDialogOpen, setIsClearFavoritesDialogOpen] = React.useState(false);
+    const { toast } = useToast();
 
     const getFavoriteLabels = React.useCallback((fav: FavoriteItem) => {
         const trimmed = fav.name?.trim() ?? '';
@@ -72,7 +74,7 @@ export const PresetList = React.memo(function PresetListComponent({
                                                     <AlertDialog open={isClearFavoritesDialogOpen} onOpenChange={setIsClearFavoritesDialogOpen}>
                                                         <AlertDialogContent className="rounded-2xl border border-border/60 bg-card shadow-xl">
                                                             <AlertDialogHeader>
-                                                                <AlertDialogTitle>Clear all favorites?</AlertDialogTitle>
+                                                                <AlertDialogTitle>Clear favorites?</AlertDialogTitle>
                                                                 <AlertDialogDescription>
                                                                     This will remove all saved favorite conversions. This action cannot be undone.
                                                                 </AlertDialogDescription>
@@ -86,6 +88,12 @@ export const PresetList = React.memo(function PresetListComponent({
                                                                     onClick={() => {
                                                                         onClearAllFavorites?.();
                                                                         setIsClearFavoritesDialogOpen(false);
+                                                                        toast({
+                                                                          title: 'Favorites cleared',
+                                                                          description: 'Your saved favorites were removed.',
+                                                                          variant: 'success',
+                                                                          duration: 3000,
+                                                                        });
                                                                     }}
                                                                 >
                                                                     Yes, clear

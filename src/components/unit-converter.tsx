@@ -3254,7 +3254,7 @@ return (
                         </div>
                         <div
                           ref={toFieldRef}
-                          className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-secondary/60 shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background"
+                          className="grid min-w-0 grid-cols-[minmax(0,1.5fr)_auto] items-stretch rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-sm transition focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25 focus-within:ring-offset-2 focus-within:ring-offset-background"
                         >
                           <div
                             className="flex items-stretch border-r border-border/60"
@@ -3268,7 +3268,7 @@ return (
                               readOnly
                               value={showPlaceholder ? '-' : formattedResultString}
                               className={cn(
-                                'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+                                'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
                                 showPlaceholder && 'text-muted-foreground',
                               )}
                               onFocus={() => setToFieldFocused(true)}
@@ -3324,7 +3324,7 @@ return (
                                       <button
                                         ref={toTriggerRef}
                                         type="button"
-                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
                                         style={{
                                           width: toTriggerWidth ? `${toTriggerWidth}px` : undefined,
                                           maxWidth: '100%',
