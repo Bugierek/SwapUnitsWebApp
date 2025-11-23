@@ -79,6 +79,8 @@ export function SiteTopbar({
   const [isHistoryConfirmOpen, setIsHistoryConfirmOpen] = React.useState(false);
   const [isFavoritesConfirmOpen, setIsFavoritesConfirmOpen] = React.useState(false);
   const LABEL_CHAR_LIMIT = 36;
+  const touchStartXRef = React.useRef<number | null>(null);
+  const SWIPE_THRESHOLD = 50;
 
   const handleConfirmClearHistory = React.useCallback(() => {
     clearHistory?.();
@@ -119,8 +121,9 @@ export function SiteTopbar({
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="Open navigation"
+                aria-label={isSheetOpen ? "Close navigation" : "Open navigation"}
                 className="xl:hidden rounded-full border border-border/60 bg-[hsl(var(--card))]/90 text-foreground transition hover:bg-[hsl(var(--card))] dark:bg-[hsl(var(--card))]/70 dark:hover:bg-[hsl(var(--card))]/90"
+                onClick={() => setIsSheetOpen((prev) => !prev)}
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -130,6 +133,20 @@ export function SiteTopbar({
               className="w-full max-w-[360px] border-r border-border/60 bg-background/95 p-0 sm:max-w-[400px]"
               onInteractOutside={() => setIsSheetOpen(false)}
               onEscapeKeyDown={() => setIsSheetOpen(false)}
+              onTouchStart={(e) => {
+                touchStartXRef.current = e.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(e) => {
+                const startX = touchStartXRef.current;
+                const endX = e.changedTouches[0]?.clientX ?? null;
+                if (startX !== null && endX !== null) {
+                  const deltaX = endX - startX;
+                  if (deltaX <= -SWIPE_THRESHOLD) {
+                    setIsSheetOpen(false);
+                  }
+                }
+                touchStartXRef.current = null;
+              }}
             >
               <ScrollArea className="h-full">
                 <SheetHeader className="border-b border-border/60 px-5 py-4">
