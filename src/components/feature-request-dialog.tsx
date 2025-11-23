@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { Hand } from 'lucide-react';
 
 export function FeatureRequestDialog() {
   const [isLoading, setIsLoading] = React.useState(false);
@@ -75,6 +76,7 @@ export function FeatureRequestDialog() {
           size="sm"
           className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
         >
+          <Hand className="h-4 w-4" aria-hidden="true" />
           Request Conversion Pair
         </Button>
       </DialogTrigger>

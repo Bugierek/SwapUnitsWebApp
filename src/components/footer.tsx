@@ -2,7 +2,7 @@
 'use client'; // Convert to client component for useEffect and useState
 
 import * as React from 'react';
-import { Github } from 'lucide-react';
+import { Github, ArrowUpRight } from 'lucide-react';
 import { CryptoTipDialog } from '@/components/crypto-tip-dialog';
 import { FeatureRequestDialog } from '@/components/feature-request-dialog';
 
@@ -55,19 +55,20 @@ export function Footer() {
               <CryptoTipDialog />
               <FeatureRequestDialog />
               <a
+                href="/widget-builder"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3.5 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+              >
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                Build widget
+              </a>
+              <a
                 href="https://github.com/Bugierek/SwapUnitsWebApp"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3.5 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
               >
                 <Github className="h-4 w-4" aria-hidden="true" />
                 GitHub
-              </a>
-              <a
-                href="/widget-builder"
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
-              >
-                Build widget
               </a>
             </div>
             <p>
