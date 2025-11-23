@@ -428,23 +428,16 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               {activeTo.name}
             </span>
           </div>
-          {/* Result field with inline unit at the end */}
-          <div className="flex h-12 items-center gap-2">
-            <div className="flex h-full flex-1 items-center rounded-xl border border-border/60 bg-background">
-              <div className="flex-1 px-3 text-lg font-semibold text-foreground">
-                {parsedInput === null ? '—' : formattedResult?.formatted ?? '—'}
-              </div>
-              <div className="flex items-center justify-center px-3 text-sm font-semibold text-muted-foreground border-l border-border/60">
-                {activeTo.symbol}
-              </div>
+          {/* Result field with inline copy and unit */}
+          <div className="flex h-12 items-center rounded-xl border border-border/60 bg-background">
+            <div className="flex-1 px-3 text-lg font-semibold text-foreground">
+              {parsedInput === null ? '—' : formattedResult?.formatted ?? '—'}
             </div>
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-xl border-border/60"
               onClick={handleCopy}
               disabled={parsedInput === null}
+              className="flex h-full items-center border-l border-border/60 px-3 text-primary transition hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent"
               aria-label="Copy converted result"
             >
               {copyState === 'success' ? (
@@ -452,7 +445,10 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               ) : (
                 <Copy className="h-4 w-4" aria-hidden="true" />
               )}
-            </Button>
+            </button>
+            <div className="flex items-center justify-center border-l border-border/60 px-3 text-sm font-semibold text-muted-foreground">
+              {activeTo.symbol}
+            </div>
           </div>
         </div>
       </div>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
 import type { CategoryInfo } from '@/lib/category-info';
-import type { ConversionHistoryItem, Preset, UnitCategory } from '@/types';
+import type { ConversionHistoryItem, Preset, UnitCategory, FavoriteItem } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,7 @@ import { PairConverter, PairConverterHandle } from '@/components/pair-converter'
 import { Footer } from '@/components/footer';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { useConversionHistory } from '@/hooks/use-conversion-history';
+import { useFavorites } from '@/hooks/use-favorites';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useToast } from '@/hooks/use-toast';
 import { formatConversionValue } from '@/lib/number-format';
@@ -94,8 +95,18 @@ export function ConversionPairPageContent({
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
+  const { favorites, isLoadingFavorites } = useFavorites();
   const pairConverterRef = React.useRef<PairConverterHandle>(null);
   const { toast } = useToast();
+
+  const navigateToPair = React.useCallback(
+    (category: UnitCategory, from: string, to: string, value?: number | string | null) => {
+      const url = buildConversionPairUrl(category, from, to);
+      const qs = value !== undefined && value !== null ? `?value=${encodeURIComponent(String(value))}` : '';
+      router.push(`${url}${qs}`);
+    },
+    [router],
+  );
 
   const handleHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
     if (item.meta?.kind === 'si-prefix') {
@@ -107,17 +118,8 @@ export function ConversionPairPageContent({
       router.push(`${item.meta.route}?${params.toString()}`);
       return;
     }
-
-    if (!pairConverterRef.current) return;
-    const applied = pairConverterRef.current.applyHistorySelect(item);
-    if (!applied) {
-      toast({
-        title: 'Pair mismatch',
-        description: 'This history entry uses different units. Open it on the main converter to edit.',
-        variant: 'default',
-      });
-    }
-  }, [router, toast]);
+    navigateToPair(item.category as UnitCategory, item.fromUnit, item.toUnit, item.fromValue);
+  }, [navigateToPair, router]);
 
   const handleCopyHistoryItem = React.useCallback(async (item: ConversionHistoryItem) => {
     const textToCopy = `${formatHistoryNumber(item.fromValue)} ${item.fromUnit} → ${formatHistoryNumber(item.toValue)} ${item.toUnit}`;
@@ -150,6 +152,10 @@ export function ConversionPairPageContent({
     addHistoryItem(payload);
   }, [addHistoryItem]);
 
+  const handleFavoriteSelect = React.useCallback((fav: FavoriteItem) => {
+    navigateToPair(fav.category, fav.fromUnit, fav.toUnit, 1);
+  }, [navigateToPair]);
+
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_rgba(79,70,229,0.12),transparent_55%),_radial-gradient(ellipse_at_bottom,_rgba(14,165,233,0.08),transparent_60%)]" />
@@ -161,6 +167,9 @@ export function ConversionPairPageContent({
         onHistorySelect={handleHistorySelect}
         clearHistory={clearHistory}
         onCopyHistoryItem={handleCopyHistoryItem}
+        favorites={favorites}
+        isLoadingFavorites={isLoadingFavorites}
+        onFavoriteSelect={handleFavoriteSelect}
       />
 
       <main className="flex-1">
