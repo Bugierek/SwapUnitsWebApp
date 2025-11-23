@@ -4,7 +4,7 @@ import type { UnitCategory } from '@/types';
 
 const delimiter = '-to-';
 
-const normalizeUnitForSlug = (unit: string): string =>
+export const normalizeUnitForSlug = (unit: string): string =>
   unit
     .replace(/µ/g, 'u')
     .replace(/°/g, 'deg')

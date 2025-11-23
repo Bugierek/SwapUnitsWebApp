@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getCategoryInfoBySlug } from '@/lib/category-info';
-import { listAllConversionPairs, parseConversionPairSlug } from '@/lib/conversion-pairs';
+import { listAllConversionPairs, parseConversionPairSlug, normalizeUnitForSlug } from '@/lib/conversion-pairs';
 import { unitData, getUnitsForCategory, getPresetsForCategory } from '@/lib/unit-data';
 import { convertNumericValue } from '@/lib/conversion-math';
 import type { UnitCategory } from '@/types';
@@ -148,9 +148,11 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
   const { fromSymbol, toSymbol } = pair;
   const unitEntry = unitData[categoryInfo.category];
   const units = unitEntry?.units ?? [];
+  const normalizeForCompare = (val: string) => normalizeUnitForSlug(val).toLowerCase();
   const matchSymbol = (sym: string) =>
     units.find((unit) => unit.symbol === sym) ??
-    units.find((unit) => unit.symbol.toLowerCase() === sym.toLowerCase());
+    units.find((unit) => unit.symbol.toLowerCase() === sym.toLowerCase()) ??
+    units.find((unit) => normalizeForCompare(unit.symbol) === normalizeForCompare(sym));
 
   const fromUnitDetails = matchSymbol(fromSymbol);
   const toUnitDetails = matchSymbol(toSymbol);
@@ -159,10 +161,14 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
     notFound();
   }
 
+  // Use the canonical symbols from our data so calculations resolve (e.g., µ-prefixed units).
+  const resolvedFromSymbol = fromUnitDetails.symbol;
+  const resolvedToSymbol = toUnitDetails.symbol;
+
   const sampleInputs = buildSampleValues(categoryInfo.category);
   const exampleRows = sampleInputs
     .map((sample) => {
-      const converted = convertNumericValue(categoryInfo.category, fromSymbol, toSymbol, sample);
+      const converted = convertNumericValue(categoryInfo.category, resolvedFromSymbol, resolvedToSymbol, sample);
       if (converted === null) return null;
       return {
         input: sample,
@@ -174,7 +180,7 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
 
   const reverseExampleRows = sampleInputs
     .map((sample) => {
-      const converted = convertNumericValue(categoryInfo.category, toSymbol, fromSymbol, sample);
+      const converted = convertNumericValue(categoryInfo.category, resolvedToSymbol, resolvedFromSymbol, sample);
       if (converted === null) return null;
       return {
         input: sample,
@@ -189,15 +195,15 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
   );
 
   const navbarPresets = getPresetsForCategory(categoryInfo.category).slice(0, 12);
-  const formulaInsight = formulaDescription(categoryInfo.category, fromSymbol, toSymbol);
+  const formulaInsight = formulaDescription(categoryInfo.category, resolvedFromSymbol, resolvedToSymbol);
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: 'Home', url: '/' },
     { name: categoryInfo.title, url: `/measurements/${categorySlug}` },
-    { name: `${fromSymbol} to ${toSymbol}`, url: `/conversions/${categorySlug}/${pairSlug}` },
+    { name: `${resolvedFromSymbol} to ${resolvedToSymbol}`, url: `/conversions/${categorySlug}/${pairSlug}` },
   ]);
 
-  const faqJsonLd = buildFaqJsonLd(defaultFaqForPair(fromSymbol, toSymbol, categoryInfo.category));
+  const faqJsonLd = buildFaqJsonLd(defaultFaqForPair(resolvedFromSymbol, resolvedToSymbol, categoryInfo.category));
 
   return (
     <>
@@ -205,10 +211,10 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <ConversionPairPageContent
         categoryInfo={categoryInfo}
-        fromSymbol={fromSymbol}
-        toSymbol={toSymbol}
-        fromUnit={{ symbol: fromSymbol, name: fromUnitDetails.name }}
-        toUnit={{ symbol: toSymbol, name: toUnitDetails.name }}
+        fromSymbol={resolvedFromSymbol}
+        toSymbol={resolvedToSymbol}
+        fromUnit={{ symbol: resolvedFromSymbol, name: fromUnitDetails.name }}
+        toUnit={{ symbol: resolvedToSymbol, name: toUnitDetails.name }}
         formulaInsight={formulaInsight}
         exampleRows={exampleRows}
         reverseExampleRows={reverseExampleRows}

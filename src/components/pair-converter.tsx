@@ -402,7 +402,17 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               id="pair-converter-value"
               name="pair-converter-value"
               value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
+              onChange={(event) => {
+                const raw = event.target.value;
+                if (
+                  raw === '' ||
+                  raw === '-' ||
+                  /^-?\d*\.?\d*([eE][-+]?\d*)?$/.test(raw)
+                ) {
+                  setInputValue(raw);
+                  return;
+                }
+              }}
               placeholder={`Enter ${activeFrom.symbol}`}
               inputMode="decimal"
               enterKeyHint="done"
