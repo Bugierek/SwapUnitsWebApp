@@ -222,12 +222,28 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   },
   ref,
 ) {
-  const defaultCategory = initialCategory as UnitCategory;
+  const randomizedDefaults = React.useMemo(() => {
+    // Only randomize when caller is using the standard defaults (no overrides)
+    if (initialFromUnit || initialToUnit) return null;
+    if (initialCategory && initialCategory !== 'Mass') return null;
+    const candidates = categoryDisplayOrder.filter((cat) => cat !== 'SI Prefixes');
+    if (!candidates.length) return null;
+    const category = candidates[Math.floor(Math.random() * candidates.length)] as UnitCategory;
+    const units = getUnitsForCategory(category);
+    if (!units.length) return null;
+    const from = units[Math.floor(Math.random() * units.length)].symbol;
+    const to = units.find((u) => u.symbol !== from)?.symbol ?? from;
+    return { category, from, to };
+  }, [initialCategory, initialFromUnit, initialToUnit]);
+
+  const defaultCategory = (randomizedDefaults?.category ?? initialCategory) as UnitCategory;
   const defaultUnits = getUnitsForCategory(defaultCategory);
-  const resolvedFromUnit = initialFromUnit ?? defaultUnits[0]?.symbol ?? '';
-  const resolvedToUnit = initialToUnit
-    ?? defaultUnits.find((unit) => unit.symbol !== resolvedFromUnit)?.symbol
-    ?? resolvedFromUnit;
+  const resolvedFromUnit = initialFromUnit ?? randomizedDefaults?.from ?? defaultUnits[0]?.symbol ?? '';
+  const resolvedToUnit =
+    initialToUnit ??
+    randomizedDefaults?.to ??
+    defaultUnits.find((unit) => unit.symbol !== resolvedFromUnit)?.symbol ??
+    resolvedFromUnit;
   const resolvedValue = Number.isFinite(initialValue) ? initialValue : 1;
 
   const [selectedCategoryLocal, setSelectedCategoryLocal] = React.useState<UnitCategory | ''>(defaultCategory);
