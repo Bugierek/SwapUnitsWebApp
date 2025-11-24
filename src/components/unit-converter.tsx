@@ -58,6 +58,7 @@ import { getConversionSources } from '@/lib/conversion-sources';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { UnitIcon } from '@/components/unit-icon';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -958,7 +959,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                         isActiveCategory && 'bg-muted/40',
                       )}
                     >
-                      <span className="flex-1">{option.title}</span>
+                      <span className="flex flex-1 items-center gap-2">
+                        <UnitIcon category={option.value as UnitCategory} className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                        {option.title}
+                      </span>
                       <ChevronRight className="h-4 w-4 opacity-70" aria-hidden="true" />
                     </DropdownMenuItem>
                   );
@@ -1088,7 +1092,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                       isActiveCategory && 'font-semibold text-primary',
                     )}
                   >
-                    <span>{option.title}</span>
+                    <span className="flex items-center gap-2">
+                      <UnitIcon category={option.value as UnitCategory} className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      {option.title}
+                    </span>
                     <ChevronRight
                       className={cn(
                         'h-4 w-4 transition-transform',
