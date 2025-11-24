@@ -341,7 +341,7 @@ export default function WidgetPage() {
 
           <div className="space-y-1">
             <label className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">To</label>
-            <div className="flex overflow-hidden rounded-xl border border-border/60 bg-card">
+            <div className="flex overflow-hidden rounded-xl border border-border/60 bg-card pr-1">
               <Input
                 value={result ? formatNumber(result.value) : ""}
                 readOnly
@@ -364,7 +364,7 @@ export default function WidgetPage() {
               <select
                 value={toUnit}
                 onChange={(e) => setToUnit(e.target.value)}
-                className="h-11 min-w-[104px] max-w-[168px] border-l border-border/60 bg-card px-3 pr-8 text-sm"
+                className="h-11 min-w-[104px] max-w-[168px] rounded-none border-l border-border/60 bg-card px-3 pr-8 text-sm"
               >
                 {categoryUnits.map((u) => (
                   <option key={u.symbol} value={u.symbol}>
