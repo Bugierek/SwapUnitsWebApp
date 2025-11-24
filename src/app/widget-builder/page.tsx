@@ -229,7 +229,7 @@ export default function WidgetBuilderPage() {
               <p className="text-xs text-muted-foreground">
                 Leave all unchecked to include every unit in the selected categories. Checkboxes narrow the list.
               </p>
-              <div className="max-h-80 space-y-3 overflow-y-auto rounded-lg border border-border/50 p-3">
+              <div className="space-y-3 overflow-y-auto rounded-lg border border-border/50 p-3" style={{ maxHeight: '29em' }}>
                 {categoryDisplayOrder
                   .filter((cat) => selectedCategories[cat])
                   .map((cat) => (
