@@ -29,6 +29,7 @@ import {
   Info,
   Search,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -252,6 +253,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const prefersTouch = useIsCoarsePointer();
   const isTouch = prefersTouch;
   const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const router = useRouter();
   const fromTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const toTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const [abbreviateFromTrigger, setAbbreviateFromTrigger] = React.useState(false);
@@ -894,12 +896,24 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 </div>
                 {filteredCategories.map(({ option }) => {
                   const isActiveCategory = option.value === (menuCategory ?? defaultOpenCategory);
+                  const handleCategoryClick = () => {
+                    if (isTouch) {
+                      setMenuCategory(option.value);
+                      return;
+                    }
+                    if (option.href) {
+                      setMenuCategory(option.value);
+                      setFromMenuOpen(false);
+                      setToMenuOpen(false);
+                      router.push(option.href);
+                    }
+                  };
                   return (
                     <DropdownMenuItem
                       key={`${side}-${option.value}`}
                       onSelect={(event) => {
                         event.preventDefault();
-                        setMenuCategory(option.value);
+                        handleCategoryClick();
                       }}
                       onMouseEnter={() => setMenuCategory(option.value)}
                       onFocus={() => setMenuCategory(option.value)}
@@ -910,7 +924,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                         isActiveCategory && 'bg-muted/40',
                       )}
                     >
-                      <span>{option.title}</span>
+                      <span className="flex-1">{option.title}</span>
                       <ChevronRight className="h-4 w-4 opacity-70" aria-hidden="true" />
                     </DropdownMenuItem>
                   );
