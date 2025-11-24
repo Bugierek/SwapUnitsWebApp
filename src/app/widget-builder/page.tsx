@@ -14,6 +14,7 @@ import { buildConversionPairUrl } from "@/lib/conversion-pairs";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight, Copy } from "lucide-react";
 import { UnitIcon } from "@/components/unit-icon";
+import { Separator } from "@/components/ui/separator";
 
 export default function WidgetBuilderPage() {
   const router = useRouter();
@@ -174,14 +175,14 @@ export default function WidgetBuilderPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-[3.2fr_2.3fr] xl:grid-cols-[3.6fr_2.6fr]">
-          <Card className="border-border/60 bg-card/90">
-            <CardHeader>
-              <CardTitle>Configure</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8">
+            <Card className="border-border/60 bg-card/90">
+              <CardHeader>
+                <CardTitle>Configure</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-10">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Categories</h3>
+                <h3 className="text-[0.85rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Categories</h3>
                 <label className="flex items-center gap-2 text-xs text-foreground">
                   <input
                     type="checkbox"
@@ -224,8 +225,10 @@ export default function WidgetBuilderPage() {
               </div>
             </div>
 
+            <Separator className="border-border/60" />
+
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Units (optional)</h3>
+              <h3 className="text-[0.85rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Units (optional)</h3>
               <p className="text-xs text-muted-foreground">
                 Leave all unchecked to include every unit in the selected categories. Checkboxes narrow the list.
               </p>
@@ -264,8 +267,10 @@ export default function WidgetBuilderPage() {
               </div>
             </div>
 
+            <Separator className="border-border/60" />
+
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Widget size</h3>
+              <h3 className="text-[0.85rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Widget size</h3>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 text-sm text-foreground">
                   Width
@@ -281,7 +286,7 @@ export default function WidgetBuilderPage() {
         </Card>
 
         <div className="flex flex-col gap-4">
-          <Card className="border-border/60 bg-card/90">
+          <Card className="border-border/60 bg-card/90 md:min-h-[360px]">
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>Embed code</CardTitle>
@@ -314,7 +319,7 @@ export default function WidgetBuilderPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Textarea value={iframeCode} readOnly className="h-40 text-xs font-mono" />
+              <Textarea value={iframeCode} readOnly className="h-48 md:h-64 text-xs font-mono" />
               <p className="text-xs text-muted-foreground">Powered by SwapUnits</p>
             </CardContent>
           </Card>
@@ -323,7 +328,7 @@ export default function WidgetBuilderPage() {
             <CardHeader>
               <CardTitle>Preview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-5">
               {(() => {
                 const widthValue = normalizedWidth;
                 const pxMatch = widthValue.match(/^(\d+(?:\.\d+)?)px$/);
