@@ -601,6 +601,24 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     const label = side === 'from' ? 'From unit' : 'To unit';
     const onUnitSelect =
       side === 'from' ? handleFromUnitMenuSelect : handleToUnitMenuSelect;
+    const listRef = side === 'from' ? fromMenuListRef : toMenuListRef;
+
+    const scrollCategoryIntoView = (categoryValue: UnitCategory) => {
+      const listEl = listRef.current;
+      if (!listEl) return;
+      const target = listEl.querySelector<HTMLElement>(`[data-touch-cat="${side}-${categoryValue}"]`);
+      if (!target) return;
+      const top = target.offsetTop;
+      const bottom = top + target.offsetHeight;
+      const viewTop = listEl.scrollTop;
+      const viewBottom = viewTop + listEl.clientHeight;
+      if (top < viewTop + 32 || bottom > viewBottom - 140) {
+        listEl.scrollTo({
+          top: Math.max(0, top - 24),
+          behavior: 'smooth',
+        });
+      }
+    };
 
     const normalizeSearchString = (value: string, options: { compact?: boolean } = {}) => {
       const compact = options.compact ?? false;
@@ -853,8 +871,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     const menuMaxHeight = side === 'from' ? fromMenuMaxHeight : toMenuMaxHeight;
     const computedMaxHeight =
       menuMaxHeight !== null ? `${menuMaxHeight}px` : 'min(calc(100vh - 120px), 480px)';
-    const touchContentMaxHeight = 'min(calc(100vh - 140px), 420px)';
-    const touchListMaxHeight = 'min(calc(100vh - 180px), 360px)';
+    const touchContentMaxHeight = 'min(calc(100vh - 200px), 420px)';
+    const touchListMaxHeight = 'min(calc(100vh - 240px), 360px)';
     const listMaxHeight =
       menuMaxHeight !== null
         ? `${Math.max(menuMaxHeight - 120, 220)}px`
@@ -1026,7 +1044,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           <div
             ref={side === 'from' ? fromMenuListRef : toMenuListRef}
             onScroll={(e) => updateMenuScrollState(side, e.currentTarget)}
-            className="overflow-y-auto hide-scrollbar pt-3 pb-3"
+            className="overflow-y-auto hide-scrollbar pt-3 pb-6"
             style={{ maxHeight: isTouch ? touchListMaxHeight : computedMaxHeight, scrollbarWidth: 'none' }}
           >
             {filteredCategories.map(({ option, units }) => {
@@ -1037,13 +1055,17 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 option.value === defaultOpenCategory;
 
               return (
-                <div key={`${side}-${option.value}`} className="flex flex-col">
+                <div key={`${side}-${option.value}`} className="flex flex-col" data-touch-cat={`${side}-${option.value}`}>
                   <DropdownMenuItem
                     onSelect={(event) => {
                       event.preventDefault();
-                      setMenuCategory((current) =>
-                        current === option.value ? null : option.value,
-                      );
+                      setMenuCategory((current) => {
+                        const next = current === option.value ? null : option.value;
+                        if (next) {
+                          scrollCategoryIntoView(next);
+                        }
+                        return next;
+                      });
                     }}
                     className={cn(
                       'flex items-center justify-between gap-2',
