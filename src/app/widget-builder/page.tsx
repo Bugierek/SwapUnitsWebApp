@@ -12,25 +12,8 @@ import { useConversionHistory } from "@/hooks/use-conversion-history";
 import { useFavorites } from "@/hooks/use-favorites";
 import { buildConversionPairUrl } from "@/lib/conversion-pairs";
 import { useRouter } from "next/navigation";
-import {
-  ArrowUpRight,
-  Copy,
-  Ruler,
-  Scale,
-  Thermometer,
-  Clock3,
-  Gauge,
-  Square,
-  Box,
-  Zap,
-  Wind,
-  Fuel,
-  HardDrive,
-  Activity,
-  Bitcoin,
-  Coins,
-  Sigma,
-} from "lucide-react";
+import { ArrowUpRight, Copy } from "lucide-react";
+import { UnitIcon } from "@/components/unit-icon";
 
 export default function WidgetBuilderPage() {
   const router = useRouter();
@@ -83,23 +66,7 @@ export default function WidgetBuilderPage() {
 
   const builderCategories = React.useMemo(() => categoryDisplayOrder, []);
 
-  const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {
-    Length: <Ruler className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Mass: <Scale className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Temperature: <Thermometer className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Time: <Clock3 className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Pressure: <Gauge className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Area: <Square className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Volume: <Box className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Energy: <Zap className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Speed: <Wind className="h-4 w-4 text-primary" aria-hidden="true" />,
-    "Fuel Economy": <Fuel className="h-4 w-4 text-primary" aria-hidden="true" />,
-    "Data Storage": <HardDrive className="h-4 w-4 text-primary" aria-hidden="true" />,
-    "Data Transfer Rate": <Activity className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Bitcoin: <Bitcoin className="h-4 w-4 text-primary" aria-hidden="true" />,
-    Currency: <Coins className="h-4 w-4 text-primary" aria-hidden="true" />,
-    "SI Unit Prefixes": <Sigma className="h-4 w-4 text-primary" aria-hidden="true" />,
-  };
+  const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {};
   const [selectedCategories, setSelectedCategories] = React.useState<Record<UnitCategory, boolean>>(() => {
     const initial = {} as Record<UnitCategory, boolean>;
     builderCategories.forEach((cat) => {
@@ -249,7 +216,7 @@ export default function WidgetBuilderPage() {
                       className="h-4 w-4"
                     />
                     <span className="flex items-center gap-2">
-                      {categoryIcons[cat as UnitCategory]}
+                      <UnitIcon category={cat as UnitCategory} className="h-4 w-4 text-primary" aria-hidden="true" />
                       {unitData[cat as UnitCategory].name}
                     </span>
                   </label>
@@ -267,7 +234,10 @@ export default function WidgetBuilderPage() {
                   .filter((cat) => selectedCategories[cat])
                   .map((cat) => (
                     <div key={`units-${cat}`} className="space-y-1">
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">{unitData[cat as UnitCategory].name}</p>
+                      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                        <UnitIcon category={cat as UnitCategory} className="h-4 w-4 text-primary" aria-hidden="true" />
+                        {unitData[cat as UnitCategory].name}
+                      </p>
                       <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
                         {unitData[cat as UnitCategory].units.map((u) => (
                           <label

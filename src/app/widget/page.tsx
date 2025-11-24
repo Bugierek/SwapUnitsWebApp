@@ -9,6 +9,7 @@ import type { UnitCategory } from "@/types";
 import { convertUnitsDetailed } from "@/lib/conversion-math";
 import type { FxRatesResponse, CurrencyCode } from "@/lib/fx";
 import { Copy as CopyIcon, Check as CheckIcon, RefreshCw, ChevronDown } from "lucide-react";
+import { UnitIcon } from "@/components/unit-icon";
 
 type AllowedUnitsMap = Record<UnitCategory, { symbol: string; name: string }[]>;
 type UnitLookup = { symbol: string; name: string; category: UnitCategory };
@@ -285,18 +286,21 @@ export default function WidgetPage() {
             <div className="flex flex-col gap-1">
               <label className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Category</label>
               <div className="relative">
-                <select
-                  value={category ?? ""}
-                  onChange={(e) => setCategory(e.target.value as UnitCategory)}
-                  className="h-11 w-full appearance-none rounded-md border border-border/60 bg-card px-3 pr-12 text-sm"
-                >
-                  {availableCategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {unitData[cat].name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                <div className="flex items-center gap-2 rounded-md border border-border/60 bg-card px-3 pr-10">
+                  <UnitIcon category={(category ?? availableCategories[0]) as UnitCategory} className="h-4 w-4 text-muted-foreground" />
+                  <select
+                    value={category ?? ""}
+                    onChange={(e) => setCategory(e.target.value as UnitCategory)}
+                    className="h-11 w-full appearance-none border-0 bg-transparent text-sm focus-visible:outline-none"
+                  >
+                    {availableCategories.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {unitData[cat].name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+                </div>
               </div>
             </div>
           )}
