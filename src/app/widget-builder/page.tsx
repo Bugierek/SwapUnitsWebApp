@@ -113,7 +113,7 @@ export default function WidgetBuilderPage() {
     return {};
   });
   const [width, setWidth] = React.useState("100%");
-  const [height, setHeight] = React.useState("520px");
+  const [height, setHeight] = React.useState("550px");
 
   const toggleCategory = (cat: UnitCategory) => {
     setSelectedCategories((prev) => {
@@ -163,9 +163,10 @@ export default function WidgetBuilderPage() {
   };
 
   const normalizedWidth = normalizeDimension(width) ?? "100%";
-  const normalizedHeight = normalizeDimension(height) ?? "520px";
+  const normalizedHeight = normalizeDimension(height) ?? "550px";
   const heightPx = Number.parseFloat(normalizedHeight);
-  const previewMinHeight = Math.min(Math.max(heightPx && heightPx > 0 ? heightPx : 0, 550), 820);
+  const previewMinHeight = Math.max(heightPx && heightPx > 0 ? heightPx : 0, 550);
+  const previewContainerMinHeight = previewMinHeight + 96; // extra room for padding/borders
   const heightStyle = /[a-zA-Z%]/.test(normalizedHeight) ? normalizedHeight : undefined;
 
   const [copyState, setCopyState] = React.useState<"idle" | "success">("idle");
@@ -302,7 +303,7 @@ export default function WidgetBuilderPage() {
                 </label>
                 <label className="flex flex-col gap-1 text-sm text-foreground">
                   Height
-                  <Input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="520" />
+                  <Input value={height} onChange={(e) => setHeight(e.target.value)} placeholder="550" />
                 </label>
               </div>
             </div>
@@ -360,8 +361,13 @@ export default function WidgetBuilderPage() {
                 return (
                   <div className="flex justify-center">
                     <div
-                      className="w-full overflow-hidden rounded-2xl border border-border/60 bg-card/90 px-4 py-3"
-                      style={{ maxWidth: pxMatch ? `${Number(pxMatch[1]) + 32}px` : "640px", minWidth: "320px" }}
+                      className="w-full overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))]"
+                      style={{
+                        maxWidth: pxMatch ? `${Number(pxMatch[1]) + 48}px` : "680px",
+                        minWidth: "320px",
+                        minHeight: `${previewContainerMinHeight}px`,
+                        padding: "16px",
+                      }}
                     >
                       <iframe
                         key={query}
