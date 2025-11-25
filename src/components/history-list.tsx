@@ -119,8 +119,8 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
             <CardHeader className="flex-shrink-0 border-b border-border/60 px-[0.9rem] py-[0.6rem]">
                 <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <HistoryIconLucide className="h-3 w-3" aria-hidden="true" />
+                        <span className="flex h-7 w-7 items-center justify-center text-primary">
+                            <HistoryIconLucide className="h-4 w-4" aria-hidden="true" />
                         </span>
                         Recent conversions
                     </CardTitle>
@@ -203,11 +203,11 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                                 onClick={() => onHistorySelect(item)}
                                                 aria-label={`Apply conversion: ${formatHistoryNumber(item.fromValue)} ${item.fromUnit} to ${formatHistoryNumber(item.toValue)} ${item.toUnit}`}
                                             >
-                                                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center bg-transparent text-primary">
                                                   {isSiPrefix ? (
-                                                    <ArrowLeftRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                                    <ArrowLeftRight className="h-4 w-4 shrink-0" aria-hidden="true" />
                                                   ) : (
-                                                    <UnitIcon category={item.category} className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                                    <UnitIcon category={item.category} className="h-4 w-4 shrink-0" aria-hidden="true" />
                                                   )}
                                                 </span>
                                                 <span className="min-w-0 flex-1 space-y-1 whitespace-normal break-words leading-snug">

@@ -73,10 +73,10 @@ export const PresetList = React.memo(function PresetListComponent({
             <CardHeader className="flex-shrink-0 border-b border-border/60 px-[1.125rem] py-[0.8rem]">
                  <div className="flex items-center justify-between gap-3">
                     <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                            <Star className="h-3 w-3" aria-hidden="true" />
-                        </span>
-                        Saved favorites
+                      <span className="flex h-7 w-7 items-center justify-center text-yellow-500">
+                        <Star className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      Saved favorites
                     </CardTitle>
                                         {onClearAllFavorites && favorites.length > 0 && !isLoadingFavorites && (
                                                 <>
@@ -160,8 +160,8 @@ export const PresetList = React.memo(function PresetListComponent({
                                             aria-label={`Select favorite: ${labels.full}`}
                                             title={labels.full}
                                         >
-                                            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                                                <UnitIcon category={fav.category} className="h-4 w-4" aria-hidden="true" />
+                                            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center bg-transparent text-primary">
+                                              <UnitIcon category={fav.category} className="h-4 w-4 text-current" aria-hidden="true" />
                                             </span>
                                             <span className="min-w-0 flex-1">
                                                 <ResponsiveFavoriteLabel

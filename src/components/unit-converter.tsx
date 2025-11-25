@@ -2882,6 +2882,48 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
     const fromUnitFull = getUnitDisplayName(rhfCategory, rhfFromUnit) ?? rhfFromUnit;
     const toUnitFull = getUnitDisplayName(rhfCategory, rhfToUnit) ?? rhfToUnit;
+    const toTitleCase = (val: string) =>
+      val.replace(/\b([a-z])/g, (match) => match.toUpperCase());
+    const fromUnitDisplay =
+      rhfCategory === 'Currency' ? toTitleCase(fromUnitFull) : fromUnitFull;
+    const toUnitDisplay =
+      rhfCategory === 'Currency' ? toTitleCase(toUnitFull) : toUnitFull;
+    const formatUnitLabel = (name: string, symbol: string, count: number) => {
+      if (rhfCategory === 'Currency') {
+        return toTitleCase(name);
+      }
+      // Keep abbreviations as-is (e.g., L, mL, °C).
+      if (name.length <= 3) return name;
+
+      const lower = name.toLowerCase();
+      const tempWords = ['celsius', 'fahrenheit', 'kelvin'];
+      const hasDegreeSymbol = symbol.includes('°');
+      const tempMatch = tempWords.find((t) => lower.includes(t));
+      const isSingular = Math.abs(count) === 1;
+
+      if (hasDegreeSymbol || tempMatch) {
+        // Kelvin is not "degrees"
+        if (tempMatch === 'kelvin') {
+          return lower.replace(/\bkelvin\b/, 'Kelvin');
+        }
+        const capitalTemp = tempMatch
+          ? tempMatch.charAt(0).toUpperCase() + tempMatch.slice(1)
+          : '';
+        const degreeWord = isSingular ? 'degree' : 'degrees';
+        const hasDegreeWord = /\bdegree/.test(lower);
+        return hasDegreeWord ? lower.replace(/\b(celsius|fahrenheit)\b/, capitalTemp) : `${degreeWord} ${capitalTemp}`;
+      }
+
+      // Default: lowercase full words (e.g., liter, milliliter)
+      return lower;
+    };
+    const numericCount = Number(rhfValue ?? 0);
+    const fromUnitLabel = `(${rhfFromUnit}) ${formatUnitLabel(fromUnitDisplay || rhfFromUnit, rhfFromUnit, numericCount)}`;
+    const toUnitLabel = `(${rhfToUnit}) ${formatUnitLabel(toUnitDisplay || rhfToUnit, rhfToUnit, conversionResult?.value ?? 0)}`;
+    const textualResultString =
+      conversionResult && rhfValue !== undefined
+        ? `${formatFromValue(Number(rhfValue), precisionMode)} ${fromUnitLabel} = ${formattedResultString} ${toUnitLabel}`
+        : '';
 
     return (
       <div className="relative">
@@ -2892,7 +2934,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
               disabled={finalSaveDisabled || showPlaceholder}
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-[hsl(var(--control-background))] text-primary transition-all duration-300 hover:border-primary/60 hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent",
+                "inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-500 transition-all duration-300 disabled:text-muted-foreground disabled:hover:bg-transparent group/fav",
               )}
               aria-label={favoriteButtonLabel}
             >
@@ -2900,9 +2942,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 className={cn(
                   'h-4 w-4 flex-shrink-0',
                   activeFavorite
-                    ? 'fill-primary text-primary'
+                    ? 'fill-amber-400 text-amber-500'
                     : !finalSaveDisabled && !showPlaceholder
-                      ? 'text-primary'
+                      ? 'group-hover/fav:fill-amber-300 group-hover/fav:text-amber-500 text-amber-500'
                       : 'text-muted-foreground',
                 )}
               />
@@ -2913,12 +2955,12 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         {currentConversionPairUrl && (
           <Link
             href={currentConversionPairUrl}
-            className="group/details absolute right-3 bottom-3 flex h-8 flex-row-reverse items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 text-[11px] font-medium text-primary transition-all duration-400 hover:border-primary/60 hover:bg-primary/10"
+            className="group/details absolute right-3 bottom-4 flex h-8 flex-row-reverse items-center gap-1.5 rounded-full px-2 text-[11px] font-medium text-primary transition-all duration-400 hover:text-primary/80"
             aria-label="Open detailed conversion page"
             style={{ zIndex: 2 }}
           >
             <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-            <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] transition-all duration-400 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
+            <span className="hidden max-w-0 overflow-hidden whitespace-nowrap text-[11px] text-muted-foreground transition-all duration-400 ease-out group-hover/details:max-w-[72px] group-hover/details:pr-1 md:inline">
               Details
             </span>
           </Link>
@@ -2926,44 +2968,38 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
         <div
           className={cn(
-            "group relative flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-5 pr-16 text-base font-semibold text-primary transition-colors duration-700 overflow-hidden sm:gap-4",
+            "group relative flex flex-wrap items-center gap-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-6 pr-14 transition-colors duration-700 overflow-hidden sm:gap-6",
             resultHighlightPulse &&
               'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
           )}
         >
-          <div className="flex flex-1 flex-col gap-2.5 text-left">
-            <span className="truncate">
-              {formatFromValue(Number(rhfValue), precisionMode)}
-              <span className="ml-1 hidden lg:inline">{fromUnitFull}</span>
-              <span className="ml-1 lg:hidden">{rhfFromUnit}</span>
-              {' = '}
-              {formattedResultString}
-              <span className="ml-1 hidden lg:inline">{toUnitFull}</span>
-              <span className="ml-1 lg:hidden">{rhfToUnit}</span>
-            </span>
-            <div className="mt-2 flex flex-wrap items-center gap-2.5">
-              <button
-                type="button"
-                onClick={handleCopyTextualResult}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-[hsl(var(--control-background))] px-2 text-[11px] font-medium text-primary transition hover:border-primary/60 hover:bg-primary/10"
-                aria-label="Copy textual result to clipboard"
-              >
-                {textCopyState === 'success' ? (
-                  <>
-                    <Check className="h-4 w-4 text-emerald-500" />
-                    <span>Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    <span>Copy</span>
-                  </>
-                )}
-              </button>
+            <div className="flex flex-1 flex-col gap-1 text-left">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                {formatFromValue(Number(rhfValue), precisionMode)} {fromUnitLabel}
+                <span> equals</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-2xl font-semibold leading-tight text-primary">
+                <span className="text-primary">
+                  {formattedResultString}
+                  <span className="ml-2 text-lg text-foreground">{toUnitLabel}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyTextualResult}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                  aria-label="Copy textual result to clipboard"
+                  disabled={!textualResultString}
+                >
+                  {textCopyState === 'success' ? (
+                    <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                  ) : (
+                    <Copy className="h-4 w-4" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
     );
   }, [
     conversionResult,
@@ -3211,7 +3247,7 @@ return (
                                       value={field.value === undefined ? '' : String(field.value)}
                                       disabled={!rhfFromUnit || !rhfToUnit}
                                       aria-required="true"
-                                      className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-medium text-foreground/80 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                              className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-[1rem] font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                                     />
                                   </FormControl>
                                 </FormItem>
@@ -3266,7 +3302,7 @@ return (
                                       <button
                                         ref={fromTriggerRef}
                                         type="button"
-                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground/80 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
                                         style={{
                                           width: fromTriggerWidth ? `${fromTriggerWidth}px` : undefined,
                                           maxWidth: '100%',
@@ -3305,7 +3341,7 @@ return (
                           variant="ghost"
                           onClick={handleSwapClick}
                           disabled={!rhfFromUnit || !rhfToUnit}
-                          className="h-11 w-full rounded-xl border border-border/60 p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
+                          className="h-12 w-full rounded-xl border border-border/60 p-0 text-primary text-base font-semibold transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
                           aria-label="Swap units"
                         >
                           <svg
@@ -3346,7 +3382,7 @@ return (
                               readOnly
                               value={showPlaceholder ? '-' : formattedResultString}
                               className={cn(
-                                'h-11 w-full rounded-none border-0 bg-transparent px-3 text-base font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+                                'h-12 w-full rounded-none border-0 bg-transparent px-4 text-lg font-semibold text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
                                 showPlaceholder && 'text-muted-foreground',
                               )}
                               onFocus={() => setToFieldFocused(true)}
@@ -3359,7 +3395,7 @@ return (
                                 variant="ghost"
                                 onClick={handleCopy}
                                 disabled={showPlaceholder}
-                                className="h-11 w-9 shrink-0 rounded-none text-muted-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                                className="h-12 w-10 shrink-0 rounded-none text-muted-foreground transition hover:bg-primary/10 hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
                                 aria-label="Copy numeric result to clipboard"
                               >
                                 {resultCopyState === 'success' ? (
@@ -3402,7 +3438,7 @@ return (
                                       <button
                                         ref={toTriggerRef}
                                         type="button"
-                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-medium text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
+                                        className="inline-flex h-11 items-center justify-between gap-2 border-0 bg-transparent px-3 text-left text-sm font-semibold text-foreground shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 whitespace-nowrap"
                                         style={{
                                           width: toTriggerWidth ? `${toTriggerWidth}px` : undefined,
                                           maxWidth: '100%',

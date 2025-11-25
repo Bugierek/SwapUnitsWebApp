@@ -224,7 +224,7 @@ export function SiteTopbar({
                                 className="flex flex-1 items-start gap-3 rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-foreground transition group-hover/history-item:bg-primary/10 focus:outline-none focus-visible:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary/40"
                                 onClick={() => onHistorySelect?.(item)}
                               >
-                                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center text-primary">
                                   {isSiPrefix ? (
                                     <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
                                   ) : (
@@ -314,7 +314,7 @@ export function SiteTopbar({
                                 aria-label={`Select favorite: ${labels.full}`}
                                 title={labels.full}
                               >
-                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <span className="flex h-7 w-7 items-center justify-center text-primary">
                                   <UnitIcon category={fav.category} className="h-3.5 w-3.5" aria-hidden="true" />
                                 </span>
                                 <span className="min-w-0 flex-1">
