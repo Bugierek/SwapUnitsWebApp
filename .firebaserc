@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "swapunitsv2"
-  }
+    "default": "swapunitsv2",
+    "prod": "unitopia-19eni"
+  },
+  "targets": {},
+  "etags": {}
 }
