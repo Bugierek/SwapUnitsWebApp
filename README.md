@@ -17,3 +17,6 @@ Feedback is welcome.
 
 2. Run locally:
 `npm run dev`
+
+## Tutorial on codebase by Codebase to Tutorial
+https://code2tutorial.com/tutorial/e7d5f000-1908-4217-9e98-ecd685c3e670/03_conversion_query_parser__finder__.md
