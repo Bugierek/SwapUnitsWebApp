@@ -499,7 +499,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
             variant="ghost"
             size="icon"
             onClick={() => setIsSwapped((prev) => !prev)}
-            className="h-11 w-full rounded-xl border border-border/60 p-0 text-primary transition hover:border-primary/60 hover:bg-primary/5 disabled:border-border/40 sm:w-14"
+            className="h-12 w-full rounded-[1.75rem] border-0 p-0 text-primary text-base font-semibold transition hover:bg-primary/5 disabled:text-muted-foreground sm:w-14"
             aria-label="Swap conversion direction"
           >
             <svg
