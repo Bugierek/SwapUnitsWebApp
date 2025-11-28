@@ -25,6 +25,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   ArrowUpRight,
+  Calendar,
   Check,
   Info,
   Search,
@@ -340,28 +341,25 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfCategory = watch("category") as UnitCategory | "";
   const rhfFromUnit = watch("fromUnit");
   const rhfToUnit = watch("toUnit");
-  const fxStatusMessage = React.useMemo(() => {
+  const fxRateDateMessage = React.useMemo(() => {
     if (rhfCategory !== 'Currency') return null;
     if (fxErrorRef.current) return fxErrorRef.current;
     if (!fxRates) {
-      return isHistoricalMode 
+      return isHistoricalMode
         ? 'Select a date to load historical rates...'
         : 'Loading latest FX rates (Frankfurter, updated daily ~16:00 CET)...';
     }
-    
-    // Show the rate date prominently
+
     const rateDate = fxRates.date;
-    const isToday = rateDate === new Date().toISOString().split('T')[0];
-    
     if (!rateDate) return null;
-    
+    const isToday = rateDate === new Date().toISOString().split('T')[0];
     const formattedDate = new Date(rateDate + 'T00:00:00Z').toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
-    
-    return isToday 
+
+    return isToday
       ? `Using latest ECB rates (${formattedDate})`
       : `Using historical rates from ${formattedDate}`;
   }, [fxRates, rhfCategory, isHistoricalMode]);
@@ -484,6 +482,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setFinderVersion((prev) => prev + 1);
   }, []);
   const [textCopyState, setTextCopyState] = React.useState<'idle' | 'success'>('idle');
+  const [rateCopyState, setRateCopyState] = React.useState<'idle' | 'success'>('idle');
+  const rateCopyResetRef = React.useRef<NodeJS.Timeout | null>(null);
   const normalizeNumericInputValue = React.useCallback((value: number | undefined): string | number | undefined => {
     if (value === undefined || value === null) {
       return value;
@@ -2361,10 +2361,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     if (textCopyState !== 'idle') {
       setTextCopyState('idle');
     }
+    if (rateCopyState !== 'idle') {
+      setRateCopyState('idle');
+    }
     if (resultCopyState !== 'idle') {
       setResultCopyState('idle');
     }
-  }, [showPlaceholder, textCopyState, resultCopyState]);
+  }, [showPlaceholder, textCopyState, rateCopyState, resultCopyState]);
 
   const {
     formattedString: formattedResultString,
@@ -2616,12 +2619,54 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       );
     }
 
+    let rateLine: React.ReactNode = null;
+    if (rhfCategory === 'Currency' && currentFromUnit && currentToUnit) {
+      const pairRate = resolveCurrencyPairRate();
+      if (pairRate !== null) {
+        const rateString = `1 ${currentFromUnit.symbol} = ${formatFormulaValue(pairRate)} ${currentToUnit.symbol}`;
+        rateLine = (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-foreground">
+            <span className="text-muted-foreground">Rate:</span>
+            <span className="font-semibold">{rateString}</span>
+            <button
+              type="button"
+              onClick={async () => {
+                const ok = await copyTextToClipboard(rateString);
+                if (ok) {
+                  setRateCopyState('success');
+                  if (rateCopyResetRef.current) {
+                    clearTimeout(rateCopyResetRef.current);
+                  }
+                  rateCopyResetRef.current = setTimeout(() => setRateCopyState('idle'), 1000);
+                } else {
+                  toast({
+                    title: "Copy Failed",
+                    description: "Clipboard access is blocked. Please copy the text manually.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              aria-label="Copy FX rate"
+            >
+              {rateCopyState === 'success' ? (
+                <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+              ) : (
+                <Copy className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        );
+      }
+    }
+
     return (
       <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 md:px-2.5 md:py-2.5">
         <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Formula
         </div>
         {formulaContentNode}
+        {rateLine}
       </div>
     );
   }, [
@@ -2630,6 +2675,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     rhfCategory,
     rhfFromUnit,
     rhfToUnit,
+    currentFromUnit,
+    currentToUnit,
+    resolveCurrencyPairRate,
+    formatFormulaValue,
+    rateCopyState,
     showPlaceholder,
   ]);
 
@@ -2818,6 +2868,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return () => {
       if (resultHighlightTimeoutRef.current) {
         clearTimeout(resultHighlightTimeoutRef.current);
+      }
+      if (rateCopyResetRef.current) {
+        clearTimeout(rateCopyResetRef.current);
       }
     };
   }, []);
@@ -3012,30 +3065,72 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           )}
         >
             <div className="flex flex-1 flex-col gap-1 text-left">
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                {formatFromValue(Number(rhfValue), precisionMode)} {fromUnitLabel}
-                <span> equals</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-2xl font-semibold leading-tight text-primary">
-                <span className="text-primary">
-                  {formattedResultString}
-                  <span className="ml-2 text-lg text-foreground">{toUnitLabel}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyTextualResult}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
-                  aria-label="Copy textual result to clipboard"
-                  disabled={!textualResultString}
-                >
-                  {textCopyState === 'success' ? (
-                    <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-                  ) : (
-                    <Copy className="h-4 w-4" aria-hidden="true" />
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              {formatFromValue(Number(rhfValue), precisionMode)} {fromUnitLabel}
+              <span> equals</span>
             </div>
+            <div className="flex flex-wrap items-center gap-3 text-2xl font-semibold leading-tight text-primary">
+              <span className="text-primary">
+                {formattedResultString}
+                <span className="ml-2 text-lg text-foreground">{toUnitLabel}</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyTextualResult}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary disabled:text-muted-foreground disabled:hover:bg-transparent"
+                aria-label="Copy textual result to clipboard"
+                disabled={!textualResultString}
+              >
+                {textCopyState === 'success' ? (
+                  <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                ) : (
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+            {rhfCategory === 'Currency' && fxRateDateMessage && (
+              <div className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <label htmlFor="fx-date-inline" className="sr-only">
+                    Rate date
+                  </label>
+                  <span className="font-normal">{fxRateDateMessage}</span>
+                  <div className="relative inline-flex items-center">
+                    <button
+                      type="button"
+                      aria-label="Select FX rate date"
+                      className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    >
+                      <Calendar className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <input
+                      id="fx-date-inline"
+                      type="date"
+                      min="1999-01-04"
+                      max={new Date().toISOString().split('T')[0]}
+                      value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const dateStr = e.target.value;
+                        if (dateStr) {
+                          const date = new Date(dateStr + 'T00:00:00Z');
+                          setIsHistoricalMode(true);
+                          setFxRates(null);
+                          fetchFxRates(date, true);
+                        } else {
+                          setSelectedFxDate(undefined);
+                          setIsHistoricalMode(false);
+                          setFxRates(null);
+                          fetchFxRates(undefined, true);
+                        }
+                      }}
+                      aria-hidden="true"
+                      className="absolute inset-0 h-6 w-6 cursor-pointer opacity-0"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           </div>
         </div>
     );
@@ -3525,57 +3620,7 @@ return (
                 </div>
 
                 {/* Currency Historical Date Input */}
-                {rhfCategory === 'Currency' && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <label htmlFor="fx-date" className="text-muted-foreground whitespace-nowrap">
-                      Rate date:
-                    </label>
-                    <input
-                      id="fx-date"
-                      type="date"
-                      min="1999-01-04"
-                      max={new Date().toISOString().split('T')[0]}
-                      value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
-                      onChange={(e) => {
-                        const dateStr = e.target.value;
-                        if (dateStr) {
-                          const date = new Date(dateStr + 'T00:00:00Z');
-                          setIsHistoricalMode(true);
-                          setFxRates(null);
-                          fetchFxRates(date, true);
-                        } else {
-                          setSelectedFxDate(undefined);
-                          setIsHistoricalMode(false);
-                          setFxRates(null);
-                          fetchFxRates(undefined, true);
-                        }
-                      }}
-                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                    {selectedFxDate && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedFxDate(undefined);
-                          setIsHistoricalMode(false);
-                          setFxRates(null);
-                          fetchFxRates(undefined, true);
-                        }}
-                        className="text-xs"
-                      >
-                        Latest
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {fxStatusMessage && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {fxStatusMessage}
-                  </div>
-                )}
+                {/* Rate date picker now lives inside the result banner for currency */}
 
                 {resultTabs.length > 0 && (
                   <AccordionTabs
