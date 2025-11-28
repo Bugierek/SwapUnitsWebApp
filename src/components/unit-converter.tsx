@@ -267,6 +267,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const fxErrorRef = React.useRef<string | null>(null);
   const fxLastAttemptRef = React.useRef<number | null>(null);
   const FX_RETRY_COOLDOWN_MS = 5000;
+  const [selectedFxDate, setSelectedFxDate] = React.useState<Date | undefined>(undefined);
+  const [isHistoricalMode, setIsHistoricalMode] = React.useState(false);
   const prefersTouch = useIsCoarsePointer();
   const isTouch = prefersTouch;
   const measurementCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
@@ -341,9 +343,28 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const fxStatusMessage = React.useMemo(() => {
     if (rhfCategory !== 'Currency') return null;
     if (fxErrorRef.current) return fxErrorRef.current;
-    if (!fxRates) return 'Loading latest FX rates (Frankfurter, updated daily ~16:00 CET)...';
-    return null;
-  }, [fxRates, rhfCategory]);
+    if (!fxRates) {
+      return isHistoricalMode 
+        ? 'Select a date to load historical rates...'
+        : 'Loading latest FX rates (Frankfurter, updated daily ~16:00 CET)...';
+    }
+    
+    // Show the rate date prominently
+    const rateDate = fxRates.date;
+    const isToday = rateDate === new Date().toISOString().split('T')[0];
+    
+    if (!rateDate) return null;
+    
+    const formattedDate = new Date(rateDate + 'T00:00:00Z').toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    return isToday 
+      ? `Using latest ECB rates (${formattedDate})`
+      : `Using historical rates from ${formattedDate}`;
+  }, [fxRates, rhfCategory, isHistoricalMode]);
   const computeMenuMaxHeight = React.useCallback((triggerEl: HTMLButtonElement | null) => {
     if (typeof window === 'undefined' || !triggerEl) return null;
     const rect = triggerEl.getBoundingClientRect();
@@ -1366,12 +1387,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     );
   }, [rhfCategory, currentFromUnit, currentToUnit]);
 
-  const fetchFxRatesForToday = React.useCallback(() => {
-    if (isFetchingFx) return;
-    if (fxRates) return;
+  const fetchFxRates = React.useCallback((date?: Date, force = false) => {
+    if (isFetchingFx && !force) return;
 
     const now = Date.now();
-    if (fxLastAttemptRef.current && now - fxLastAttemptRef.current < FX_RETRY_COOLDOWN_MS) {
+    if (!force && fxLastAttemptRef.current && now - fxLastAttemptRef.current < FX_RETRY_COOLDOWN_MS) {
       return;
     }
 
@@ -1384,25 +1404,43 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
     const controller = new AbortController();
 
-    fetch(`/api/fx?base=EUR${symbols ? `&symbols=${symbols}` : ''}`, {
+    // Build URL based on whether we have a historical date
+    const baseUrl = date 
+      ? `/api/fx/historical?date=${date.toISOString().split('T')[0]}`
+      : '/api/fx?base=EUR';
+    const url = `${baseUrl}${symbols ? `&symbols=${symbols}` : ''}`;
+
+    fetch(url, {
       signal: controller.signal,
-      cache: 'no-store',
+      cache: 'no-store', // Always fetch fresh data
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
         const data = (await res.json()) as FxRatesResponse;
         setFxRates(data);
+        // Always set selectedFxDate from response
+        if (data.date) {
+          const responseDate = new Date(data.date + 'T00:00:00Z');
+          setSelectedFxDate(responseDate);
+        }
         maybeApplyCurrencyConversion(data);
       })
       .catch((error) => {
         if (error?.name === 'AbortError') return;
         console.error('FX fetch error', error);
-        fxErrorRef.current = 'Live FX rates unavailable';
+        fxErrorRef.current = date 
+          ? 'Historical FX rates unavailable for this date'
+          : 'Live FX rates unavailable';
       })
       .finally(() => setIsFetchingFx(false));
 
     return () => controller.abort();
-  }, [fxRates, isFetchingFx, maybeApplyCurrencyConversion]);
+  }, [isFetchingFx, maybeApplyCurrencyConversion]);
+
+  const fetchFxRatesForToday = React.useCallback(() => {
+    if (fxRates) return;
+    return fetchFxRates(); // Fetch latest rates without setting date
+  }, [fxRates, fetchFxRates]);
 
   React.useEffect(() => {
     if (rhfCategory !== 'Currency') {
@@ -3485,6 +3523,53 @@ return (
                   </div>
                   {resultBanner}
                 </div>
+
+                {/* Currency Historical Date Input */}
+                {rhfCategory === 'Currency' && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <label htmlFor="fx-date" className="text-muted-foreground whitespace-nowrap">
+                      Rate date:
+                    </label>
+                    <input
+                      id="fx-date"
+                      type="date"
+                      min="1999-01-04"
+                      max={new Date().toISOString().split('T')[0]}
+                      value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        const dateStr = e.target.value;
+                        if (dateStr) {
+                          const date = new Date(dateStr + 'T00:00:00Z');
+                          setIsHistoricalMode(true);
+                          setFxRates(null);
+                          fetchFxRates(date, true);
+                        } else {
+                          setSelectedFxDate(undefined);
+                          setIsHistoricalMode(false);
+                          setFxRates(null);
+                          fetchFxRates(undefined, true);
+                        }
+                      }}
+                      className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
+                    {selectedFxDate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedFxDate(undefined);
+                          setIsHistoricalMode(false);
+                          setFxRates(null);
+                          fetchFxRates(undefined, true);
+                        }}
+                        className="text-xs"
+                      >
+                        Latest
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {fxStatusMessage && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
