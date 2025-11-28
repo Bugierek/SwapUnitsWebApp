@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Copy, Check, Info, Calculator } from 'lucide-react';
+import { Copy, Check, Info, Calculator, Calendar } from 'lucide-react';
 
 import type { UnitCategory, ConversionHistoryItem } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ interface PairConverterProps {
   fromUnit: { symbol: string; name: string };
   toUnit: { symbol: string; name: string };
   initialValue?: number;
+  initialFxDate?: Date | null;
   baseMultiplier?: number | null;
   onCopyResult?: (payload: {
     category: UnitCategory;
@@ -50,6 +51,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     fromUnit,
     toUnit,
     initialValue = 1,
+    initialFxDate = null,
     baseMultiplier = null,
     onCopyResult,
   }: PairConverterProps,
@@ -62,6 +64,9 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
   const [fxError, setFxError] = React.useState<string | null>(null);
   const [isFetchingFx, setIsFetchingFx] = React.useState(false);
+  const [selectedFxDate, setSelectedFxDate] = React.useState<Date | undefined>(initialFxDate ?? undefined);
+  const [isHistoricalMode, setIsHistoricalMode] = React.useState(Boolean(initialFxDate));
+  const fxDateInputRef = React.useRef<HTMLInputElement | null>(null);
   const isFullPrecision = precisionMode === 'full';
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
@@ -125,6 +130,8 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   }, []);
 
   const formattedResult = React.useMemo(() => formatValue(result), [formatValue, result]);
+  const [rateCopyState, setRateCopyState] = React.useState<'idle' | 'success'>('idle');
+  const rateCopyResetRef = React.useRef<NodeJS.Timeout | null>(null);
   const precisionToggleDisabled = formattedResult?.usedScientificNotation ?? false;
   const precisionTooltip = isFullPrecision
     ? 'Full precision shows more decimal places using the exact unit factors from our standards-backed database (NIST Guide to SI, ASTM, IEC, etc.).'
@@ -155,17 +162,31 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     }
   }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
 
-  const fetchPairFxRates = React.useCallback(() => {
-    if (isFetchingFx || fxRates) return;
+  const fetchPairFxRates = React.useCallback((date?: Date, force = false) => {
+    if (isFetchingFx || (fxRates && !force && !date)) return;
     setIsFetchingFx(true);
     setFxError(null);
+    if (date) {
+      setSelectedFxDate(date);
+      setIsHistoricalMode(true);
+    } else {
+      setSelectedFxDate(undefined);
+      setIsHistoricalMode(false);
+    }
     const currencyUnits = getUnitsForCategory('Currency').map((unit) => unit.symbol);
     const symbols = currencyUnits.filter((code) => code !== 'EUR').join(',');
-    fetch(`/api/fx?base=EUR${symbols ? `&symbols=${symbols}` : ''}`, { cache: 'no-store' })
+    const baseUrl = date
+      ? `/api/fx/historical?date=${date.toISOString().split('T')[0]}`
+      : '/api/fx?base=EUR';
+    const url = `${baseUrl}${symbols ? `&symbols=${symbols}` : ''}`;
+    fetch(url, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
         const data = (await res.json()) as FxRatesResponse;
         setFxRates(data);
+        if (data.date) {
+          setSelectedFxDate(new Date(data.date + 'T00:00:00Z'));
+        }
       })
       .catch((error) => {
         console.error('FX fetch error (pair page):', error);
@@ -180,12 +201,6 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     fetchPairFxRates();
   }, [category, fetchPairFxRates]);
 
-  // Prefetch once on mount for currency pages
-  React.useEffect(() => {
-    if (category !== 'Currency') return;
-    fetchPairFxRates();
-  }, [category, fetchPairFxRates]);
-
   // Ensure currency formula/result renders once rates arrive without needing a swap.
   React.useEffect(() => {
     if (category !== 'Currency') return;
@@ -195,8 +210,20 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     setInputValue((prev) => prev); // no-op to ensure downstream memo runs with latest fxRates
   }, [category, fxRates, parsedInput]);
 
+  const fxRateDateMessage = React.useMemo(() => {
+    if (category !== 'Currency' || !fxRates) return '';
+    const dateLabel = new Date(`${fxRates.date}T00:00:00Z`).toLocaleDateString(undefined, {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const usingHistorical = isHistoricalMode || Boolean(selectedFxDate);
+    return `${usingHistorical ? 'Using historical' : 'Using latest'} ECB rates (${dateLabel})`;
+  }, [category, fxRates, isHistoricalMode, selectedFxDate]);
+
   React.useEffect(() => {
     setCopyState('idle');
+    setRateCopyState('idle');
   }, [parsedInput, activeFrom.symbol, activeTo.symbol]);
 
   React.useEffect(() => {
@@ -206,6 +233,25 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     const timeout = window.setTimeout(() => setCopyState('idle'), 1500);
     return () => window.clearTimeout(timeout);
   }, [copyState]);
+
+  React.useEffect(() => {
+    return () => {
+      if (rateCopyResetRef.current) {
+        clearTimeout(rateCopyResetRef.current);
+      }
+    };
+  }, []);
+
+  // If arriving with an initial historical date, fetch that first
+  React.useEffect(() => {
+    if (category !== 'Currency') return;
+    if (initialFxDate) {
+      fetchPairFxRates(initialFxDate, true);
+    } else {
+      fetchPairFxRates();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
 
   const handleCalculatorValueSent = React.useCallback((valueFromCalculator: string) => {
     const numericValue = parseFloat(valueFromCalculator);
@@ -476,33 +522,33 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         </div>
 
         <div className="order-3 grid gap-2">
-          <div className="flex items-center justify-start gap-2">
-            <span className="text-sm font-semibold text-muted-foreground">
-              {activeTo.name}
-            </span>
-          </div>
-          {/* Result field with inline copy and unit */}
-          <div className="flex h-12 items-center rounded-xl border border-border/60 bg-background">
-            <div className="flex-1 px-3 text-lg font-semibold text-foreground">
-              {parsedInput === null ? '—' : formattedResult?.formatted ?? '—'}
+            <div className="flex items-center justify-start gap-2">
+              <span className="text-sm font-semibold text-muted-foreground">
+                {activeTo.name}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={handleCopy}
-              disabled={parsedInput === null}
-              className="flex h-full items-center border-l border-border/60 px-3 text-primary transition hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent"
-              aria-label="Copy converted result"
-            >
-              {copyState === 'success' ? (
-                <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-              ) : (
-                <Copy className="h-4 w-4" aria-hidden="true" />
-              )}
-            </button>
-            <div className="flex items-center justify-center border-l border-border/60 px-3 text-sm font-semibold text-muted-foreground">
-              {activeTo.symbol}
+            {/* Result field with inline copy and unit */}
+            <div className="flex h-12 items-center rounded-xl border border-border/60 bg-background">
+              <div className="flex-1 px-3 text-lg font-semibold text-foreground">
+                {parsedInput === null ? '—' : formattedResult?.formatted ?? '—'}
+              </div>
+              <button
+                type="button"
+                onClick={handleCopy}
+                disabled={parsedInput === null}
+                className="flex h-full items-center border-l border-border/60 px-3 text-primary transition hover:bg-primary/10 disabled:text-muted-foreground disabled:hover:bg-transparent"
+                aria-label="Copy converted result"
+              >
+                {copyState === 'success' ? (
+                  <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                ) : (
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+              <div className="flex items-center justify-center border-l border-border/60 px-3 text-sm font-semibold text-muted-foreground">
+                {activeTo.symbol}
+              </div>
             </div>
-          </div>
         </div>
       </div>
 
@@ -550,6 +596,77 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           <p className="text-sm font-semibold text-foreground">Formula</p>
           {generalFormula && <p className="mt-2">{generalFormula}</p>}
           {dynamicFormula && <p className="mt-1 text-muted-foreground">{dynamicFormula}</p>}
+          {category === 'Currency' && fxRates && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>{fxRateDateMessage}</span>
+              <div className="relative inline-flex h-6 w-6 items-center justify-center">
+                <input
+                  ref={fxDateInputRef}
+                  type="date"
+                  min="1999-01-04"
+                  max={new Date().toISOString().split('T')[0]}
+                  value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const dateStr = e.target.value;
+                    if (dateStr) {
+                      const date = new Date(dateStr + 'T00:00:00Z');
+                      setSelectedFxDate(date);
+                      setIsHistoricalMode(true);
+                      setFxRates(null);
+                      fetchPairFxRates(date, true);
+                    } else {
+                      setSelectedFxDate(undefined);
+                      setIsHistoricalMode(false);
+                      setFxRates(null);
+                      fetchPairFxRates(undefined, true);
+                    }
+                  }}
+                  aria-label="Select FX rate date"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                />
+                <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </div>
+            </div>
+          )}
+          {category === 'Currency' && fxRates && resolveCurrencyPairRate() !== null && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>Rate:</span>
+              <span className="font-semibold text-foreground">
+                1 {activeFrom.symbol} = {formatValue(resolveCurrencyPairRate(), { precisionBoost: 0 }).formatted} {activeTo.symbol}
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  const rate = resolveCurrencyPairRate();
+                  if (rate === null) return;
+                  const rateString = `1 ${activeFrom.symbol} = ${formatValue(rate, { precisionBoost: 0 }).formatted} ${activeTo.symbol}`;
+                  try {
+                    await navigator.clipboard.writeText(rateString);
+                    setRateCopyState('success');
+                    if (rateCopyResetRef.current) {
+                      clearTimeout(rateCopyResetRef.current);
+                    }
+                    rateCopyResetRef.current = setTimeout(() => setRateCopyState('idle'), 1000);
+                  } catch (error) {
+                    console.error('Failed to copy FX rate:', error);
+                    toast({
+                      variant: "destructive",
+                      description: "Failed to copy rate",
+                      duration: 2000,
+                    });
+                  }
+                }}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                aria-label="Copy FX rate"
+              >
+                {rateCopyState === 'success' ? (
+                  <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                ) : (
+                  <Copy className="h-4 w-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

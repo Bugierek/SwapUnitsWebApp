@@ -49,6 +49,7 @@ type ConversionPairPageContentProps = {
   otherUnits: SimpleUnit[];
   navbarPresets: Preset[];
   initialValue?: number;
+  initialFxDate?: Date | null;
 };
 
 const formatNumber = (value: number): string =>
@@ -92,6 +93,7 @@ export function ConversionPairPageContent({
   otherUnits,
   navbarPresets,
   initialValue,
+  initialFxDate,
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -234,6 +236,7 @@ export function ConversionPairPageContent({
               fromUnit={fromUnit}
               toUnit={toUnit}
               initialValue={initialValue ?? 1}
+              initialFxDate={initialFxDate ?? undefined}
               onCopyResult={handleCopyResult}
             />
           </section>

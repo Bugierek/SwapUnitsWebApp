@@ -134,6 +134,19 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
   const initialValue = parsedInitialValue !== undefined && Number.isFinite(parsedInitialValue)
     ? parsedInitialValue
     : undefined;
+  const initialFxDate = (() => {
+    let raw: string | undefined;
+    if (resolvedSearchParams instanceof URLSearchParams) {
+      raw = resolvedSearchParams.get('fxDate') ?? undefined;
+    } else {
+      const val = resolvedSearchParams?.fxDate;
+      raw = Array.isArray(val) ? val[0] : (val as string | undefined);
+    }
+    if (!raw) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+    const d = new Date(raw + 'T00:00:00Z');
+    return Number.isNaN(d.getTime()) ? null : d;
+  })();
 
   const categoryInfo = getCategoryInfoBySlug(categorySlug);
   if (!categoryInfo) {
@@ -221,6 +234,7 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
         otherUnits={otherUnits.map((unit) => ({ symbol: unit.symbol, name: unit.name }))}
         navbarPresets={navbarPresets}
         initialValue={initialValue}
+        initialFxDate={initialFxDate}
       />
     </>
   );

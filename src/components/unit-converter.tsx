@@ -534,8 +534,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       return baseUrl;
     }
     const params = new URLSearchParams({ value: trimmedValue });
+    if (rhfCategory === 'Currency' && selectedFxDate) {
+      params.set('fxDate', selectedFxDate.toISOString().split('T')[0]);
+    }
     return `${baseUrl}?${params.toString()}`;
-  }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue]);
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue, selectedFxDate]);
 
   React.useEffect(() => {
     if (!prefersTouch && ComboboxComponent && !finderAutoFocusRequestedRef.current) {
@@ -3124,7 +3127,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                         }
                       }}
                       aria-hidden="true"
-                      className="absolute inset-0 h-6 w-6 cursor-pointer opacity-0"
+                      className="absolute inset-0 h-6 w-6 cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
