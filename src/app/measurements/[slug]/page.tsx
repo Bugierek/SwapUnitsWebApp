@@ -223,6 +223,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           initialToUnit={initialToUnit}
           initialValue={1}
           hideFinder
+          enableQuickstartTour={false}
         />
       </section>
 

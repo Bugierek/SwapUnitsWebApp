@@ -110,6 +110,7 @@ interface UnitConverterProps {
   onToggleFavorite?: (favoriteData: Omit<FavoriteItem, 'id'>) => void;
   lockedCategory?: UnitCategory;
   hideFinder?: boolean;
+  enableQuickstartTour?: boolean;
 }
 
 export interface UnitConverterHandle {
@@ -223,6 +224,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     initialValue = 1,
     lockedCategory,
     hideFinder = false,
+    enableQuickstartTour = true,
     favorites = [],
     onToggleFavorite,
   },
@@ -307,6 +309,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [isSwapped, setIsSwapped] = React.useState(false);
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const { toast } = useToast();
+  const [showQuickstart, setShowQuickstart] = React.useState(false);
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema) as Resolver<FormData>,
     mode: 'onChange',
@@ -1975,6 +1978,17 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     }
   }, [lockedCategory, rhfCategory, updateUnitsForCategory]);
 
+  React.useEffect(() => {
+    if (!enableQuickstartTour || hideFinder) return;
+    if (typeof window === 'undefined') return;
+    const KEY = 'su_quickstart_seen_v1';
+    const seen = window.localStorage.getItem(KEY);
+    if (!seen) {
+      setShowQuickstart(true);
+      window.localStorage.setItem(KEY, '1');
+    }
+  }, [enableQuickstartTour, hideFinder]);
+
   const handleParsedConversion = React.useCallback(
     (payload: ParsedConversionPayload) => {
       pendingFinderSelectionRef.current = true;
@@ -3343,6 +3357,37 @@ return (
           <Form {...form}>
             <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-4 sm:gap-6">
               <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+                {!hideFinder && (
+                  showQuickstart && (
+                    <div className="rounded-2xl border border-primary/30 bg-primary/5 px-3 py-3 sm:px-4 sm:py-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <p className="text-sm font-semibold text-foreground">Quick start</p>
+                          <ul className="space-y-1 text-xs text-muted-foreground list-disc pl-4">
+                            <li>Type a query like <span className="font-semibold text-foreground">“100 kg to g”</span> in the finder.</li>
+                            <li>Pick units from the dropdowns to refine the result.</li>
+                            <li>Copy results — your history/favorites stay private in your browser.</li>
+                            <li>Want this on your site? Use the widget builder to embed it.</li>
+                          </ul>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowQuickstart(false)}
+                          className="text-xs text-muted-foreground transition hover:text-foreground"
+                          aria-label="Dismiss quick start"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="mt-3">
+                        <Button size="sm" variant="outline" onClick={() => setShowQuickstart(false)}>
+                          Got it
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                )}
+
                 {!hideFinder && (
                   <>
                     <FormField
