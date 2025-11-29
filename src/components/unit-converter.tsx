@@ -108,6 +108,8 @@ interface UnitConverterProps {
   initialValue?: number;
   favorites?: FavoriteItem[];
   onToggleFavorite?: (favoriteData: Omit<FavoriteItem, 'id'>) => void;
+  lockedCategory?: UnitCategory;
+  hideFinder?: boolean;
 }
 
 export interface UnitConverterHandle {
@@ -219,12 +221,15 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     initialFromUnit,
     initialToUnit,
     initialValue = 1,
+    lockedCategory,
+    hideFinder = false,
     favorites = [],
     onToggleFavorite,
   },
   ref,
 ) {
   const randomizedDefaults = React.useMemo(() => {
+    if (lockedCategory) return null;
     // Only randomize when caller is using the standard defaults (no overrides)
     if (initialFromUnit || initialToUnit) return null;
     if (initialCategory && initialCategory !== 'Mass') return null;
@@ -236,9 +241,9 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const from = units[Math.floor(Math.random() * units.length)].symbol;
     const to = units.find((u) => u.symbol !== from)?.symbol ?? from;
     return { category, from, to };
-  }, [initialCategory, initialFromUnit, initialToUnit]);
+  }, [initialCategory, initialFromUnit, initialToUnit, lockedCategory]);
 
-  const defaultCategory = (randomizedDefaults?.category ?? initialCategory) as UnitCategory;
+  const defaultCategory = (lockedCategory ?? randomizedDefaults?.category ?? initialCategory) as UnitCategory;
   const defaultUnits = getUnitsForCategory(defaultCategory);
   const resolvedFromUnit = initialFromUnit ?? randomizedDefaults?.from ?? defaultUnits[0]?.symbol ?? '';
   const resolvedToUnit =
@@ -574,7 +579,8 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   }, [setComboboxComponent]);
 
 const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
-    return categoryDisplayOrder
+    const allowedCategories = lockedCategory ? [lockedCategory] : categoryDisplayOrder;
+    return allowedCategories
       .filter((category) => unitData[category])
       .map((category) => {
         const slug = getCategorySlug(category);
@@ -623,7 +629,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           kind,
         };
       });
-  }, []);
+  }, [lockedCategory]);
 
   const menuCategoryOptions = React.useMemo(() => {
     if (!rhfCategory) {
@@ -913,6 +919,48 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       </DropdownMenuContent>
     );
 
+    // Locked category: show a simple flat list of units (no category selection or search)
+    if (lockedCategory) {
+      const lockedUnits = getUnitsForCategory(lockedCategory);
+      const selectedUnitSymbol = side === 'from' ? rhfFromUnit : rhfToUnit;
+      const menuMaxHeight = side === 'from' ? fromMenuMaxHeight : toMenuMaxHeight;
+      const resolvedMaxHeight =
+        menuMaxHeight !== null
+          ? `${menuMaxHeight}px`
+          : 'min(calc(100vh - 120px), 480px)';
+      return (
+        <DropdownMenuContent
+          side="bottom"
+          align={side === 'from' ? 'start' : 'end'}
+          sideOffset={8}
+          collisionPadding={{ top: 12, bottom: 12, left: 16, right: 16 }}
+          className="min-w-[18rem] overflow-hidden"
+          style={{ maxHeight: resolvedMaxHeight }}
+        >
+          <DropdownMenuLabel>{label}</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <div
+            className="overflow-y-auto px-2 py-2"
+            style={{ scrollbarWidth: 'thin', maxHeight: 'calc(100vh - 200px)' }}
+          >
+            {lockedUnits.map((unit) => (
+              <DropdownMenuItem
+                key={unit.symbol}
+                onSelect={() => onUnitSelect(lockedCategory, unit.symbol)}
+                className={cn(
+                  'flex items-center justify-between rounded-md px-2 py-1.5 text-sm',
+                  unit.symbol === selectedUnitSymbol && 'bg-primary/10 text-primary font-semibold'
+                )}
+              >
+                <span className="whitespace-normal break-words leading-snug">{unit.name}</span>
+                <span className="ml-2 shrink-0 text-muted-foreground">({unit.symbol})</span>
+              </DropdownMenuItem>
+            ))}
+          </div>
+        </DropdownMenuContent>
+      );
+    }
+
     if (!filteredCategories.length) {
       return emptyState;
     }
@@ -964,6 +1012,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 {filteredCategories.map(({ option }) => {
                   const isActiveCategory = option.value === (menuCategory ?? defaultOpenCategory);
                   const handleCategoryClick = () => {
+                    if (lockedCategory) {
+                      setMenuCategory(option.value);
+                      return;
+                    }
                     if (isTouch) {
                       setMenuCategory(option.value);
                       return;
@@ -1481,6 +1533,17 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     maybeApplyCurrencyConversion(fxRates);
   }, [fxRates, rhfCategory, rhfFromUnit, rhfToUnit, rhfValue, maybeApplyCurrencyConversion]);
 
+  // Ensure FX rates are fetched (or re-fetched for a chosen historical date) when needed.
+  React.useEffect(() => {
+    if (rhfCategory !== 'Currency') return;
+    const targetDateKey = selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : null;
+    const currentDateKey = fxRates?.date ?? null;
+    const needsFetch = !fxRates || (targetDateKey && currentDateKey !== targetDateKey);
+    if (needsFetch && !isFetchingFx) {
+      fetchFxRates(selectedFxDate, true);
+    }
+  }, [rhfCategory, selectedFxDate, fxRates, isFetchingFx, fetchFxRates]);
+
   // Safety net: if we have FX rates and the current currency conversion has no result yet, recompute once.
   React.useEffect(() => {
     if (rhfCategory !== 'Currency') return;
@@ -1588,10 +1651,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
   const applyCategoryDefaults = React.useCallback(
     (category: UnitCategory, { forceDefaults }: { forceDefaults: boolean }) => {
-      const availableUnits = getUnitsForCategory(category);
+      const targetCategory = lockedCategory ?? category;
+      const availableUnits = getUnitsForCategory(targetCategory);
       if (availableUnits.length === 0) {
-        setSelectedCategoryLocal(category);
-        setValue('category', category, { shouldValidate: true });
+        setSelectedCategoryLocal(targetCategory);
+        setValue('category', targetCategory, { shouldValidate: true });
         return;
       }
 
@@ -1605,7 +1669,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       const toValid = availableUnits.some((unit) => unit.symbol === newToUnitSymbol);
 
       if (forceDefaults || !fromValid || !toValid) {
-        const defaultPair = getCategoryDefaultPair(category);
+        const defaultPair = getCategoryDefaultPair(targetCategory);
         if (defaultPair) {
           newFromUnitSymbol = defaultPair.fromUnit;
           newToUnitSymbol = defaultPair.toUnit;
@@ -1645,8 +1709,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
       const finalValue = shouldResetValue ? 1 : numericValue;
 
-      setSelectedCategoryLocal(category);
-      setValue('category', category, { shouldDirty: true, shouldValidate: true });
+      setSelectedCategoryLocal(targetCategory);
+      setValue('category', targetCategory, { shouldDirty: true, shouldValidate: true });
       setValue('fromUnit', newFromUnitSymbol, { shouldDirty: true, shouldValidate: true });
       setValue('toUnit', newToUnitSymbol, { shouldDirty: true, shouldValidate: true });
       setValue('value', finalValue, { shouldDirty: true, shouldValidate: true });
@@ -1655,7 +1719,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setIsNormalFormatDisabled(false);
 
       const conversion = convertUnits({
-        category,
+        category: targetCategory,
         fromUnit: newFromUnitSymbol,
         toUnit: newToUnitSymbol,
         value: finalValue,
@@ -1671,6 +1735,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setLastValidInputValue,
       setNumberFormat,
       setValue,
+      lockedCategory,
     ],
   );
 
@@ -1682,16 +1747,17 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         toUnit?: string;
       },
     ) => {
-      const availableUnits = getUnitsForCategory(category);
+      const targetCategory = lockedCategory ?? category;
+      const availableUnits = getUnitsForCategory(targetCategory);
       if (availableUnits.length === 0) {
-        setSelectedCategoryLocal(category);
-        setValue('category', category, { shouldValidate: true });
+        setSelectedCategoryLocal(targetCategory);
+        setValue('category', targetCategory, { shouldValidate: true });
         return;
       }
 
       const currentValues = getValues();
       const availableSymbols = availableUnits.map((unit) => unit.symbol);
-      const defaultPair = getCategoryDefaultPair(category);
+      const defaultPair = getCategoryDefaultPair(targetCategory);
 
       let fromUnitSymbol: string | undefined =
         overrides.fromUnit && availableSymbols.includes(overrides.fromUnit)
@@ -1849,8 +1915,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
       const finalValue = shouldResetValue ? 1 : numericValue;
 
-      setSelectedCategoryLocal(category);
-      setValue('category', category, { shouldDirty: true, shouldValidate: true });
+      setSelectedCategoryLocal(targetCategory);
+      setValue('category', targetCategory, { shouldDirty: true, shouldValidate: true });
       setValue('fromUnit', safeFrom, {
         shouldDirty: true,
         shouldValidate: true,
@@ -1865,7 +1931,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       setIsNormalFormatDisabled(false);
 
       const conversion = convertUnits({
-        category,
+        category: targetCategory,
         fromUnit: safeFrom,
         toUnit: safeTo,
         value: finalValue,
@@ -1875,6 +1941,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     },
     [
       convertUnits,
+      lockedCategory,
       getValues,
       setConversionResult,
       setIsNormalFormatDisabled,
@@ -1900,6 +1967,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     },
     [resetFinderInput, updateUnitsForCategory],
   );
+
+  // Enforce a locked category by reapplying units/category if something tries to change it.
+  React.useEffect(() => {
+    if (lockedCategory && rhfCategory && rhfCategory !== lockedCategory) {
+      updateUnitsForCategory(lockedCategory, {});
+    }
+  }, [lockedCategory, rhfCategory, updateUnitsForCategory]);
 
   const handleParsedConversion = React.useCallback(
     (payload: ParsedConversionPayload) => {
@@ -3269,128 +3343,132 @@ return (
           <Form {...form}>
             <form onSubmit={handleFormSubmit} className="flex flex-1 flex-col gap-4 sm:gap-6">
               <div className="flex flex-1 flex-col gap-4 sm:gap-6">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={() => (
-                    <FormItem>
-                      <div className="rounded-2xl border border-primary/25 bg-primary/5 px-2 py-2 shadow-lg shadow-primary/10 sm:px-4 sm:py-4">
-                        <div className="mb-2 flex items-center gap-2">
-                          <Label
-                            htmlFor="conversion-search"
-                            className="text-xs font-semibold uppercase tracking-[0.25em] text-primary"
-                          >
-                            Conversion finder
-                          </Label>
-                          <TooltipProvider delayDuration={150}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="hidden h-5 w-5 items-center justify-center rounded-full border border-primary/50 text-primary transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
-                                  aria-label="How the conversion finder understands your input"
-                                >
-                                  <Info className="h-3.5 w-3.5" aria-hidden="true" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="bottom"
-                                align="start"
-                                sideOffset={10}
-                                collisionPadding={{ top: 80, bottom: 16, left: 12, right: 12 }}
-                                className="max-w-[320px] whitespace-normal break-words rounded-xl border border-border/60 bg-card/95 px-3 py-2 text-xs leading-relaxed shadow-lg z-[70]"
+                {!hideFinder && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={() => (
+                        <FormItem>
+                          <div className="rounded-2xl border border-primary/25 bg-primary/5 px-2 py-2 shadow-lg shadow-primary/10 sm:px-4 sm:py-4">
+                            <div className="mb-2 flex items-center gap-2">
+                              <Label
+                                htmlFor="conversion-search"
+                                className="text-xs font-semibold uppercase tracking-[0.25em] text-primary"
                               >
-                                <div className="space-y-2">
-                                  <div>
-                                    <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                      Try conversions eg.
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleFinderExampleSelect(finderExamples.value)}
-                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                        aria-label={`Use ${finderExamples.value} in the conversion finder`}
-                                      >
-                                        {finderExamples.value}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleFinderExampleSelect(finderExamples.units)}
-                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                        aria-label={`Use ${finderExamples.units} in the conversion finder`}
-                                      >
-                                        {finderExamples.units}
-                                      </button>
+                                Conversion finder
+                              </Label>
+                              <TooltipProvider delayDuration={150}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="hidden h-5 w-5 items-center justify-center rounded-full border border-primary/50 text-primary transition hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 lg:inline-flex"
+                                      aria-label="How the conversion finder understands your input"
+                                    >
+                                      <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </button>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="bottom"
+                                    align="start"
+                                    sideOffset={10}
+                                    collisionPadding={{ top: 80, bottom: 16, left: 12, right: 12 }}
+                                    className="max-w-[320px] whitespace-normal break-words rounded-xl border border-border/60 bg-card/95 px-3 py-2 text-xs leading-relaxed shadow-lg z-[70]"
+                                  >
+                                    <div className="space-y-2">
+                                      <div>
+                                        <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                          Try conversions eg.
+                                        </p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleFinderExampleSelect(finderExamples.value)}
+                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            aria-label={`Use ${finderExamples.value} in the conversion finder`}
+                                          >
+                                            {finderExamples.value}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleFinderExampleSelect(finderExamples.units)}
+                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            aria-label={`Use ${finderExamples.units} in the conversion finder`}
+                                          >
+                                            {finderExamples.units}
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                                          Or find category eg.
+                                        </p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleFinderExampleSelect(finderExamples.category)}
+                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            aria-label={`Use ${finderExamples.category} as the category`}
+                                          >
+                                            {finderExamples.category}
+                                          </button>
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
-                                  <div>
-                                    <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                      Or find category eg.
-                                    </p>
-                                    <div className="flex flex-wrap gap-1.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleFinderExampleSelect(finderExamples.category)}
-                                        className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                        aria-label={`Use ${finderExamples.category} as the category`}
-                                      >
-                                        {finderExamples.category}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                        <div className="relative">
-                          {ComboboxComponent ? (
-                            <ComboboxComponent
-                              key={finderVersion}
-                              items={conversionPairs}
-                              value={selectedConversionPairValue}
-                              onChange={() => {
-                                // Selection is handled via onParsedConversion; no-op here.
-                              }}
-                              placeholder={"Type '100 kg to g', unit(s), or a category"}
-                              inputId="conversion-search"
-                              onParsedConversion={handleParsedConversion}
-                              onParseError={handleParseError}
-                              presetQuery={finderPresetQuery}
-                              autoFocusOnMount={shouldAutoFocusFinder}
-                              onAutoFocusComplete={handleFinderAutoFocusComplete}
-                              onNumericValue={handleFinderNumericValue}
-                              prefixIcon={<Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
-                            />
-                          ) : (
-                            <Button
-                              type="button"
-                              id="conversion-search"
-                              variant="outline"
-                              disabled
-                              className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
-                              aria-busy="true"
-                            >
-                              Loading conversions…
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <div className="relative">
+                              {ComboboxComponent ? (
+                                <ComboboxComponent
+                                  key={finderVersion}
+                                  items={conversionPairs}
+                                  value={selectedConversionPairValue}
+                                  onChange={() => {
+                                    // Selection is handled via onParsedConversion; no-op here.
+                                  }}
+                                  placeholder={"Type '100 kg to g', unit(s), or a category"}
+                                  inputId="conversion-search"
+                                  onParsedConversion={handleParsedConversion}
+                                  onParseError={handleParseError}
+                                  presetQuery={finderPresetQuery}
+                                  autoFocusOnMount={shouldAutoFocusFinder}
+                                  onAutoFocusComplete={handleFinderAutoFocusComplete}
+                                  onNumericValue={handleFinderNumericValue}
+                                  prefixIcon={<Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />}
+                                />
+                              ) : (
+                                <Button
+                                  type="button"
+                                  id="conversion-search"
+                                  variant="outline"
+                                  disabled
+                                  className="h-11 w-full justify-between rounded-xl border border-border/60 bg-muted px-3 text-left text-sm font-medium text-muted-foreground"
+                                  aria-busy="true"
+                                >
+                                  Loading conversions…
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" aria-hidden="true" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <div className="rounded-2xl border border-border/40 bg-transparent px-2 py-2 text-center sm:px-4 sm:py-3">
-                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    OR
-                  </div>
-                  <p className="text-[13px] text-muted-foreground/80">
-                    Enter a value, choose your units, and copy the result instantly.
-                  </p>
-                </div>
+                    <div className="rounded-2xl border border-border/40 bg-transparent px-2 py-2 text-center sm:px-4 sm:py-3">
+                      <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        OR
+                      </div>
+                      <p className="text-[13px] text-muted-foreground/80">
+                        Enter a value, choose your units, and copy the result instantly.
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 {rhfCategory && (
                   <div className="flex flex-col gap-4">

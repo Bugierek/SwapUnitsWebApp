@@ -14,6 +14,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Footer } from '@/components/footer';
 import { CategoryTopbarBridge } from '@/components/category-topbar-bridge';
+import { UnitConverter } from '@/components/unit-converter';
+import { getCategoryDefaultPair } from '@/lib/category-defaults';
+import { ScrollIntoViewOnMount } from '@/components/scroll-into-view-on-mount';
 
 type CategoryPageParams = {
   slug: string;
@@ -117,6 +120,12 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   const units = unitEntry.units ?? [];
   const baseUnit = units.find((unit) => unit.factor === 1) ?? units[0];
+  const defaultPair = getCategoryDefaultPair(info.category);
+  const initialFromUnit = defaultPair?.fromUnit ?? units[0]?.symbol ?? '';
+  const initialToUnit =
+    defaultPair?.toUnit ??
+    units.find((unit) => unit.symbol !== initialFromUnit)?.symbol ??
+    initialFromUnit;
   const presets = getPresetsForCategory(info.category);
   const topPresets = presets.slice(0, 8);
   const conversionPairs = units.flatMap((fromUnit) =>
@@ -132,6 +141,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   return (
     <div className="min-h-screen bg-background">
+      <ScrollIntoViewOnMount targetId="category-locked-converter" offset={140} />
       <CategoryTopbarBridge presets={topbarPresets} />
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-12 px-4 pb-16 pt-12 sm:px-6 lg:px-8">
       <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
@@ -189,6 +199,31 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             </Link>
           </div>
         </div>
+      </section>
+
+      <section
+        id="category-locked-converter"
+        className="space-y-4 rounded-3xl border border-border/60 bg-card px-4 py-5 shadow-sm sm:px-6"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-foreground">Convert {info.title.toLowerCase()} instantly</h2>
+            <p className="text-sm text-muted-foreground">
+              This converter is focused on {info.title.toLowerCase()} only. Pick any units in this category and get results immediately.
+            </p>
+          </div>
+          <Link href="/#converter" className="text-sm font-semibold text-primary transition hover:text-primary/80">
+            Open full converter
+          </Link>
+        </div>
+        <UnitConverter
+          lockedCategory={info.category}
+          initialCategory={info.category}
+          initialFromUnit={initialFromUnit}
+          initialToUnit={initialToUnit}
+          initialValue={1}
+          hideFinder
+        />
       </section>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
