@@ -2627,6 +2627,28 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     );
   }, [generalFormula, dynamicFormula]);
   const formulaTabContent = React.useMemo(() => {
+    const isCurrencyLoading = rhfCategory === 'Currency' && (isFetchingFx || !fxRates);
+
+    if (isCurrencyLoading) {
+      return (
+        <div className="rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 md:px-2.5 md:py-2.5">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Formula
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <span>Updating FX rates…</span>
+            <div className="h-1 w-20 overflow-hidden rounded-full bg-border/60">
+              <div className="h-full w-1/2 animate-pulse bg-primary/70" />
+            </div>
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="h-3 w-28 animate-pulse rounded bg-border/60" />
+            <div className="h-3 w-36 animate-pulse rounded bg-border/60" />
+          </div>
+        </div>
+      );
+    }
+
     if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return (
         <p className="text-sm text-muted-foreground">
@@ -2697,6 +2719,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     formatFormulaValue,
     rateCopyState,
     showPlaceholder,
+    isFetchingFx,
+    fxRates,
   ]);
 
   const sourcesTabContent = React.useMemo(() => {
@@ -2979,6 +3003,23 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   }, [onToggleFavorite, rhfCategory, rhfFromUnit, rhfToUnit, handleSaveToFavoritesInternal, getUnitDisplayName]);
 
   const resultBanner = React.useMemo(() => {
+    const isCurrencyLoading = rhfCategory === 'Currency' && (isFetchingFx || !fxRates);
+
+    if (isCurrencyLoading) {
+      return (
+        <div className="rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-4 py-5 text-sm text-muted-foreground">
+          <div className="mb-3 h-3 w-28 animate-pulse rounded bg-border/60" />
+          <div className="mb-4 h-6 w-48 animate-pulse rounded bg-border/60" />
+          <div className="flex items-center gap-2 text-[11px]">
+            <span>Updating FX rates…</span>
+            <div className="h-1 w-20 overflow-hidden rounded-full bg-border/60">
+              <div className="h-full w-1/2 animate-pulse bg-primary/70" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (showPlaceholder || !conversionResult || !rhfCategory || !rhfFromUnit || !rhfToUnit) {
       return (
         <div className="rounded-xl border border-dashed border-border/60 bg-[hsl(var(--control-background))] px-3 py-3 text-sm text-muted-foreground">
@@ -3075,12 +3116,12 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
 
         <div
           className={cn(
-            "group relative flex flex-wrap items-center gap-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-6 pr-14 transition-colors duration-700 overflow-hidden sm:gap-6",
+            "group relative flex flex-wrap items-center gap-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-5 py-6 pr-14 transition-colors duration-700 overflow-hidden sm:gap-6 min-h-[112px]",
             resultHighlightPulse &&
               'border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-[hsl(var(--control-background))] dark:text-primary'
           )}
         >
-            <div className="flex flex-1 flex-col gap-1 text-left">
+          <div className="flex flex-1 flex-col gap-1 text-left">
             <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               {formatFromValue(Number(rhfValue), precisionMode)} {fromUnitLabel}
               <span> equals</span>
