@@ -187,8 +187,11 @@ export default function WidgetPage() {
         if (!res.ok) throw new Error("Failed FX fetch");
         const data: FxRatesResponse = await res.json();
         setFxRates(data);
-        setSelectedFxDate(isHistoricalTarget ? date ?? undefined : undefined);
-        setIsHistoricalMode(isHistoricalTarget);
+        const responseKey = data.date ?? "";
+        const responseDate = responseKey ? new Date(`${responseKey}T00:00:00Z`) : undefined;
+        const isHist = Boolean(date) && responseKey !== todayKey;
+        setSelectedFxDate(isHist ? responseDate ?? date ?? undefined : undefined);
+        setIsHistoricalMode(isHist);
         setFxStatus(null);
       } catch (err) {
         console.error("FX fetch error (widget):", err);

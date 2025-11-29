@@ -66,6 +66,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
   const [fxError, setFxError] = React.useState<string | null>(null);
   const [isFetchingFx, setIsFetchingFx] = React.useState(false);
+  const fxLastRequestedKeyRef = React.useRef<string | null>(null);
   const todayKey = React.useMemo(() => new Date().toISOString().split('T')[0], []);
   const initialHistorical = React.useMemo(() => {
     if (initialFxMode === 'historical' && initialFxDate) {
@@ -188,6 +189,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     setFxError(null);
 
     const isHistoricalTarget = Boolean(date) && targetKey !== todayKey;
+    fxLastRequestedKeyRef.current = targetKey || todayKey;
     setSelectedFxDate(isHistoricalTarget ? date ?? undefined : undefined);
     setIsHistoricalMode(isHistoricalTarget);
 
@@ -204,8 +206,10 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
         const data = (await res.json()) as FxRatesResponse;
         setFxRates(data);
-        const isHist = Boolean(date) && targetKey !== todayKey;
-        setSelectedFxDate(isHist ? date ?? undefined : undefined);
+        const responseKey = data.date ?? '';
+        const isHist = Boolean(date) && responseKey !== todayKey;
+        const responseDate = responseKey ? new Date(`${responseKey}T00:00:00Z`) : undefined;
+        setSelectedFxDate(isHist ? responseDate ?? date ?? undefined : undefined);
         setIsHistoricalMode(isHist);
       })
       .catch((error) => {
@@ -235,8 +239,18 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
       fetchPairFxRates(selectedFxDate, true);
     } else if (!fxRates) {
       fetchPairFxRates();
+    } else {
+      const hasFrom =
+        activeFrom.symbol === fxRates.base ||
+        fxRates.rates[activeFrom.symbol as CurrencyCode] !== undefined;
+      const hasTo =
+        activeTo.symbol === fxRates.base ||
+        fxRates.rates[activeTo.symbol as CurrencyCode] !== undefined;
+      if (!hasFrom || !hasTo) {
+        fetchPairFxRates(undefined, true);
+      }
     }
-  }, [category, selectedFxDate, fxRates, fetchPairFxRates, isFetchingFx]);
+  }, [category, selectedFxDate, fxRates, fetchPairFxRates, isFetchingFx, activeFrom.symbol, activeTo.symbol]);
 
   const fxRateDateMessage = React.useMemo<React.ReactNode>(() => {
     if (category !== 'Currency' || !fxRates) return '';
