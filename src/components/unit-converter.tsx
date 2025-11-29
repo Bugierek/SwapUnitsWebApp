@@ -341,7 +341,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const rhfCategory = watch("category") as UnitCategory | "";
   const rhfFromUnit = watch("fromUnit");
   const rhfToUnit = watch("toUnit");
-  const fxRateDateMessage = React.useMemo(() => {
+  const fxRateDateMessage = React.useMemo<React.ReactNode>(() => {
     if (rhfCategory !== 'Currency') return null;
     if (fxErrorRef.current) return fxErrorRef.current;
     if (!fxRates) {
@@ -352,16 +352,19 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
 
     const rateDate = fxRates.date;
     if (!rateDate) return null;
-    const isToday = rateDate === new Date().toISOString().split('T')[0];
     const formattedDate = new Date(rateDate + 'T00:00:00Z').toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
 
-    return isToday
-      ? `Using latest ECB rates (${formattedDate})`
-      : `Using historical rates from ${formattedDate}`;
+    return isHistoricalMode ? (
+      <>
+        Using <span className="font-semibold text-foreground">historical</span> rates from {formattedDate}
+      </>
+    ) : (
+      `Using latest ECB rates (${formattedDate})`
+    );
   }, [fxRates, rhfCategory, isHistoricalMode]);
   const computeMenuMaxHeight = React.useCallback((triggerEl: HTMLButtonElement | null) => {
     if (typeof window === 'undefined' || !triggerEl) return null;
@@ -534,8 +537,13 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       return baseUrl;
     }
     const params = new URLSearchParams({ value: trimmedValue });
-    if (rhfCategory === 'Currency' && selectedFxDate) {
-      params.set('fxDate', selectedFxDate.toISOString().split('T')[0]);
+    if (rhfCategory === 'Currency') {
+      if (selectedFxDate) {
+        params.set('fxDate', selectedFxDate.toISOString().split('T')[0]);
+        params.set('fxMode', isHistoricalMode ? 'historical' : 'latest');
+      } else {
+        params.set('fxMode', 'latest');
+      }
     }
     return `${baseUrl}?${params.toString()}`;
   }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue, selectedFxDate]);
@@ -1425,6 +1433,11 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         if (data.date) {
           const responseDate = new Date(data.date + 'T00:00:00Z');
           setSelectedFxDate(responseDate);
+          const todayKey = new Date().toISOString().split('T')[0];
+          const responseKey = responseDate.toISOString().split('T')[0];
+          setIsHistoricalMode(Boolean(date) && responseKey !== todayKey);
+        } else {
+          setIsHistoricalMode(false);
         }
         maybeApplyCurrencyConversion(data);
       })
@@ -3114,23 +3127,41 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                       value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
                       onChange={(e) => {
                         const dateStr = e.target.value;
+                        const todayKey = new Date().toISOString().split('T')[0];
                         if (dateStr) {
                           const date = new Date(dateStr + 'T00:00:00Z');
-                          setIsHistoricalMode(true);
-                          setFxRates(null);
-                          fetchFxRates(date, true);
+                          const pickedKey = date.toISOString().split('T')[0];
+                          if (pickedKey === todayKey) {
+                            // Treat "today" as latest: clear historical flag and fetch latest endpoint
+                            setSelectedFxDate(undefined);
+                            setIsHistoricalMode(false);
+                            setFxRates(null);
+                            fetchFxRates(undefined, true);
+                          } else {
+                            setIsHistoricalMode(true);
+                            setFxRates(null);
+                            fetchFxRates(date, true);
+                          }
                         } else {
                           setSelectedFxDate(undefined);
                           setIsHistoricalMode(false);
                           setFxRates(null);
                           fetchFxRates(undefined, true);
-                        }
-                      }}
+                      }
+                    }}
                       aria-hidden="true"
                       className="absolute inset-0 h-6 w-6 cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
                 </div>
+                {isFetchingFx && (
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <span>Updating rates…</span>
+                    <div className="h-1 w-20 overflow-hidden rounded-full bg-border/60">
+                      <div className="h-full w-1/2 animate-pulse bg-primary/70" />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

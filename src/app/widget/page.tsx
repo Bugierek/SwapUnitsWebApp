@@ -149,12 +149,16 @@ export default function WidgetPage() {
   const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
   const [fxStatus, setFxStatus] = React.useState<string | null>(null);
   const [fxLoading, setFxLoading] = React.useState(false);
+  const todayKey = React.useMemo(() => new Date().toISOString().split("T")[0], []);
   const [selectedFxDate, setSelectedFxDate] = React.useState<Date | undefined>(() => {
     if (!fxDateParam) return undefined;
     const d = new Date(fxDateParam + "T00:00:00Z");
     return Number.isNaN(d.getTime()) ? undefined : d;
   });
-  const [isHistoricalMode, setIsHistoricalMode] = React.useState<boolean>(Boolean(fxDateParam));
+  const [isHistoricalMode, setIsHistoricalMode] = React.useState<boolean>(() => {
+    if (!fxDateParam) return false;
+    return fxDateParam !== todayKey;
+  });
 
   React.useEffect(() => {
     if (category && !availableCategories.includes(category)) {
@@ -169,12 +173,13 @@ export default function WidgetPage() {
       const nextKey = date ? date.toISOString().split("T")[0] : "";
       const currentKey = fxRates?.date ?? "";
       if (nextKey && currentKey === nextKey) return;
+      const isHistoricalTarget = Boolean(date) && nextKey !== todayKey;
 
       setFxLoading(true);
-      setFxStatus(date ? "Loading historical FX rates…" : "Loading live FX rates…");
+      setFxStatus(isHistoricalTarget ? "Loading historical FX rates…" : "Loading live FX rates…");
       const symbolsList = allowedUnits["Currency"]?.map((u) => u.symbol).filter((s) => s !== "EUR") ?? [];
       const symbolsParam = symbolsList.length ? `&symbols=${symbolsList.join(",")}` : "";
-      const url = date
+      const url = isHistoricalTarget
         ? `/api/fx/historical?date=${nextKey}${symbolsParam}`
         : `/api/fx?base=EUR${symbolsParam}`;
       try {
@@ -182,20 +187,17 @@ export default function WidgetPage() {
         if (!res.ok) throw new Error("Failed FX fetch");
         const data: FxRatesResponse = await res.json();
         setFxRates(data);
-        const todayKey = new Date().toISOString().split("T")[0];
-        const dateKey = date ? date.toISOString().split("T")[0] : data.date;
-        const isHist = Boolean(dateKey) && dateKey !== todayKey;
-        setSelectedFxDate(date ? date : undefined);
-        setIsHistoricalMode(isHist);
+        setSelectedFxDate(isHistoricalTarget ? date ?? undefined : undefined);
+        setIsHistoricalMode(isHistoricalTarget);
         setFxStatus(null);
       } catch (err) {
         console.error("FX fetch error (widget):", err);
-        setFxStatus(date ? "Historical FX rates unavailable" : "Live FX rates unavailable");
+        setFxStatus(isHistoricalTarget ? "Historical FX rates unavailable" : "Live FX rates unavailable");
       } finally {
         setFxLoading(false);
       }
     },
-    [allowedUnits, availableCategories, fxLoading, fxRates],
+    [allowedUnits, availableCategories, fxLoading, fxRates, todayKey],
   );
 
   // Fetch FX rates when needed (currency conversions)
@@ -205,12 +207,21 @@ export default function WidgetPage() {
     const selectedKey = selectedFxDate ? selectedFxDate.toISOString().split("T")[0] : "";
     const currentKey = fxRates?.date ?? "";
     if (selectedFxDate) {
+      if (selectedKey === todayKey) {
+        setSelectedFxDate(undefined);
+        setIsHistoricalMode(false);
+        if (!fxRates || currentKey !== todayKey) {
+          fetchFxRates();
+        }
+        return;
+      }
       if (currentKey === selectedKey && fxRates) return;
       fetchFxRates(selectedFxDate);
     } else if (!fxRates) {
+      setIsHistoricalMode(false);
       fetchFxRates();
     }
-  }, [availableCategories, fxRates, selectedFxDate, fetchFxRates, fxLoading]);
+  }, [availableCategories, fxRates, selectedFxDate, fetchFxRates, fxLoading, todayKey]);
 
   React.useEffect(() => {
     const units = category ? allowedUnits[category] ?? [] : [];
@@ -250,16 +261,22 @@ export default function WidgetPage() {
     });
   }, [category, fromUnit, toUnit, value, fxRates]);
 
-  const fxRateDateMessage = React.useMemo(() => {
+  const fxRateDateMessage = React.useMemo<React.ReactNode>(() => {
     if (category !== "Currency" || !fxRates) return null;
     const dateLabel = new Date(`${fxRates.date}T00:00:00Z`).toLocaleDateString(undefined, {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
-    const usingHistorical = isHistoricalMode;
-    return `${usingHistorical ? "Using historical" : "Using latest"} ECB rates (${dateLabel})`;
-  }, [category, fxRates, isHistoricalMode]);
+    const usingHistorical = isHistoricalMode && fxHistoryEnabled;
+    return usingHistorical ? (
+      <>
+        Using <span className="font-semibold text-foreground">historical</span> ECB rates ({dateLabel})
+      </>
+    ) : (
+      `Using latest ECB rates (${dateLabel})`
+    );
+  }, [category, fxRates, isHistoricalMode, fxHistoryEnabled]);
 
   const handleCopyValue = async () => {
     if (!result) return;
@@ -448,32 +465,40 @@ export default function WidgetPage() {
           ) : (
             <span className="text-muted-foreground">Enter a value to see the full result.</span>
           )}
-              {category === "Currency" && fxRateDateMessage && (
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span>{fxRateDateMessage}</span>
-                  {fxHistoryEnabled && (
-                    <div className="relative inline-flex h-6 w-6 items-center justify-center">
-                      <input
-                        type="date"
-                        min="1999-01-04"
-                        max={new Date().toISOString().split("T")[0]}
-                        value={selectedFxDate ? selectedFxDate.toISOString().split("T")[0] : ""}
-                        onChange={(e) => {
-                          const dateStr = e.target.value;
-                          if (dateStr) {
-                            const date = new Date(dateStr + "T00:00:00Z");
-                            setSelectedFxDate(date);
-                            setIsHistoricalMode(true);
-                            setFxRates(null);
-                          } else {
-                            setSelectedFxDate(undefined);
-                            setIsHistoricalMode(false);
-                            setFxRates(null);
-                          }
-                        }}
-                        aria-label="Select FX rate date"
-                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                      />
+          {category === "Currency" && fxRateDateMessage && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <span>{fxRateDateMessage}</span>
+              {fxHistoryEnabled && (
+                <div className="relative inline-flex h-6 w-6 items-center justify-center">
+                  <input
+                    type="date"
+                    min="1999-01-04"
+                    max={new Date().toISOString().split("T")[0]}
+                    value={selectedFxDate ? selectedFxDate.toISOString().split("T")[0] : ""}
+                    onChange={(e) => {
+                      const dateStr = e.target.value;
+                      const todayKey = new Date().toISOString().split("T")[0];
+                      if (dateStr) {
+                        const date = new Date(dateStr + "T00:00:00Z");
+                        const pickedKey = date.toISOString().split("T")[0];
+                        if (pickedKey === todayKey) {
+                          setSelectedFxDate(undefined);
+                          setIsHistoricalMode(false);
+                          setFxRates(null);
+                        } else {
+                          setSelectedFxDate(date);
+                          setIsHistoricalMode(true);
+                          setFxRates(null);
+                        }
+                      } else {
+                        setSelectedFxDate(undefined);
+                        setIsHistoricalMode(false);
+                        setFxRates(null);
+                      }
+                    }}
+                    aria-label="Select FX rate date"
+                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                  />
                   <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 </div>
               )}

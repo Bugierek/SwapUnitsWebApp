@@ -14,6 +14,8 @@ type PageParams = {
   pairSlug: string;
 }
 
+type FxMode = 'latest' | 'historical';
+
 const sampleMultipliers: number[] = [0.25, 0.5, 1, 2, 5, 10, 25, 100];
 const temperatureSampleSet: number[] = [-40, -10, 0, 32, 68, 100];
 const fuelEconomySampleSet: number[] = [2, 4, 6, 8, 10, 15, 20];
@@ -147,6 +149,16 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
     const d = new Date(raw + 'T00:00:00Z');
     return Number.isNaN(d.getTime()) ? null : d;
   })();
+  const initialFxMode = (() => {
+    let raw: string | undefined;
+    if (resolvedSearchParams instanceof URLSearchParams) {
+      raw = resolvedSearchParams.get('fxMode') ?? undefined;
+    } else {
+      const val = resolvedSearchParams?.fxMode;
+      raw = Array.isArray(val) ? val[0] : (val as string | undefined);
+    }
+    return raw === 'historical' ? 'historical' : 'latest';
+  })();
 
   const categoryInfo = getCategoryInfoBySlug(categorySlug);
   if (!categoryInfo) {
@@ -235,6 +247,7 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
         navbarPresets={navbarPresets}
         initialValue={initialValue}
         initialFxDate={initialFxDate}
+        initialFxMode={initialFxMode}
       />
     </>
   );

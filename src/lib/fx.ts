@@ -25,6 +25,7 @@ export async function fetchFxRates(
   base: CurrencyCode = 'EUR',
   symbols?: CurrencyCode[],
 ): Promise<FxRatesResponse> {
+  // Frankfurter latest automatically returns the most recent business-day rate (e.g., Friday on weekends/holidays)
   // Frankfurter uses `base` in docs; keep it predictable.
   const params = new URLSearchParams({ base });
   if (symbols && symbols.length > 0) {

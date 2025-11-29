@@ -50,6 +50,7 @@ type ConversionPairPageContentProps = {
   navbarPresets: Preset[];
   initialValue?: number;
   initialFxDate?: Date | null;
+  initialFxMode?: 'latest' | 'historical';
 };
 
 const formatNumber = (value: number): string =>
@@ -94,6 +95,7 @@ export function ConversionPairPageContent({
   navbarPresets,
   initialValue,
   initialFxDate,
+  initialFxMode = 'latest',
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -237,6 +239,7 @@ export function ConversionPairPageContent({
               toUnit={toUnit}
               initialValue={initialValue ?? 1}
               initialFxDate={initialFxDate ?? undefined}
+              initialFxMode={initialFxMode}
               onCopyResult={handleCopyResult}
             />
           </section>
