@@ -14,8 +14,6 @@ type PageParams = {
   pairSlug: string;
 }
 
-type FxMode = 'latest' | 'historical';
-
 const sampleMultipliers: number[] = [0.25, 0.5, 1, 2, 5, 10, 25, 100];
 const temperatureSampleSet: number[] = [-40, -10, 0, 32, 68, 100];
 const fuelEconomySampleSet: number[] = [2, 4, 6, 8, 10, 15, 20];

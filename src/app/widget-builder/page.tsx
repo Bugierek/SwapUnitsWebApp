@@ -35,8 +35,28 @@ export default function WidgetBuilderPage() {
     [router],
   );
 
+  type HistoryItem = {
+    category: UnitCategory;
+    fromUnit: string;
+    toUnit: string;
+    fromValue?: number | string | null;
+    meta?: {
+      kind?: string;
+      route?: string;
+      inputText?: string;
+      fromPrefixSymbol?: string;
+      toPrefixSymbol?: string;
+    };
+  };
+
+  type FavoriteLike = {
+    category: UnitCategory;
+    fromUnit: string;
+    toUnit: string;
+  };
+
   const handleHistorySelect = React.useCallback(
-    (item: any) => {
+    (item: HistoryItem) => {
       if (item.meta?.kind === "si-prefix") {
         const params = new URLSearchParams({
           from: item.meta.fromPrefixSymbol,
@@ -52,14 +72,14 @@ export default function WidgetBuilderPage() {
   );
 
   const handleFavoriteSelect = React.useCallback(
-    (fav: any) => {
+    (fav: FavoriteLike) => {
       navigateToPair(fav.category, fav.fromUnit, fav.toUnit, 1);
     },
     [navigateToPair],
   );
 
   const handlePresetSelect = React.useCallback(
-    (preset: any) => {
+    (preset: FavoriteLike) => {
       navigateToPair(preset.category, preset.fromUnit, preset.toUnit, 1);
     },
     [navigateToPair],
@@ -67,7 +87,6 @@ export default function WidgetBuilderPage() {
 
   const builderCategories = React.useMemo(() => categoryDisplayOrder, []);
 
-  const categoryIcons: Partial<Record<UnitCategory, React.ReactNode>> = {};
   const [selectedCategories, setSelectedCategories] = React.useState<Record<UnitCategory, boolean>>(() => {
     const initial = {} as Record<UnitCategory, boolean>;
     builderCategories.forEach((cat) => {

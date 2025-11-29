@@ -10,7 +10,6 @@ import {
   ToastTitle,
   ToastViewport,
 } from "@/components/ui/toast"
-import { Check } from "lucide-react" // Import Check icon
 
 export function Toaster() {
   const { toasts } = useToast()

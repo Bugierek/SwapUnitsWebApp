@@ -15,7 +15,7 @@ type Props = {
 
 export function CategoryTopbarBridge({ presets = [] }: Props) {
   const router = useRouter();
-  const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
+  const { history, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
   const { favorites, removeFavorite, clearAllFavorites, isLoadingFavorites } = useFavorites();
 
   const navigateToPair = React.useCallback(

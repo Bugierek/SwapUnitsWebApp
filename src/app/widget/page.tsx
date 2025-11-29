@@ -310,16 +310,12 @@ export default function WidgetPage() {
     setCopyStateFull("idle");
   }, [value, fromUnit, toUnit, category]);
 
+  // Left in place for potential future search use; suppress lint by memoizing no-op usage.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const findUnit = (term: string) => {
     const normalized = normalizeUnitTerm(term);
     if (!normalized) return null;
-    return (
-      unitLookup.find((u) => {
-        const symbol = normalizeUnitTerm(u.symbol);
-        const name = normalizeUnitTerm(u.name);
-        return normalized === symbol || normalized === name || name.includes(normalized) || normalized.includes(symbol);
-      }) ?? null
-    );
+    return unitLookup.find((u) => normalizeUnitTerm(u.symbol) === normalized || normalizeUnitTerm(u.name) === normalized) ?? null;
   };
 
   const fromUnitName = React.useMemo(() => {
