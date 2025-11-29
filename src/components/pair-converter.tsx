@@ -64,8 +64,13 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
   const [fxError, setFxError] = React.useState<string | null>(null);
   const [isFetchingFx, setIsFetchingFx] = React.useState(false);
+  const todayKey = React.useMemo(() => new Date().toISOString().split('T')[0], []);
+  const initialHistorical = React.useMemo(() => {
+    if (!initialFxDate) return false;
+    return initialFxDate.toISOString().split('T')[0] !== todayKey;
+  }, [initialFxDate, todayKey]);
   const [selectedFxDate, setSelectedFxDate] = React.useState<Date | undefined>(initialFxDate ?? undefined);
-  const [isHistoricalMode, setIsHistoricalMode] = React.useState(Boolean(initialFxDate));
+  const [isHistoricalMode, setIsHistoricalMode] = React.useState(initialHistorical);
   const fxDateInputRef = React.useRef<HTMLInputElement | null>(null);
   const isFullPrecision = precisionMode === 'full';
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
@@ -163,43 +168,47 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
 
   const fetchPairFxRates = React.useCallback((date?: Date, force = false) => {
-    if (isFetchingFx || (fxRates && !force && !date)) return;
+    if (isFetchingFx) return;
+    const targetKey = date ? date.toISOString().split('T')[0] : '';
+    const currentKey = fxRates?.date ?? '';
+    if (!force) {
+      if (!date && fxRates && currentKey === todayKey) return;
+      if (date && fxRates && currentKey === targetKey) return;
+    }
     setIsFetchingFx(true);
     setFxError(null);
+
     if (date) {
       setSelectedFxDate(date);
-      setIsHistoricalMode(true);
+      setIsHistoricalMode(targetKey !== todayKey);
     } else {
       setSelectedFxDate(undefined);
       setIsHistoricalMode(false);
     }
+
     const currencyUnits = getUnitsForCategory('Currency').map((unit) => unit.symbol);
     const symbols = currencyUnits.filter((code) => code !== 'EUR').join(',');
     const baseUrl = date
-      ? `/api/fx/historical?date=${date.toISOString().split('T')[0]}`
+      ? `/api/fx/historical?date=${targetKey}`
       : '/api/fx?base=EUR';
     const url = `${baseUrl}${symbols ? `&symbols=${symbols}` : ''}`;
+
     fetch(url, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
         const data = (await res.json()) as FxRatesResponse;
         setFxRates(data);
-        if (data.date) {
-          setSelectedFxDate(new Date(data.date + 'T00:00:00Z'));
-        }
+        const apiKey = data.date;
+        const isHist = Boolean(apiKey) && apiKey !== todayKey;
+        setSelectedFxDate(date ? date : undefined);
+        setIsHistoricalMode(isHist);
       })
       .catch((error) => {
         console.error('FX fetch error (pair page):', error);
         setFxError('Live FX rates unavailable');
       })
       .finally(() => setIsFetchingFx(false));
-  }, [fxRates, isFetchingFx]);
-
-  // Fetch FX when on currency pages
-  React.useEffect(() => {
-    if (category !== 'Currency') return;
-    fetchPairFxRates();
-  }, [category, fetchPairFxRates]);
+  }, [fxRates, isFetchingFx, todayKey]);
 
   // Ensure currency formula/result renders once rates arrive without needing a swap.
   React.useEffect(() => {
@@ -210,6 +219,20 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     setInputValue((prev) => prev); // no-op to ensure downstream memo runs with latest fxRates
   }, [category, fxRates, parsedInput]);
 
+  // Drive FX fetch based on selected date / latest
+  React.useEffect(() => {
+    if (category !== 'Currency') return;
+    if (isFetchingFx) return;
+    const targetKey = selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : '';
+    const currentKey = fxRates?.date ?? '';
+    if (selectedFxDate) {
+      if (fxRates && currentKey === targetKey) return;
+      fetchPairFxRates(selectedFxDate, true);
+    } else if (!fxRates) {
+      fetchPairFxRates();
+    }
+  }, [category, selectedFxDate, fxRates, fetchPairFxRates, isFetchingFx]);
+
   const fxRateDateMessage = React.useMemo(() => {
     if (category !== 'Currency' || !fxRates) return '';
     const dateLabel = new Date(`${fxRates.date}T00:00:00Z`).toLocaleDateString(undefined, {
@@ -217,9 +240,9 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
       day: 'numeric',
       year: 'numeric',
     });
-    const usingHistorical = isHistoricalMode || Boolean(selectedFxDate);
+    const usingHistorical = isHistoricalMode;
     return `${usingHistorical ? 'Using historical' : 'Using latest'} ECB rates (${dateLabel})`;
-  }, [category, fxRates, isHistoricalMode, selectedFxDate]);
+  }, [category, fxRates, isHistoricalMode]);
 
   React.useEffect(() => {
     setCopyState('idle');
@@ -625,6 +648,14 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 />
                 <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </div>
+            </div>
+          )}
+          {category === 'Currency' && isFetchingFx && (
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+              <span>Updating rates…</span>
+              <div className="h-1 w-20 overflow-hidden rounded-full bg-border/60">
+                <div className="h-full w-1/2 animate-pulse bg-primary/70" />
               </div>
             </div>
           )}

@@ -82,6 +82,7 @@ export default function WidgetBuilderPage() {
   });
   const [width, setWidth] = React.useState("100%");
   const [height, setHeight] = React.useState("550px");
+  const [fxHistoryEnabled, setFxHistoryEnabled] = React.useState(false);
 
   const toggleCategory = (cat: UnitCategory) => {
     setSelectedCategories((prev) => {
@@ -119,8 +120,9 @@ export default function WidgetBuilderPage() {
     if (effectiveUnits.length) params.set("units", effectiveUnits.join(","));
     if (width.trim()) params.set("width", width.trim());
     if (height.trim()) params.set("height", height.trim());
+    if (fxHistoryEnabled) params.set("fxHistory", "1");
     return params.toString();
-  }, [chosenCategories, effectiveUnits]);
+  }, [chosenCategories, effectiveUnits, width, height, fxHistoryEnabled]);
 
   const embedBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com').replace(/\/$/, '');
   const iframeSrc = `${embedBaseUrl}/widget?${query}`;
@@ -236,16 +238,16 @@ export default function WidgetBuilderPage() {
                 {categoryDisplayOrder
                   .filter((cat) => selectedCategories[cat])
                   .map((cat) => (
-                    <div key={`units-${cat}`} className="space-y-1">
-                      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                        <UnitIcon category={cat as UnitCategory} className="h-4 w-4 text-primary" aria-hidden="true" />
-                        {unitData[cat as UnitCategory].name}
-                      </p>
-                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                        {unitData[cat as UnitCategory].units.map((u) => (
-                          <label
-                            key={u.symbol}
-                            className={
+                  <div key={`units-${cat}`} className="space-y-1">
+                    <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                      <UnitIcon category={cat as UnitCategory} className="h-4 w-4 text-primary" aria-hidden="true" />
+                      {unitData[cat as UnitCategory].name}
+                    </p>
+                    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      {unitData[cat as UnitCategory].units.map((u) => (
+                        <label
+                          key={u.symbol}
+                          className={
                               "flex items-center gap-2 rounded border border-border/40 px-2 py-1 text-sm transition hover:border-primary/60" +
                               (selectedUnits[`${cat}:${u.symbol}`] ? " border-primary/60 bg-primary/5" : "")
                             }
@@ -261,11 +263,27 @@ export default function WidgetBuilderPage() {
                             </span>
                           </label>
                         ))}
-                      </div>
                     </div>
-                  ))}
-              </div>
+                    {cat === 'Currency' && (
+                      <div className="mt-3 space-y-1 rounded border border-border/60 bg-card/70 px-2 py-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                          Historical data
+                        </p>
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={fxHistoryEnabled}
+                            onChange={(e) => setFxHistoryEnabled(e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                          <span>Include historical exchange rates (choose from calendar)</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                ))}
             </div>
+          </div>
 
             <Separator className="border-border/60" />
 
