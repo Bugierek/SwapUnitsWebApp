@@ -112,12 +112,14 @@ interface UnitConverterProps {
   lockedCategory?: UnitCategory;
   hideFinder?: boolean;
   enableQuickstartTour?: boolean;
+  onUnitsChange?: (fromUnit: string, toUnit: string) => void;
 }
 
 export interface UnitConverterHandle {
   handlePresetSelect: (preset: Preset | FavoriteItem) => void;
   applyHistorySelect: (item: ConversionHistoryItem) => void;
   focusFinder: () => void;
+  setHistoricalDate: (date: Date | undefined) => void;
 }
 
 const CATEGORY_TILE_TITLES: Partial<Record<UnitCategory, string>> = {
@@ -228,6 +230,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     enableQuickstartTour = true,
     favorites = [],
     onToggleFavorite,
+    onUnitsChange,
   },
   ref,
 ) {
@@ -425,6 +428,14 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     setToMenuMaxHeight(maxHeight);
     requestAnimationFrame(() => refreshMenuScrollState('to'));
   }, [toMenuOpen, computeMenuMaxHeight, refreshMenuScrollState]);
+
+  // Notify parent when units change
+  React.useEffect(() => {
+    if (onUnitsChange && rhfFromUnit && rhfToUnit) {
+      onUnitsChange(rhfFromUnit, rhfToUnit);
+    }
+  }, [rhfFromUnit, rhfToUnit, onUnitsChange]);
+
   const hasToggleFavorites = typeof onToggleFavorite === 'function';
   const getUnitDisplayName = React.useCallback(
     (category: UnitCategory | "", symbol: string) => {
@@ -2436,6 +2447,10 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     handlePresetSelect: internalHandlePresetSelect,
     applyHistorySelect: internalApplyHistorySelect,
     focusFinder: focusFinderInput,
+    setHistoricalDate: (date: Date | undefined) => {
+      setSelectedFxDate(date);
+      setIsHistoricalMode(!!date);
+    },
   }));
 
 

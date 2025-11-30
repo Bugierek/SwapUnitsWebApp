@@ -17,6 +17,11 @@ import { CategoryTopbarBridge } from '@/components/category-topbar-bridge';
 import { UnitConverter } from '@/components/unit-converter';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { ScrollIntoViewOnMount } from '@/components/scroll-into-view-on-mount';
+import dynamic from 'next/dynamic';
+
+const CurrencyCategoryContent = dynamic(
+  () => import('@/components/currency-category-content').then(mod => ({ default: mod.CurrencyCategoryContent }))
+);
 
 type CategoryPageParams = {
   slug: string;
@@ -201,31 +206,40 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </div>
       </section>
 
-      <section
-        id="category-locked-converter"
-        className="space-y-4 rounded-3xl border border-border/60 bg-card px-4 py-5 shadow-sm sm:px-6"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-foreground">Convert {info.title.toLowerCase()} instantly</h2>
-            <p className="text-sm text-muted-foreground">
-              This converter is focused on {info.title.toLowerCase()} only. Pick any units in this category and get results immediately.
-            </p>
-          </div>
-          <Link href="/#converter" className="text-sm font-semibold text-primary transition hover:text-primary/80">
-            Open full converter
-          </Link>
-        </div>
-        <UnitConverter
-          lockedCategory={info.category}
-          initialCategory={info.category}
+      {info.category === 'Currency' ? (
+        <CurrencyCategoryContent
+          category={info.category}
           initialFromUnit={initialFromUnit}
           initialToUnit={initialToUnit}
-          initialValue={1}
-          hideFinder
-          enableQuickstartTour={false}
+          categoryTitle={info.title}
         />
-      </section>
+      ) : (
+        <section
+          id="category-locked-converter"
+          className="space-y-4 rounded-3xl border border-border/60 bg-card px-4 py-5 shadow-sm sm:px-6"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-foreground">Convert {info.title.toLowerCase()} instantly</h2>
+              <p className="text-sm text-muted-foreground">
+                This converter is focused on {info.title.toLowerCase()} only. Pick any units in this category and get results immediately.
+              </p>
+            </div>
+            <Link href="/#converter" className="text-sm font-semibold text-primary transition hover:text-primary/80">
+              Open full converter
+            </Link>
+          </div>
+          <UnitConverter
+            lockedCategory={info.category}
+            initialCategory={info.category}
+            initialFromUnit={initialFromUnit}
+            initialToUnit={initialToUnit}
+            initialValue={1}
+            hideFinder
+            enableQuickstartTour={false}
+          />
+        </section>
+      )}
 
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link
