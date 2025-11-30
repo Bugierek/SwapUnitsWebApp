@@ -17,8 +17,20 @@ const CATEGORY_SLUGS = new Set(categoryInfoList.map((c) => c.slug.toLowerCase())
 
 export function middleware(req: NextRequest) {
   const hostname = req.nextUrl.hostname.toLowerCase();
+  const path = req.nextUrl.pathname.toLowerCase();
 
+  // If on the primary domain and user hits a category path, redirect to the subdomain so the URL shows e.g. mass.swapunits.com
   if (MAIN_HOSTS.has(hostname)) {
+    const match = path.match(/^\/measurements\/([^/]+)(\/.*)?$/);
+    if (match) {
+      const slug = match[1];
+      if (CATEGORY_SLUGS.has(slug)) {
+        const redirectUrl = new URL(req.url);
+        redirectUrl.hostname = `${slug}.swapunits.com`;
+        redirectUrl.pathname = '/';
+        return NextResponse.redirect(redirectUrl, 308);
+      }
+    }
     return NextResponse.next();
   }
 
