@@ -77,6 +77,7 @@ import {
   precisionBoostFromDecimalPlaces,
   type PrecisionMode,
 } from '@/lib/number-format';
+import { FxSparkline } from '@/components/fx-sparkline';
 
 const formSchema = z.object({
   category: z.string().min(1, "Please select a category"),
@@ -3234,7 +3235,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               </button>
             </div>
             {rhfCategory === 'Currency' && fxRateDateMessage && (
-              <div className="flex flex-col gap-1 text-xs font-normal text-muted-foreground">
+              <div className="flex flex-col gap-3 pb-2 text-xs font-normal text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <label htmlFor="fx-date-inline" className="sr-only">
                     Rate date
@@ -3261,13 +3262,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                           const date = new Date(dateStr + 'T00:00:00Z');
                           const pickedKey = date.toISOString().split('T')[0];
                           if (pickedKey === todayKey) {
-                            // Treat "today" as latest: clear historical flag and fetch latest endpoint
                             setSelectedFxDate(undefined);
                             setIsHistoricalMode(false);
                             setFxRates(null);
                             fetchFxRates(undefined, true);
                           } else {
                             setIsHistoricalMode(true);
+                            setSelectedFxDate(date);
                             setFxRates(null);
                             fetchFxRates(date, true);
                           }
@@ -3276,9 +3277,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                           setIsHistoricalMode(false);
                           setFxRates(null);
                           fetchFxRates(undefined, true);
-                      }
-                    }}
-                      aria-hidden="true"
+                        }
+                      }}
+                      aria-label="Select FX rate date"
                       className="absolute inset-0 h-6 w-6 cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer"
                     />
                   </div>
@@ -3289,6 +3290,16 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                     <div className="h-1 w-20 overflow-hidden rounded-full bg-border/60">
                       <div className="h-full w-1/2 animate-pulse bg-primary/70" />
                     </div>
+                  </div>
+                )}
+                {rhfFromUnit && rhfToUnit && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FxSparkline
+                      key={`${rhfFromUnit}-${rhfToUnit}`}
+                      from={rhfFromUnit}
+                      to={rhfToUnit}
+                      className="h-10"
+                    />
                   </div>
                 )}
               </div>

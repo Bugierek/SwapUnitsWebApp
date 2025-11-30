@@ -23,6 +23,7 @@ import {
   type PrecisionMode,
 } from '@/lib/number-format';
 import { cn } from '@/lib/utils';
+import { FxHistoryChart } from '@/components/fx-history-chart';
 import { useIsCoarsePointer } from '@/hooks/use-pointer-capabilities';
 
 interface PairConverterProps {
@@ -723,6 +724,23 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               </button>
             </div>
           )}
+
+          {category === 'Currency' && (
+            <div className="mt-4">
+              <FxHistoryChart
+                from={activeFrom.symbol}
+                to={activeTo.symbol}
+                highlightDate={
+                  selectedFxDate
+                    ? selectedFxDate
+                    : isHistoricalMode && fxRates
+                      ? new Date(`${fxRates.date}T00:00:00Z`)
+                      : null
+                }
+              />
+            </div>
+          )}
+
         </div>
       )}
 
