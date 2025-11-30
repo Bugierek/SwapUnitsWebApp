@@ -113,12 +113,25 @@ export function FxHistoryChart({ from, to, className, highlightDate, onDateSelec
     if (!point || !onDateSelect) return;
     
     const selectedDate = new Date(point.date + 'T00:00:00Z');
-    const fromValue = inputValue.toFixed(2);
-    const toValue = (inputValue * point.value).toFixed(2);
+    const convertedValue = inputValue * point.value;
+    
+    // Format numbers to avoid scientific notation and use proper decimal places
+    const fromValue = inputValue.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+    const toValue = convertedValue.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
     const fullResult = `${fromValue} ${from} = ${toValue} ${to}`;
     
+    // Detect mobile: check explicit flag OR screen width (< 1024px = mobile/tablet)
+    const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const isMobileDevice = isMobile || isTouchDeviceRef.current || isSmallScreen;
+    
     // On mobile: require double-tap to copy
-    if (isMobile) {
+    if (isMobileDevice) {
       const now = Date.now();
       const lastTap = lastTapRef.current;
       
@@ -476,7 +489,7 @@ export function FxHistoryChart({ from, to, className, highlightDate, onDateSelec
                   x={width - marginRight + (marginRight - 2) / 2}
                   y={activePoint.y + 3.5}
                   textAnchor="middle"
-                  style={{ fontSize: '12px' }}
+                  style={{ fontSize: '10px' }}
                   fontFamily="system-ui, -apple-system, sans-serif"
                   fontWeight="600"
                   fill="hsl(var(--primary-foreground))"
@@ -502,7 +515,7 @@ export function FxHistoryChart({ from, to, className, highlightDate, onDateSelec
                   x={width - marginRight + (marginRight - 2) / 2}
                   y={points[highlightIdx].y + 3.5}
                   textAnchor="middle"
-                  style={{ fontSize: '12px' }}
+                  style={{ fontSize: '10px' }}
                   fontFamily="system-ui, -apple-system, sans-serif"
                   fontWeight="600"
                   fill="white"

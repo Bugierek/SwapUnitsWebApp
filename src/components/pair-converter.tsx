@@ -100,8 +100,14 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
 
   const formatValue = React.useCallback(
     (value: number | null, extraOptions?: FormatConversionValueOptions): FormattedConversionValue =>
-      formatConversionValue(value, { precisionBoost, precisionMode, ...extraOptions }),
-    [precisionBoost, precisionMode],
+      formatConversionValue(value, { 
+        precisionBoost, 
+        precisionMode, 
+        // Force normal (non-scientific) formatting for currency
+        forceScientific: category === 'Currency' ? false : extraOptions?.forceScientific,
+        ...extraOptions 
+      }),
+    [precisionBoost, precisionMode, category],
   );
 
   const parsedInput = React.useMemo(() => {
