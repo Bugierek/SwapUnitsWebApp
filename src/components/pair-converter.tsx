@@ -725,22 +725,6 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
             </div>
           )}
 
-          {category === 'Currency' && (
-            <div className="mt-4">
-              <FxHistoryChart
-                from={activeFrom.symbol}
-                to={activeTo.symbol}
-                highlightDate={
-                  selectedFxDate
-                    ? selectedFxDate
-                    : isHistoricalMode && fxRates
-                      ? new Date(`${fxRates.date}T00:00:00Z`)
-                      : null
-                }
-              />
-            </div>
-          )}
-
         </div>
       )}
 
@@ -790,6 +774,30 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         Results update as you type. Swap the direction to convert back from {activeTo.symbol} to{' '}
         {activeFrom.symbol}.
       </p>
+
+      {/* Chart: Full-width on mobile, contained on desktop */}
+      {category === 'Currency' && (
+        <div id="fx-chart" className="-mx-6 scroll-mt-20 lg:mx-0">
+          <FxHistoryChart
+            from={activeFrom.symbol}
+            to={activeTo.symbol}
+            inputValue={parsedInput ?? 1}
+            highlightDate={
+              selectedFxDate
+                ? selectedFxDate
+                : isHistoricalMode && fxRates
+                  ? new Date(`${fxRates.date}T00:00:00Z`)
+                  : null
+            }
+            onDateSelect={(date) => {
+              setIsHistoricalMode(true);
+              setSelectedFxDate(date);
+              setFxRates(null);
+              fetchPairFxRates(date, true);
+            }}
+          />
+        </div>
+      )}
 
       {isCalculatorOpen && (
         <div
