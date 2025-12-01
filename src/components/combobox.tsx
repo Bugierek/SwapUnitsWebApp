@@ -263,6 +263,9 @@ export function ConversionCombobox({
       return items;
     }
 
+    // Check if user is searching for compound units with division (e.g., "m/s", "km/h")
+    const hasSlash = normalizedSearch.includes('/');
+
     const terms = normalizedSearch
       .toLowerCase()
       .split(/\s+/)
@@ -277,11 +280,19 @@ export function ConversionCombobox({
       return items;
     }
 
-    return items.filter((item) =>
-      terms.every((term) =>
+    return items.filter((item) => {
+      // If search contains '/', only show items that also contain '/'
+      if (hasSlash) {
+        const hasSlashInKeywords = item.keywords.some((keyword) => keyword.includes('/'));
+        if (!hasSlashInKeywords) {
+          return false;
+        }
+      }
+
+      return terms.every((term) =>
         item.keywordsLower.some((keyword) => matchesKeywordTerm(keyword, term)),
-      ),
-    );
+      );
+    });
   }, [items, normalizedSearch, hasUnitCharacters]);
 
   const orderedCategories = React.useMemo(() => {
