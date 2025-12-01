@@ -19,14 +19,22 @@ export function middleware(req: NextRequest) {
   const hostname = req.nextUrl.hostname.toLowerCase();
   const path = req.nextUrl.pathname.toLowerCase();
 
-  // If on the primary domain and user hits a category path, redirect to the subdomain so the URL shows e.g. mass.swapunits.com
+  // Determine the base domain for redirects
+  const getBaseDomain = (host: string): string => {
+    if (host.includes('unitswap.xyz')) return 'unitswap.xyz';
+    if (host.includes('swapunits.com')) return 'swapunits.com';
+    return 'swapunits.com'; // fallback
+  };
+
+  // If on the primary domain and user hits a category path, redirect to the subdomain so the URL shows e.g. mass.unitswap.xyz
   if (MAIN_HOSTS.has(hostname)) {
     const match = path.match(/^\/measurements\/([^/]+)(\/.*)?$/);
     if (match) {
       const slug = match[1];
       if (CATEGORY_SLUGS.has(slug)) {
+        const baseDomain = getBaseDomain(hostname);
         const redirectUrl = new URL(req.url);
-        redirectUrl.hostname = `${slug}.swapunits.com`;
+        redirectUrl.hostname = `${slug}.${baseDomain}`;
         redirectUrl.pathname = '/';
         return NextResponse.redirect(redirectUrl, 308);
       }
@@ -34,15 +42,15 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Extract subdomain (e.g., "mass" from mass.swapunits.com)
+  // Extract subdomain (e.g., "mass" from mass.unitswap.xyz)
   const parts = hostname.split('.');
-  if (parts.length >= 3) {
-    const sub = parts[0];
-    if (CATEGORY_SLUGS.has(sub)) {
-      const url = req.nextUrl.clone();
-      url.pathname = `/measurements/${sub}`;
-      return NextResponse.rewrite(url);
-    }
+  // Handle both mass.unitswap.xyz (3 parts) and mass.localhost (2 parts for local dev)
+  const subdomain = parts.length >= 3 ? parts[0] : (parts.length === 2 && !MAIN_HOSTS.has(hostname) ? parts[0] : null);
+  
+  if (subdomain && CATEGORY_SLUGS.has(subdomain)) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/measurements/${subdomain}`;
+    return NextResponse.rewrite(url);
   }
 
   return NextResponse.next();
