@@ -436,13 +436,15 @@ export function ConversionCombobox({
       if (handleNumericCommit && Number.isFinite(numericCandidate)) {
         handleNumericCommit(numericCandidate);
       }
-      const shouldAppendLabel = sanitizedInput !== '' && isPureNumericQuery(sanitizedInput);
-      const displayText = shouldAppendLabel && match.label
-        ? `${sanitizedInput} ${match.label}`.trim()
-        : rawInput;
+      // If there's a numeric value, construct full query with the selected conversion pair
+      const hasNumeric = Number.isFinite(numericCandidate);
+      const displayText = hasNumeric && match.label
+        ? `${numericCandidate} ${match.label}`.trim()
+        : (sanitizedInput !== '' && isPureNumericQuery(sanitizedInput) && match.label
+          ? `${sanitizedInput} ${match.label}`.trim()
+          : rawInput);
       setCommittedInput(displayText);
       setSearch(displayText);
-      const hasNumeric = Number.isFinite(numericCandidate);
       onParsedConversion?.({
         ok: true,
         kind: 'unit',
