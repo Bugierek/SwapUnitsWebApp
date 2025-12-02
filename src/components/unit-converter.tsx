@@ -1371,7 +1371,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               toSymbol: toPrefix.symbol,
               fromName: fromPrefix.prefix,
               toName: toPrefix.prefix,
-              label: `${fromPrefix.prefix} → ${toPrefix.prefix}`,
+              label: `${fromPrefix.prefix} to ${toPrefix.prefix}`,
               keywords: keywordList,
               keywordsLower: keywordList.map((keyword) => keyword.toLowerCase()),
               pairUrl: `/standards/nist-si-tenfold?from=${fromPrefix.symbol}&to=${toPrefix.symbol}`,
@@ -1387,7 +1387,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         units
           .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
           .map((toUnit) => {
-            const label = `${fromUnit.symbol} \u2192 ${toUnit.symbol}`;
+            const label = `${fromUnit.symbol} to ${toUnit.symbol}`;
             const pairUrl = buildConversionPairUrl(category, fromUnit.symbol, toUnit.symbol);
             const keywordSet = new Set<string>([
               category,

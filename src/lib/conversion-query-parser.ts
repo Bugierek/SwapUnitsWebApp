@@ -348,6 +348,12 @@ function normalizeQuery(query: string): string {
     .replace(/[\u2192\u2794]/g, ' to ') // arrows
     .replace(/=>|->|=/g, ' to ');
 
+  // Convert ASCII "u" prefix to proper micro symbol "µ" for common micro- units
+  // Only convert when "u" is followed by a single letter AND that's the end of the unit token
+  // This handles: "100um", "50 us", "um" but NOT "usd", "user", etc.
+  result = result.replace(/(^|\s)u([a-z])(?=\s|$)/gi, '$1µ$2'); // standalone "um", "us"
+  result = result.replace(/([0-9.,]+\s*)u([a-z])(?=\s|$)/gi, '$1µ$2'); // "100um", "5 us"
+
   result = result.replace(/(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi, '$1 $2 ');
 
   result = result

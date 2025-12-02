@@ -10,9 +10,11 @@ import { UnitIcon } from './unit-icon';
 import { parseConversionQuery, type ParsedConversionPayload } from '@/lib/conversion-query-parser';
 import { categoryDisplayOrder } from '@/lib/unit-data';
 
+// Scientific notation: 1e5, 2.5e-3, etc.
+// Negative numbers: Only valid for Temperature (parsed later with category context)
 const LEXER_NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
 const findLeadingNumericValue = (value: string): number => {
-  const sanitized = value.replace(/,/g, '').trim();
+  const sanitized = value.replace(/,/g, '').replace(/\s+/g, ' ').trim();
   const match = sanitized.match(LEXER_NUMBER_RE);
   return match ? Number(match[0]) : NaN;
 };
@@ -58,72 +60,18 @@ const LETTER_REGEX = /[a-zA-Z°µμ]/;
 const INITIAL_VISIBLE_ITEMS = 50;
 const LOAD_INCREMENT = 50;
 const CONNECTOR_TERMS = new Set(['to', 'in', 'into']);
-const WORD_CHAR_REGEX = /[a-z0-9°µμ]/;
-
-function isWordBoundaryChar(char: string | undefined) {
-  if (!char) return true;
-  return !WORD_CHAR_REGEX.test(char);
-}
-
-function containsAtWordStart(haystack: string, needle: string): boolean {
-  if (!needle) return false;
-  let startIndex = 0;
-
-  while (startIndex <= haystack.length - needle.length) {
-    const index = haystack.indexOf(needle, startIndex);
-    if (index === -1) {
-      break;
-    }
-    if (isWordBoundaryChar(index === 0 ? undefined : haystack[index - 1])) {
-      return true;
-    }
-    startIndex = index + 1;
-  }
-
-  return false;
-}
-
-function collapseNonWordCharacters(value: string): string {
-  return value.replace(/[^a-z0-9°µμ]+/g, '');
-}
-
-function matchesKeywordTerm(keyword: string, term: string): boolean {
-  if (!keyword || !term) {
-    return false;
-  }
-
-  if (keyword === term) {
-    return true;
-  }
-
-  if (containsAtWordStart(keyword, term)) {
-    return true;
-  }
-
-  if (keyword.length >= 3 && containsAtWordStart(term, keyword)) {
-    return true;
-  }
-
-  const collapsedKeyword = collapseNonWordCharacters(keyword);
-  const collapsedTerm = collapseNonWordCharacters(term);
-  if (!collapsedKeyword || !collapsedTerm) {
-    return false;
-  }
-
-  if (containsAtWordStart(collapsedKeyword, collapsedTerm)) {
-    return true;
-  }
-
-  if (collapsedKeyword.length >= 3 && containsAtWordStart(collapsedTerm, collapsedKeyword)) {
-    return true;
-  }
-
-  return false;
-}
 
 function normalizeInput(value: string): string {
   const withArrowsNormalized = value.replace(/(->|=>|→)/gi, ' to ');
-  const withConnectorsSpaced = withArrowsNormalized.replace(
+  
+  // Convert ASCII "u" prefix to proper micro symbol "µ" for micro- units
+  // Only convert known micro units: um, us, ug, ul, ua, etc. (not just "u" alone)
+  // This handles: "100um", "50 us" but NOT "505u", "usd"
+  // Pattern: u followed by specific letters that are known micro units
+  let withMicroConverted = withArrowsNormalized.replace(/(^|\s)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // um, us, ug, ua, ul
+  withMicroConverted = withMicroConverted.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // 100um, 50us, etc.
+  
+  const withConnectorsSpaced = withMicroConverted.replace(
     /(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi,
     '$1 $2 ',
   );
@@ -259,40 +207,180 @@ export function ConversionCombobox({
   const hasUnitCharacters = LETTER_REGEX.test(sanitizedForLetters);
 
   const baseItems = React.useMemo(() => {
+    console.log('[Filter Entry]', {
+      search,
+      trimmedSearch,
+      normalizedSearch,
+      sanitizedForLetters,
+      hasUnitCharacters,
+      willFilter: !!(normalizedSearch && hasUnitCharacters)
+    });
+    
     if (!normalizedSearch || !hasUnitCharacters) {
+      console.log('[Filter] Returning ALL items - no search or no unit chars');
       return items;
     }
 
-    // Check if user is searching for compound units with division (e.g., "m/s", "km/h")
-    const hasSlash = normalizedSearch.includes('/');
+    const lowerSearch = normalizedSearch.toLowerCase().trim();
+    
+    // Check if there's a number in the query (including scientific notation)
+    // Examples: "20", "1.5", "2e5", "3.14e-2"
+    const hasNumbers = /\d/.test(lowerSearch);
+    
+    // Check for connector words (to, in, into)
+    const hasConnector = /\b(to|in|into)\b/.test(lowerSearch);
+    
+    // Check if negative number - only valid for Temperature category
+    const hasNegativeNumber = /^-\d/.test(lowerSearch.trim());
 
-    const terms = normalizedSearch
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(
-        (term) =>
-          term &&
-          LETTER_REGEX.test(term) &&
-          !CONNECTOR_TERMS.has(term),
-      );
+    // CASE 1: NO NUMBERS
+    if (!hasNumbers) {
+      // A connector word is only a connector if there's text BEFORE it
+      // "kg to g" = connector, "to" or "t" = just searching for units starting with "to"/"t"
+      let hasRealConnector = false;
+      let beforeConnector = '';
+      let afterConnector = '';
+      
+      if (hasConnector) {
+        const parts = lowerSearch.split(/\b(to|in|into)\b/);
+        beforeConnector = parts[0]?.trim() || '';
+        afterConnector = parts.slice(2).join('').trim() || '';
+        
+        // Only treat as connector if there's text BEFORE the connector word
+        hasRealConnector = beforeConnector.length > 0;
+      }
+      
+      // Sub-case 1a: Has real connector with text before it (e.g., "kg to g", "ton in lb")
+      if (hasRealConnector) {
+        return items.filter((item) => {
+          const fromSymbolLower = item.fromSymbol.toLowerCase();
+          const fromNameLower = item.fromName.toLowerCase();
+          const toSymbolLower = item.toSymbol.toLowerCase();
+          const toNameLower = item.toName.toLowerCase();
 
-    if (terms.length === 0) {
-      return items;
-    }
+          // Must match from unit
+          const matchesFrom = 
+            fromSymbolLower.startsWith(beforeConnector) ||
+            fromNameLower.startsWith(beforeConnector);
 
-    return items.filter((item) => {
-      // If search contains '/', only show items that also contain '/'
-      if (hasSlash) {
-        const hasSlashInKeywords = item.keywords.some((keyword) => keyword.includes('/'));
-        if (!hasSlashInKeywords) {
-          return false;
-        }
+          if (!matchesFrom) return false;
+
+          // If no to unit yet, show all conversions from this unit
+          if (!afterConnector) return true;
+
+          // Must match to unit
+          return (
+            toSymbolLower.startsWith(afterConnector) ||
+            toNameLower.startsWith(afterConnector)
+          );
+        });
       }
 
-      return terms.every((term) =>
-        item.keywordsLower.some((keyword) => matchesKeywordTerm(keyword, term)),
-      );
-    });
+      // Sub-case 1b: No connector (e.g., "t", "to", "ton", "time", "mass", "weight")
+      const searchText = lowerSearch.trim();
+      
+      if (!searchText) {
+        return items;
+      }
+
+      const filtered = items.filter((item) => {
+        const categoryLower = item.category.toLowerCase();
+        const fromSymbolLower = item.fromSymbol.toLowerCase();
+        const fromNameLower = item.fromName.toLowerCase();
+
+        // Simple startsWith matching on:
+        // 1. Category name
+        // 2. From unit symbol
+        // 3. From unit name
+        // 4. Category keywords (synonyms like "weight", "distance", "money")
+        const matches = (
+          categoryLower.startsWith(searchText) ||
+          fromSymbolLower.startsWith(searchText) ||
+          fromNameLower.startsWith(searchText) ||
+          item.keywordsLower.some((keyword) => keyword.startsWith(searchText))
+        );
+        
+        return matches;
+      });
+      
+      console.log('[Combobox Filter] Query:', searchText, 'Results:', filtered.length, 'of', items.length);
+      return filtered;
+    }
+
+    // CASE 2: HAS NUMBERS, NO CONNECTOR
+    // User typing: "20", "20 k", "20 kg", "1e5 m", "-20 celsius"
+    if (hasNumbers && !hasConnector) {
+      // Extract just the text part (remove numbers, scientific notation, signs)
+      // Keep minus sign only if followed immediately by digit (for negative temp check)
+      const textPart = lowerSearch.replace(/[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g, '').replace(/\s+/g, ' ').trim();
+      
+      if (!textPart) {
+        // Just a number, show everything
+        return items;
+      }
+
+      return items.filter((item) => {
+        const fromSymbolLower = item.fromSymbol.toLowerCase();
+        const fromNameLower = item.fromName.toLowerCase();
+        
+        // If negative number, only show Temperature category
+        if (hasNegativeNumber && item.category !== 'Temperature') {
+          return false;
+        }
+
+        // Match from unit only
+        return (
+          fromSymbolLower.startsWith(textPart) ||
+          fromNameLower.startsWith(textPart)
+        );
+      });
+    }
+
+    // CASE 3: HAS NUMBERS AND CONNECTOR
+    // User typing: "20 kg to", "20 kg to g", "20 kg to gra", "1e5 m to km", "-20 celsius to f"
+    if (hasNumbers && hasConnector) {
+      // Split by connector word
+      const parts = lowerSearch.split(/\b(to|in|into)\b/);
+      const beforeConnector = parts[0] || '';
+      const afterConnector = parts.slice(2).join('').trim() || '';
+
+      // Extract from unit (text after number, before connector)
+      // Remove numbers, scientific notation, extra spaces
+      const fromUnitText = beforeConnector.replace(/[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g, '').replace(/\s+/g, ' ').trim();
+      
+      // Extract to unit (text after connector)
+      const toUnitText = afterConnector.replace(/[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g, '').replace(/\s+/g, ' ').trim();
+
+      return items.filter((item) => {
+        const fromSymbolLower = item.fromSymbol.toLowerCase();
+        const fromNameLower = item.fromName.toLowerCase();
+        const toSymbolLower = item.toSymbol.toLowerCase();
+        const toNameLower = item.toName.toLowerCase();
+
+        // If negative number, only show Temperature category
+        if (hasNegativeNumber && item.category !== 'Temperature') {
+          return false;
+        }
+
+        // Must match from unit
+        const matchesFrom = 
+          fromSymbolLower.startsWith(fromUnitText) ||
+          fromNameLower.startsWith(fromUnitText);
+
+        if (!matchesFrom) return false;
+
+        // If no to unit typed yet, show all conversions from this unit
+        if (!toUnitText) return true;
+
+        // Must match to unit
+        return (
+          toSymbolLower.startsWith(toUnitText) ||
+          toNameLower.startsWith(toUnitText)
+        );
+      });
+    }
+
+    return items;
   }, [items, normalizedSearch, hasUnitCharacters]);
 
   const orderedCategories = React.useMemo(() => {
@@ -330,12 +418,33 @@ export function ConversionCombobox({
         : item,
     );
 
+    // Get the search text to prioritize matching from units
+    const searchQuery = normalizedSearch.toLowerCase().trim();
+    const searchText = searchQuery.replace(/[\d.,\s-]+/g, '').replace(/\b(to|in|into)\b/g, '').trim();
+
     return normalizedItems.sort((a, b) => {
+      // 1. Sort by category rank first
       const rankDiff = rankOf(a.category) - rankOf(b.category);
       if (rankDiff !== 0) return rankDiff;
+
+      // 2. Within same category, prioritize items where FROM unit starts with search
+      if (searchText) {
+        const aFromLower = a.fromSymbol.toLowerCase();
+        const bFromLower = b.fromSymbol.toLowerCase();
+        const aFromNameLower = a.fromName.toLowerCase();
+        const bFromNameLower = b.fromName.toLowerCase();
+        
+        const aFromMatches = aFromLower.startsWith(searchText) || aFromNameLower.startsWith(searchText);
+        const bFromMatches = bFromLower.startsWith(searchText) || bFromNameLower.startsWith(searchText);
+        
+        if (aFromMatches && !bFromMatches) return -1;
+        if (!aFromMatches && bFromMatches) return 1;
+      }
+
+      // 3. Finally sort alphabetically by label
       return a.label.localeCompare(b.label);
     });
-  }, [baseItems, orderedCategories]);
+  }, [baseItems, orderedCategories, normalizedSearch]);
 
   const [visibleItemLimit, setVisibleItemLimit] = React.useState(INITIAL_VISIBLE_ITEMS);
   const [autoHighlightedValue, setAutoHighlightedValue] = React.useState<string | null>(null);
@@ -527,6 +636,7 @@ export function ConversionCombobox({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [closeDropdown, open, search]);
 
+  // Simple highlighting: always start at first item when items or search changes
   React.useEffect(() => {
     if (!open) {
       setHighlightedIndex(-1);
@@ -538,21 +648,9 @@ export function ConversionCombobox({
       return;
     }
 
-    if (autoHighlightedValue) {
-      const matchIndex = displayItems.findIndex((item) => item.value === autoHighlightedValue);
-      if (matchIndex >= 0) {
-        setHighlightedIndex(matchIndex);
-        return;
-      }
-    }
-
-    setHighlightedIndex((prev) => {
-      if (prev < 0 || prev >= displayItems.length) {
-        return 0;
-      }
-      return prev;
-    });
-  }, [autoHighlightedValue, displayItems, open]);
+    // Always reset to first item when display items change
+    setHighlightedIndex(0);
+  }, [displayItems, open]);
 
   const shouldAttemptParsing = React.useCallback(
     (query: string) => {
@@ -570,58 +668,10 @@ export function ConversionCombobox({
       return;
     }
 
-    if (!shouldAttemptParsing(normalizedSearch)) {
-      setAutoHighlightedValue(value ?? null);
-      return;
-    }
-
-    const parsed = parseConversionQuery(normalizedSearch);
-    console.log('finder parse search', normalizedSearch, parsed);
-    if (!parsed.ok) {
-      setAutoHighlightedValue(null);
-      return;
-    }
-
-    if (parsed.kind === 'si-prefix') {
-      const match = sortedItems.find(
-        (item) =>
-          item.kind === 'si-prefix' &&
-          item.siPrefixMeta?.fromSymbol === parsed.fromPrefixSymbol &&
-          item.siPrefixMeta?.toSymbol === parsed.toPrefixSymbol,
-      );
-      setAutoHighlightedValue(match?.value ?? null);
-      return;
-    }
-
-    if (parsed.kind === 'unit' && parsed.category === 'SI Prefixes') {
-      const match = sortedItems.find(
-        (item) =>
-          item.kind === 'si-prefix' &&
-          item.siPrefixMeta?.fromSymbol === parsed.fromUnit &&
-          item.siPrefixMeta?.toSymbol === parsed.toUnit,
-      );
-      setAutoHighlightedValue(match?.value ?? null);
-      return;
-    }
-
-    if (parsed.kind === 'category') {
-      const match = sortedItems.find(
-        (item) =>
-          item.kind !== 'si-prefix' && item.category === parsed.category,
-      );
-      setAutoHighlightedValue(match?.value ?? null);
-      return;
-    }
-
-    const match = sortedItems.find(
-      (item) =>
-        item.kind !== 'si-prefix' &&
-        item.category === parsed.category &&
-        item.fromSymbol === parsed.fromUnit &&
-        item.toSymbol === parsed.toUnit,
-    );
-    setAutoHighlightedValue(match?.value ?? null);
-  }, [normalizedSearch, open, shouldAttemptParsing, sortedItems, value]);
+    // Disable auto-highlighting - just keep it null
+    // This simplifies the highlighting logic and prevents conflicts
+    setAutoHighlightedValue(null);
+  }, [normalizedSearch, open]);
 
   React.useEffect(() => {
     if (!open || highlightedIndex < 0) return;
