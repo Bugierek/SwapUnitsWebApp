@@ -388,7 +388,7 @@ export function SiteTopbar({
             <p className="text-sm font-medium text-foreground">History & favorites stay local</p>
           </div>
           <ThemeToggle />
-          <BookmarkButton className="pr-3.5 pl-3" />
+          <BookmarkButton />
         </div>
 
         <Link
