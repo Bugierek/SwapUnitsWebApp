@@ -3314,7 +3314,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                       from={rhfFromUnit}
                       to={rhfToUnit}
                       className="h-10"
-                      linkUrl={currentConversionPairUrl ? `${currentConversionPairUrl}#fx-chart` : undefined}
+                      linkUrl={currentConversionPairUrl ? `${currentConversionPairUrl}#converter` : undefined}
                     />
                   </div>
                 )}

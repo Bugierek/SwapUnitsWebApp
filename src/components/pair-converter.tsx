@@ -480,7 +480,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const showCalculatorButton = fromFieldFocused || fromCalcHover || fromCalcButtonFocused;
 
   return (
-    <div className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg">
+    <div id="converter" className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg scroll-mt-20">
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Convert</p>
@@ -489,6 +489,30 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           </h2>
         </div>
       </div>
+
+      {/* Chart: Mobile-only at top for currency */}
+      {category === 'Currency' && (
+        <div className="sm:hidden -mx-6 scroll-mt-20">
+          <FxHistoryChart
+            from={activeFrom.symbol}
+            to={activeTo.symbol}
+            inputValue={parsedInput ?? 1}
+            highlightDate={
+              selectedFxDate
+                ? selectedFxDate
+                : isHistoricalMode && fxRates
+                  ? new Date(`${fxRates.date}T00:00:00Z`)
+                  : null
+            }
+            onDateSelect={(date) => {
+              setIsHistoricalMode(true);
+              setSelectedFxDate(date);
+              setFxRates(null);
+              fetchPairFxRates(date, true);
+            }}
+          />
+        </div>
+      )}
 
   <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
         <div className="order-1 grid gap-2">
@@ -646,6 +670,30 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         </div>
       )}
 
+      {/* Chart: Desktop version - shows after converter, before formula */}
+      {category === 'Currency' && (
+        <div className="hidden sm:block -mx-6 scroll-mt-20 lg:mx-0">
+          <FxHistoryChart
+            from={activeFrom.symbol}
+            to={activeTo.symbol}
+            inputValue={parsedInput ?? 1}
+            highlightDate={
+              selectedFxDate
+                ? selectedFxDate
+                : isHistoricalMode && fxRates
+                  ? new Date(`${fxRates.date}T00:00:00Z`)
+                  : null
+            }
+            onDateSelect={(date) => {
+              setIsHistoricalMode(true);
+              setSelectedFxDate(date);
+              setFxRates(null);
+              fetchPairFxRates(date, true);
+            }}
+          />
+        </div>
+      )}
+
       {(dynamicFormula || generalFormula) && (
         <div className="rounded-2xl border border-border/60 bg-background px-4 py-3 text-xs text-muted-foreground">
           <p className="text-sm font-semibold text-foreground">Formula</p>
@@ -780,30 +828,6 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         Results update as you type. Swap the direction to convert back from {activeTo.symbol} to{' '}
         {activeFrom.symbol}.
       </p>
-
-      {/* Chart: Full-width on mobile, contained on desktop */}
-      {category === 'Currency' && (
-        <div id="fx-chart" className="-mx-6 scroll-mt-20 lg:mx-0">
-          <FxHistoryChart
-            from={activeFrom.symbol}
-            to={activeTo.symbol}
-            inputValue={parsedInput ?? 1}
-            highlightDate={
-              selectedFxDate
-                ? selectedFxDate
-                : isHistoricalMode && fxRates
-                  ? new Date(`${fxRates.date}T00:00:00Z`)
-                  : null
-            }
-            onDateSelect={(date) => {
-              setIsHistoricalMode(true);
-              setSelectedFxDate(date);
-              setFxRates(null);
-              fetchPairFxRates(date, true);
-            }}
-          />
-        </div>
-      )}
 
       {isCalculatorOpen && (
         <div
