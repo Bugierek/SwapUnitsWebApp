@@ -262,7 +262,7 @@ export function SiteTopbar({
                   <section className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-2 font-semibold text-foreground">
-                        <Star className="h-5 w-5 text-primary" aria-hidden="true" />
+                        <Star className="h-5 w-5 text-amber-500" aria-hidden="true" />
                         Favorites
                       </span>
                       {favorites.length > 0 && onClearAllFavorites && (
