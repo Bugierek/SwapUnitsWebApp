@@ -58,11 +58,10 @@ export default function WidgetBuilderPage() {
   const handleHistorySelect = React.useCallback(
     (item: HistoryItem) => {
       if (item.meta?.kind === "si-prefix") {
-        const params = new URLSearchParams({
-          from: item.meta.fromPrefixSymbol,
-          to: item.meta.toPrefixSymbol,
-          value: item.meta.inputText ?? String(item.fromValue),
-        });
+        const params = new URLSearchParams();
+        if (item.meta.fromPrefixSymbol) params.set('from', item.meta.fromPrefixSymbol);
+        if (item.meta.toPrefixSymbol) params.set('to', item.meta.toPrefixSymbol);
+        params.set('value', item.meta.inputText ?? String(item.fromValue));
         router.push(`${item.meta.route}?${params.toString()}`);
         return;
       }
