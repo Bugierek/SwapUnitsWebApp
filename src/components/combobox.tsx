@@ -162,8 +162,7 @@ export function ConversionCombobox({
         inputRef.current.setSelectionRange(position, position);
       }
       if (normalizedPreset) {
-    const parsed = parseConversionQuery(normalizedPreset);
-    console.log('finder parse', normalizedPreset, parsed);
+        const parsed = parseConversionQuery(normalizedPreset);
         if (parsed.ok) {
           onParsedConversion?.(parsed);
         } else {
@@ -207,17 +206,7 @@ export function ConversionCombobox({
   const hasUnitCharacters = LETTER_REGEX.test(sanitizedForLetters);
 
   const baseItems = React.useMemo(() => {
-    console.log('[Filter Entry]', {
-      search,
-      trimmedSearch,
-      normalizedSearch,
-      sanitizedForLetters,
-      hasUnitCharacters,
-      willFilter: !!(normalizedSearch && hasUnitCharacters)
-    });
-    
     if (!normalizedSearch || !hasUnitCharacters) {
-      console.log('[Filter] Returning ALL items - no search or no unit chars');
       return items;
     }
 
@@ -283,7 +272,7 @@ export function ConversionCombobox({
         return items;
       }
 
-      const filtered = items.filter((item) => {
+      return items.filter((item) => {
         const categoryLower = item.category.toLowerCase();
         const fromSymbolLower = item.fromSymbol.toLowerCase();
         const fromNameLower = item.fromName.toLowerCase();
@@ -293,18 +282,13 @@ export function ConversionCombobox({
         // 2. From unit symbol
         // 3. From unit name
         // 4. Category keywords (synonyms like "weight", "distance", "money")
-        const matches = (
+        return (
           categoryLower.startsWith(searchText) ||
           fromSymbolLower.startsWith(searchText) ||
           fromNameLower.startsWith(searchText) ||
           item.keywordsLower.some((keyword) => keyword.startsWith(searchText))
         );
-        
-        return matches;
       });
-      
-      console.log('[Combobox Filter] Query:', searchText, 'Results:', filtered.length, 'of', items.length);
-      return filtered;
     }
 
     // CASE 2: HAS NUMBERS, NO CONNECTOR
@@ -693,7 +677,6 @@ export function ConversionCombobox({
       if (!LETTER_REGEX.test(normalized.replace(CONNECTOR_TOKEN_REGEX, ' '))) return false;
 
       const parsed = parseConversionQuery(normalized);
-      console.log('finder parse manual', normalized, parsed);
       if (parsed.ok) {
         handleParsedSelection(parsed, normalized);
         return true;
