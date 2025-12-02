@@ -320,7 +320,7 @@ export function ConversionCombobox({
     }
 
     // CASE 2: HAS NUMBERS, NO CONNECTOR
-    // User typing: "20", "20 k", "20 kg", "1e5 m", "-20 celsius"
+    // User typing: "20", "20 k", "20 kg", "1e5 m", "-20 celsius", "100 kg g"
     if (hasNumbers && !hasConnector) {
       // Extract just the text part (remove numbers, scientific notation, signs)
       // Keep minus sign only if followed immediately by digit (for negative temp check)
@@ -331,6 +331,61 @@ export function ConversionCombobox({
         return items;
       }
 
+      // Check if there are multiple unit tokens (e.g., "100 kg g" = from-unit + to-unit)
+      const unitTokens = textPart.split(/\s+/).filter(t => t.length > 0);
+      
+      // CASE 2a: Single unit token - match from unit only
+      if (unitTokens.length === 1) {
+        return items.filter((item) => {
+          const fromSymbolLower = item.fromSymbol.toLowerCase();
+          const fromNameLower = item.fromName.toLowerCase();
+          
+          // If negative number, only show Temperature category
+          if (hasNegativeNumber && item.category !== 'Temperature') {
+            return false;
+          }
+
+          // Match from unit only
+          return (
+            fromSymbolLower.startsWith(textPart) ||
+            fromNameLower.startsWith(textPart)
+          );
+        });
+      }
+      
+      // CASE 2b: Multiple unit tokens - try to match from-unit + to-unit
+      // e.g., "100 kg g", "50 m ft", "20 celsius fahrenheit"
+      if (unitTokens.length >= 2) {
+        const fromUnitToken = unitTokens[0];
+        const toUnitToken = unitTokens.slice(1).join(' '); // Rest could be multi-word
+        
+        return items.filter((item) => {
+          const fromSymbolLower = item.fromSymbol.toLowerCase();
+          const fromNameLower = item.fromName.toLowerCase();
+          const toSymbolLower = item.toSymbol.toLowerCase();
+          const toNameLower = item.toName.toLowerCase();
+          
+          // If negative number, only show Temperature category
+          if (hasNegativeNumber && item.category !== 'Temperature') {
+            return false;
+          }
+
+          // Must match from unit
+          const matchesFrom = 
+            fromSymbolLower.startsWith(fromUnitToken) ||
+            fromNameLower.startsWith(fromUnitToken);
+
+          if (!matchesFrom) return false;
+
+          // Must match to unit
+          return (
+            toSymbolLower.startsWith(toUnitToken) ||
+            toNameLower.startsWith(toUnitToken)
+          );
+        });
+      }
+
+      // Fallback: match from unit only
       return items.filter((item) => {
         const fromSymbolLower = item.fromSymbol.toLowerCase();
         const fromNameLower = item.fromName.toLowerCase();
@@ -340,7 +395,6 @@ export function ConversionCombobox({
           return false;
         }
 
-        // Match from unit only
         return (
           fromSymbolLower.startsWith(textPart) ||
           fromNameLower.startsWith(textPart)
