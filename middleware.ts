@@ -34,7 +34,9 @@ export function middleware(req: NextRequest) {
       if (CATEGORY_SLUGS.has(slug)) {
         const baseDomain = getBaseDomain(hostname);
         const redirectUrl = new URL(req.url);
-        redirectUrl.hostname = `${slug}.${baseDomain}`;
+        // Strip "-conversion" suffix for subdomain (mass-conversion -> mass)
+        const subdomainName = slug.replace(/-conversion$/, '');
+        redirectUrl.hostname = `${subdomainName}.${baseDomain}`;
         redirectUrl.pathname = '/';
         return NextResponse.redirect(redirectUrl, 308);
       }
@@ -44,13 +46,42 @@ export function middleware(req: NextRequest) {
 
   // Extract subdomain (e.g., "mass" from mass.unitswap.xyz)
   const parts = hostname.split('.');
-  // Handle both mass.unitswap.xyz (3 parts) and mass.localhost (2 parts for local dev)
-  const subdomain = parts.length >= 3 ? parts[0] : (parts.length === 2 && !MAIN_HOSTS.has(hostname) ? parts[0] : null);
+  let subdomain: string | null = null;
   
-  if (subdomain && CATEGORY_SLUGS.has(subdomain)) {
-    const url = req.nextUrl.clone();
-    url.pathname = `/measurements/${subdomain}`;
-    return NextResponse.rewrite(url);
+  // For 3+ parts (mass.unitswap.xyz, mass.swapunits.com), subdomain is first part
+  if (parts.length >= 3) {
+    const candidate = parts[0];
+    // Exclude www subdomain
+    if (candidate !== 'www') {
+      subdomain = candidate;
+    }
+  }
+  // For 2 parts in local dev (mass.localhost), subdomain is first part
+  else if (parts.length === 2 && !MAIN_HOSTS.has(hostname)) {
+    subdomain = parts[0];
+  }
+  
+  if (subdomain) {
+    // Add "-conversion" suffix to match category slug format
+    const fullSlug = `${subdomain}-conversion`;
+    
+    if (CATEGORY_SLUGS.has(fullSlug)) {
+      // Only rewrite root path (/) to /measurements/[slug]
+      // Allow other paths like /conversions/..., /widget, etc. to work normally
+      if (path === '/' || path === '') {
+        const url = req.nextUrl.clone();
+        url.pathname = `/measurements/${fullSlug}`;
+        return NextResponse.rewrite(url);
+      }
+      // For other paths on valid category subdomains, just pass through
+      return NextResponse.next();
+    }
+    
+    // If subdomain doesn't match a category, redirect to main domain
+    const baseDomain = getBaseDomain(hostname);
+    const redirectUrl = new URL(req.url);
+    redirectUrl.hostname = baseDomain;
+    return NextResponse.redirect(redirectUrl, 308);
   }
 
   return NextResponse.next();
