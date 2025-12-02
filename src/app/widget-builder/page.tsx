@@ -102,6 +102,26 @@ export default function WidgetBuilderPage() {
   const [width, setWidth] = React.useState("100%");
   const [height, setHeight] = React.useState("550px");
   const [fxHistoryEnabled, setFxHistoryEnabled] = React.useState(false);
+  const [fxChartEnabled, setFxChartEnabled] = React.useState(false);
+  const [fxSparklineEnabled, setFxSparklineEnabled] = React.useState(false);
+  const [fxChartPosition, setFxChartPosition] = React.useState<"above" | "below">("below");
+  const [fxSparklinePosition, setFxSparklinePosition] = React.useState<"above" | "below">("below");
+
+  // Calculate suggested height based on enabled features
+  const suggestedHeight = React.useMemo(() => {
+    let baseHeight = 550;
+    const isCurrencySelected = selectedCategories.Currency;
+    if (isCurrencySelected) {
+      if (fxChartEnabled) baseHeight += 400;
+      if (fxSparklineEnabled) baseHeight += 80;
+    }
+    return `${baseHeight}px`;
+  }, [selectedCategories, fxChartEnabled, fxSparklineEnabled]);
+
+  // Auto-update height when chart/sparkline options change
+  React.useEffect(() => {
+    setHeight(suggestedHeight);
+  }, [suggestedHeight]);
 
   const toggleCategory = (cat: UnitCategory) => {
     setSelectedCategories((prev) => {
@@ -140,8 +160,12 @@ export default function WidgetBuilderPage() {
     if (width.trim()) params.set("width", width.trim());
     if (height.trim()) params.set("height", height.trim());
     if (fxHistoryEnabled) params.set("fxHistory", "1");
+    if (fxChartEnabled) params.set("fxChart", "1");
+    if (fxSparklineEnabled) params.set("fxSparkline", "1");
+    if (fxChartEnabled) params.set("fxChartPosition", fxChartPosition);
+    if (fxSparklineEnabled) params.set("fxSparklinePosition", fxSparklinePosition);
     return params.toString();
-  }, [chosenCategories, effectiveUnits, width, height, fxHistoryEnabled]);
+  }, [chosenCategories, effectiveUnits, width, height, fxHistoryEnabled, fxChartEnabled, fxSparklineEnabled, fxChartPosition, fxSparklinePosition]);
 
   const embedBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com').replace(/\/$/, '');
   const iframeSrc = `${embedBaseUrl}/widget?${query}`;
@@ -284,9 +308,9 @@ export default function WidgetBuilderPage() {
                         ))}
                     </div>
                     {cat === 'Currency' && (
-                      <div className="mt-3 space-y-1 rounded border border-border/60 bg-card/70 px-2 py-2">
+                      <div className="mt-3 space-y-2 rounded border border-border/60 bg-card/70 px-2 py-2">
                         <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                          Historical data
+                          Currency options
                         </p>
                         <label className="flex items-center gap-2 text-sm text-foreground">
                           <input
@@ -295,8 +319,80 @@ export default function WidgetBuilderPage() {
                             onChange={(e) => setFxHistoryEnabled(e.target.checked)}
                             className="h-4 w-4"
                           />
-                          <span>Include historical exchange rates (choose from calendar)</span>
+                          <span>Historical exchange rates (calendar picker)</span>
                         </label>
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={fxSparklineEnabled}
+                            onChange={(e) => setFxSparklineEnabled(e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                          <span>Show mini chart (sparkline)</span>
+                        </label>
+                        {fxSparklineEnabled && (
+                          <div className="ml-6 space-y-1">
+                            <p className="text-xs text-muted-foreground">Sparkline position:</p>
+                            <label className="flex items-center gap-2 text-sm text-foreground">
+                              <input
+                                type="radio"
+                                name="fxSparklinePosition"
+                                value="above"
+                                checked={fxSparklinePosition === "above"}
+                                onChange={() => setFxSparklinePosition("above")}
+                                className="h-4 w-4"
+                              />
+                              <span>Above converter</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-foreground">
+                              <input
+                                type="radio"
+                                name="fxSparklinePosition"
+                                value="below"
+                                checked={fxSparklinePosition === "below"}
+                                onChange={() => setFxSparklinePosition("below")}
+                                className="h-4 w-4"
+                              />
+                              <span>Below converter</span>
+                            </label>
+                          </div>
+                        )}
+                        <label className="flex items-center gap-2 text-sm text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={fxChartEnabled}
+                            onChange={(e) => setFxChartEnabled(e.target.checked)}
+                            className="h-4 w-4"
+                          />
+                          <span>Show full history chart</span>
+                        </label>
+                        {fxChartEnabled && (
+                          <div className="ml-6 space-y-1">
+                            <p className="text-xs text-muted-foreground">Chart position:</p>
+                            <label className="flex items-center gap-2 text-sm text-foreground">
+                              <input
+                                type="radio"
+                                name="fxChartPosition"
+                                value="above"
+                                checked={fxChartPosition === "above"}
+                                onChange={() => setFxChartPosition("above")}
+                                className="h-4 w-4"
+                              />
+                              <span>Above converter</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-sm text-foreground">
+                              <input
+                                type="radio"
+                                name="fxChartPosition"
+                                value="below"
+                                checked={fxChartPosition === "below"}
+                                onChange={() => setFxChartPosition("below")}
+                                className="h-4 w-4"
+                              />
+                              <span>Below converter</span>
+                            </label>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

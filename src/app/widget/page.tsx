@@ -10,6 +10,8 @@ import { convertUnitsDetailed } from "@/lib/conversion-math";
 import type { FxRatesResponse, CurrencyCode } from "@/lib/fx";
 import { Copy as CopyIcon, Check as CheckIcon, RefreshCw, ChevronDown, Calendar } from "lucide-react";
 import { UnitIcon } from "@/components/unit-icon";
+import { FxHistoryChart } from "@/components/fx-history-chart";
+import { FxSparkline } from "@/components/fx-sparkline";
 
 type AllowedUnitsMap = Record<UnitCategory, { symbol: string; name: string }[]>;
 type UnitLookup = { symbol: string; name: string; category: UnitCategory };
@@ -24,6 +26,10 @@ const parseParams = (search: URLSearchParams) => {
   const unitParam = search.get("units");
   const finder = false;
   const fxHistoryEnabled = search.get("fxHistory") === "1";
+  const fxChartEnabled = search.get("fxChart") === "1";
+  const fxSparklineEnabled = search.get("fxSparkline") === "1";
+  const fxChartPosition = (search.get("fxChartPosition") as "above" | "below") ?? "below";
+  const fxSparklinePosition = (search.get("fxSparklinePosition") as "above" | "below") ?? "below";
   const fxDateParam = search.get("fxDate");
   const width = search.get("width") ?? "";
   const height = search.get("height") ?? "";
@@ -62,6 +68,10 @@ const parseParams = (search: URLSearchParams) => {
     width,
     height,
     fxHistoryEnabled,
+    fxChartEnabled,
+    fxSparklineEnabled,
+    fxChartPosition,
+    fxSparklinePosition,
     fxDateParam,
   };
 };
@@ -116,6 +126,10 @@ export default function WidgetPage() {
     width: widthParam,
     height: heightParam,
     fxHistoryEnabled,
+    fxChartEnabled,
+    fxSparklineEnabled,
+    fxChartPosition,
+    fxSparklinePosition,
     fxDateParam,
   } = parsedParams;
   const allowedUnits = React.useMemo(
@@ -146,6 +160,18 @@ export default function WidgetPage() {
   const [copyStateFull, setCopyStateFull] = React.useState<"idle" | "success">("idle");
   const widthStyle = React.useMemo(() => parseDimension(widthParam), [widthParam]);
   const heightStyle = React.useMemo(() => parseDimension(heightParam), [heightParam]);
+  
+  // Calculate dynamic minimum height based on enabled features
+  const minHeightStyle = React.useMemo(() => {
+    if (heightStyle) return heightStyle; // Use explicit height if provided
+    let baseHeight = 550; // Default base height
+    if (category === "Currency") {
+      if (fxChartEnabled) baseHeight += 400; // Chart adds ~400px
+      if (fxSparklineEnabled) baseHeight += 80; // Sparkline adds ~80px
+    }
+    return `${baseHeight}px`;
+  }, [heightStyle, category, fxChartEnabled, fxSparklineEnabled]);
+  
   const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
   const [fxStatus, setFxStatus] = React.useState<string | null>(null);
   const [fxLoading, setFxLoading] = React.useState(false);
@@ -271,7 +297,7 @@ export default function WidgetPage() {
       month: "long",
       year: "numeric",
     });
-    const usingHistorical = isHistoricalMode && fxHistoryEnabled;
+    const usingHistorical = isHistoricalMode;
     return usingHistorical ? (
       <>
         Using <span className="font-semibold text-foreground">historical</span> ECB rates ({dateLabel})
@@ -279,7 +305,7 @@ export default function WidgetPage() {
     ) : (
       `Using latest ECB rates (${dateLabel})`
     );
-  }, [category, fxRates, isHistoricalMode, fxHistoryEnabled]);
+  }, [category, fxRates, isHistoricalMode]);
 
   const handleCopyValue = async () => {
     if (!result) return;
@@ -341,7 +367,7 @@ export default function WidgetPage() {
         style={{
           width: widthStyle ?? undefined,
           maxWidth: widthStyle ?? "640px",
-          minHeight: heightStyle ?? undefined,
+          minHeight: minHeightStyle,
           height: heightStyle ?? undefined,
         }}
       >
@@ -356,6 +382,36 @@ export default function WidgetPage() {
             Powered by SwapUnits
           </a>
         </div>
+
+        {/* FX Sparkline Above Converter */}
+        {category === "Currency" && fxSparklineEnabled && fxSparklinePosition === "above" && fromUnit && toUnit && (
+          <FxSparkline
+            from={fromUnit}
+            to={toUnit}
+          />
+        )}
+
+        {/* FX Chart Above Converter */}
+        {category === "Currency" && fxChartEnabled && fxChartPosition === "above" && fromUnit && toUnit && (
+          <FxHistoryChart
+            from={fromUnit}
+            to={toUnit}
+            inputValue={parseFloat(value) || 1}
+            highlightDate={
+              selectedFxDate
+                ? selectedFxDate
+                : isHistoricalMode && fxRates
+                  ? new Date(`${fxRates.date}T00:00:00Z`)
+                  : null
+            }
+            onDateSelect={(date) => {
+              setIsHistoricalMode(true);
+              setSelectedFxDate(date);
+              setFxRates(null);
+            }}
+            className="border-0 p-0 bg-transparent"
+          />
+        )}
 
         <div className="space-y-4 rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-4 py-4">
           {availableCategories.length > 1 && (
@@ -504,6 +560,36 @@ export default function WidgetPage() {
             </div>
           )}
         </div>
+
+        {/* FX Sparkline Below Converter */}
+        {category === "Currency" && fxSparklineEnabled && fxSparklinePosition === "below" && fromUnit && toUnit && (
+          <FxSparkline
+            from={fromUnit}
+            to={toUnit}
+          />
+        )}
+
+        {/* FX Chart Below Converter */}
+        {category === "Currency" && fxChartEnabled && fxChartPosition === "below" && fromUnit && toUnit && (
+          <FxHistoryChart
+            from={fromUnit}
+            to={toUnit}
+            inputValue={parseFloat(value) || 1}
+            highlightDate={
+              selectedFxDate
+                ? selectedFxDate
+                : isHistoricalMode && fxRates
+                  ? new Date(`${fxRates.date}T00:00:00Z`)
+                  : null
+            }
+            onDateSelect={(date) => {
+              setIsHistoricalMode(true);
+              setSelectedFxDate(date);
+              setFxRates(null);
+            }}
+            className="border-0 p-0 bg-transparent"
+          />
+        )}
 
         <Button
           variant="outline"
