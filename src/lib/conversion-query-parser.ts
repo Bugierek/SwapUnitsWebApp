@@ -354,6 +354,34 @@ function normalizeQuery(query: string): string {
   result = result.replace(/(^|\s)u([a-z])(?=\s|$)/gi, '$1µ$2'); // standalone "um", "us"
   result = result.replace(/([0-9.,]+\s*)u([a-z])(?=\s|$)/gi, '$1µ$2'); // "100um", "5 us"
 
+  // Convert common squared abbreviations: sqm, sqft, sqkm, etc. → m², ft², km²
+  // Handles: "sqm", "100sqm", "100 sqm", "sqft", "sq ft", "sq km"
+  result = result.replace(/(^|[\s\d])sq\s*m\b/gi, '$1m²');
+  result = result.replace(/(^|[\s\d])sq\s*km\b/gi, '$1km²');
+  result = result.replace(/(^|[\s\d])sq\s*cm\b/gi, '$1cm²');
+  result = result.replace(/(^|[\s\d])sq\s*mm\b/gi, '$1mm²');
+  result = result.replace(/(^|[\s\d])sq\s*ft\b/gi, '$1ft²');
+  result = result.replace(/(^|[\s\d])sq\s*in\b/gi, '$1in²');
+  result = result.replace(/(^|[\s\d])sq\s*yd\b/gi, '$1yd²');
+  result = result.replace(/(^|[\s\d])sq\s*mi\b/gi, '$1mi²');
+
+  // Convert common cubed abbreviations: cum, cuft, etc. → m³, ft³
+  // Handles: "cum", "100cum", "100 cum", "cuft", "cu ft", "cu m"
+  result = result.replace(/(^|[\s\d])cu\s*m\b/gi, '$1m³');
+  result = result.replace(/(^|[\s\d])cu\s*cm\b/gi, '$1cm³');
+  result = result.replace(/(^|[\s\d])cu\s*mm\b/gi, '$1mm³');
+  result = result.replace(/(^|[\s\d])cu\s*ft\b/gi, '$1ft³');
+  result = result.replace(/(^|[\s\d])cu\s*in\b/gi, '$1in³');
+  result = result.replace(/(^|[\s\d])cu\s*yd\b/gi, '$1yd³');
+
+  // Convert squared notation: m2, m^2, ft2, ft^2, etc. → m², ft²
+  // Handles: "m2", "m^2", "100m2", "50 ft2", "cm^2"
+  result = result.replace(/([a-z]+)\^?2(?=\s|$|[^0-9])/gi, '$1²');
+  
+  // Convert cubed notation: m3, m^3, ft3, ft^3, etc. → m³, ft³
+  // Handles: "m3", "m^3", "100m3", "50 ft3", "cm^3"
+  result = result.replace(/([a-z]+)\^?3(?=\s|$|[^0-9])/gi, '$1³');
+
   result = result.replace(/(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi, '$1 $2 ');
 
   result = result
