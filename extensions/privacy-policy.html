@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwapUnits Browser Extension - Privacy Policy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background: #f8fafc;
+            padding: 2rem 1rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #8b5cf6;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .last-updated {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+        
+        h2 {
+            color: #334155;
+            font-size: 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        h3 {
+            color: #475569;
+            font-size: 1.125rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        p, li {
+            margin-bottom: 0.75rem;
+            color: #475569;
+        }
+        
+        ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        a {
+            color: #8b5cf6;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .summary {
+            background: #f1f5f9;
+            border-left: 4px solid #8b5cf6;
+            padding: 1rem 1.5rem;
+            margin: 2rem 0;
+            border-radius: 4px;
+        }
+        
+        .summary strong {
+            color: #1e293b;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+            
+            h2 {
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Privacy Policy for SwapUnits Browser Extension</h1>
+        <p class="last-updated"><strong>Last Updated:</strong> December 4, 2025</p>
+
+        <h2>Overview</h2>
+        <p>SwapUnits is committed to protecting your privacy. This extension is designed to work entirely on your device with minimal data collection.</p>
+
+        <h2>Data Collection</h2>
+
+        <h3>What We Collect</h3>
+        <ul>
+            <li><strong>Conversion Preferences:</strong> Your preferred target units for each category (e.g., USD→EUR) are stored locally using <code>chrome.storage.sync</code></li>
+            <li><strong>Dark Mode Preference:</strong> Your theme choice is stored locally</li>
+            <li><strong>No Personal Information:</strong> We do NOT collect, transmit, or store any personal information, browsing history, or identifiable data</li>
+        </ul>
+
+        <h3>How Data is Stored</h3>
+        <ul>
+            <li>All preferences are stored locally on your device using Chrome's storage API</li>
+            <li>Data syncs across your Chrome devices if you're signed into Chrome (via Chrome's built-in sync)</li>
+            <li>You can clear this data at any time by removing the extension</li>
+        </ul>
+
+        <h2>Third-Party Services</h2>
+
+        <h3>Currency Exchange Rates</h3>
+        <ul>
+            <li>Currency conversions use the free API from <strong>exchangerate-api.com</strong></li>
+            <li>Only currency codes and amounts are sent (e.g., "USD to EUR, value: 100")</li>
+            <li>No personal information is transmitted</li>
+            <li>This service has its own privacy policy: <a href="https://www.exchangerate-api.com/terms" target="_blank" rel="noopener">https://www.exchangerate-api.com/terms</a></li>
+        </ul>
+
+        <h3>Other Conversions</h3>
+        <ul>
+            <li>All other unit conversions (length, mass, temperature, etc.) are calculated locally on your device</li>
+            <li>No data is sent to any server</li>
+        </ul>
+
+        <h2>Permissions Explained</h2>
+        <p>The extension requests the following permissions:</p>
+        <ul>
+            <li><strong>activeTab:</strong> Allows the extension to read selected text on the current page to detect units</li>
+            <li><strong>storage:</strong> Saves your conversion preferences locally</li>
+            <li><strong>contextMenus:</strong> (Future feature) Will add right-click menu options</li>
+            <li><strong>host_permissions</strong> (<code>exchangerate-api.com</code>): Required only for live currency conversion rates</li>
+        </ul>
+
+        <h2>Data Usage</h2>
+        <p>We use your data solely to:</p>
+        <ol>
+            <li>Remember your preferred conversion units</li>
+            <li>Provide accurate currency exchange rates</li>
+            <li>Maintain your dark mode preference</li>
+        </ol>
+
+        <p><strong>We do NOT:</strong></p>
+        <ul>
+            <li>Sell or share your data</li>
+            <li>Track your browsing</li>
+            <li>Collect analytics</li>
+            <li>Show ads</li>
+            <li>Require account creation</li>
+        </ul>
+
+        <h2>Your Rights</h2>
+        <p>You have the right to:</p>
+        <ul>
+            <li>Delete all stored data by removing the extension</li>
+            <li>Clear preferences via the extension settings</li>
+            <li>Use the extension without providing any personal information</li>
+        </ul>
+
+        <h2>Changes to This Policy</h2>
+        <p>We may update this privacy policy as needed. Changes will be reflected in the "Last Updated" date above.</p>
+
+        <h2>Contact</h2>
+        <p>For privacy concerns or questions:</p>
+        <ul>
+            <li>GitHub: <a href="https://github.com/Bugierek/SwapUnitsWebApp" target="_blank" rel="noopener">https://github.com/Bugierek/SwapUnitsWebApp</a></li>
+            <li>Website: <a href="https://swapunits.com" target="_blank" rel="noopener">https://swapunits.com</a></li>
+        </ul>
+
+        <div class="summary">
+            <p><strong>Summary:</strong> SwapUnits works locally on your device. The only external service used is exchangerate-api.com for currency rates. No personal data is collected or transmitted.</p>
+        </div>
+    </div>
+</body>
+</html>
