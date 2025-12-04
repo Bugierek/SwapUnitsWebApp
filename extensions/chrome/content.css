@@ -1,0 +1,311 @@
+/* SwapUnits Extension Tooltip Styles */
+
+.swapunits-tooltip {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+  width: 340px !important;
+  animation: swapunits-fadeIn 0.15s ease-out;
+  pointer-events: auto !important;
+  transition: background-color 0.3s, border-color 0.3s !important;
+}
+
+.swapunits-tooltip.dark-mode {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+@keyframes swapunits-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.swapunits-tooltip-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  transition: background-color 0.3s, border-color 0.3s !important;
+  padding: 10px 12px !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  border-radius: 12px 12px 0 0 !important;
+  gap: 8px !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-tooltip-header {
+  background: #1e293b !important;
+  border-bottom-color: #334155 !important;
+}
+
+.swapunits-brand {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  text-decoration: none !important;
+  transition: color 0.15s, transform 0.15s !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.15em !important;
+  text-transform: uppercase !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-brand {
+  color: #94a3b8 !important;
+}
+
+.swapunits-brand:hover {
+  color: #8b5cf6 !important;
+  transform: translateY(-0.5px) !important;
+}
+
+.swapunits-logo-icon {
+  transition: transform 0.3s ease !important;
+}
+
+.swapunits-brand:hover .swapunits-logo-icon {
+  transform: rotate(180deg) !important;
+}
+
+.swapunits-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  flex-shrink: 0 !important;
+}
+
+.swapunits-dark-mode-toggle,
+.swapunits-settings-btn {
+  background: none !important;
+  border: none !important;
+  color: #64748b !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  transition: background-color 0.15s, color 0.15s !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-dark-mode-toggle,
+.swapunits-tooltip.dark-mode .swapunits-settings-btn {
+  color: #94a3b8 !important;
+}
+
+.swapunits-dark-mode-toggle:hover,
+.swapunits-settings-btn:hover {
+  background: #f1f5f9 !important;
+  color: #8b5cf6 !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-dark-mode-toggle:hover,
+.swapunits-tooltip.dark-mode .swapunits-settings-btn:hover {
+  background: #334155 !important;
+}
+
+.swapunits-close {
+  background: none !important;
+  border: none !important;
+  color: #64748b !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  padding: 4px !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  border-radius: 6px !important;
+  transition: background-color 0.15s, color 0.15s !important;
+  flex-shrink: 0 !important;
+}
+
+.swapunits-close:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-close:hover {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.swapunits-tooltip-body {
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  background: #ffffff !important;
+  border-radius: 0 0 12px 12px !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-tooltip-body {
+  background: #1e293b !important;
+}
+
+.swapunits-loading {
+  text-align: center !important;
+  padding: 20px !important;
+  color: #64748b !important;
+  font-size: 14px !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-loading {
+  color: #94a3b8 !important;
+}
+
+.swapunits-label {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #64748b !important;
+  margin-bottom: 6px !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-label {
+  color: #94a3b8 !important;
+}
+
+.swapunits-select {
+  width: 100% !important;
+  padding: 10px 12px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  cursor: pointer !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+  pointer-events: auto !important;
+  user-select: auto !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-select {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #e2e8f0 !important;
+}
+
+.swapunits-select:focus {
+  outline: none !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1) !important;
+}
+
+.swapunits-convert-btn {
+  width: 100% !important;
+  padding: 10px 14px !important;
+  background: #8b5cf6 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s, box-shadow 0.15s !important;
+}
+
+.swapunits-convert-btn:hover {
+  background: #7c3aed !important;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3) !important;
+}
+
+.swapunits-convert-btn:active {
+  background: #6d28d9 !important;
+}
+
+.swapunits-convert-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+.swapunits-result {
+  padding: 14px !important;
+  background: #f8fafc !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-result {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.swapunits-result-value {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 8px !important;
+}
+
+.swapunits-result-value > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.swapunits-result-value strong {
+  color: #8b5cf6 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  display: block;
+  word-break: break-word;
+}
+
+.swapunits-result-meta {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  font-size: 11px !important;
+  color: #64748b !important;
+  padding-top: 8px !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-result-meta {
+  color: #94a3b8 !important;
+  border-top-color: #334155 !important;
+}
+
+.swapunits-copy-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 6px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s !important;
+  flex-shrink: 0 !important;
+  color: #8b5cf6 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 32px !important;
+  height: 32px !important;
+}
+
+.swapunits-copy-btn:hover {
+  background: rgba(139, 92, 246, 0.1) !important;
+}
+
+.swapunits-tooltip.dark-mode .swapunits-copy-btn:hover {
+  background: rgba(139, 92, 246, 0.2) !important;
+}

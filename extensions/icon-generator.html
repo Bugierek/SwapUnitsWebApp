@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwapUnits Icon Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .container {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 2rem;
+    }
+    
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 2rem;
+      margin: 2rem 0;
+    }
+    
+    .preview-item {
+      text-align: center;
+    }
+    
+    canvas {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: white;
+      display: block;
+      margin: 0 auto 1rem;
+    }
+    
+    button {
+      background: white;
+      color: #4f46e5;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      margin: 5px;
+      transition: transform 0.1s;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .instructions {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+    }
+    
+    .instructions ol {
+      margin-left: 1.5rem;
+      margin-top: 0.5rem;
+    }
+    
+    .customization {
+      display: grid;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    label {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    input[type="color"],
+    input[type="text"] {
+      padding: 5px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 SwapUnits Icon Generator</h1>
+  
+  <div class="container">
+    <h2>Customize Your Icons</h2>
+    
+    <div class="customization">
+      <label>
+        <span>Background Color:</span>
+        <input type="color" id="bgColor" value="#4f46e5">
+      </label>
+      
+      <label>
+        <span>Symbol Color:</span>
+        <input type="color" id="fgColor" value="#ffffff">
+      </label>
+      
+      <label>
+        <span>Symbol:</span>
+        <input type="text" id="symbol" value="⇄" maxlength="2">
+      </label>
+      
+      <button onclick="generateIcons()">🔄 Regenerate Icons</button>
+    </div>
+    
+    <h2>Preview</h2>
+    <div class="preview-grid">
+      <div class="preview-item">
+        <canvas id="icon16" width="16" height="16"></canvas>
+        <div>16×16</div>
+        <button onclick="downloadIcon('icon16', 16)">Download</button>
+      </div>
+      
+      <div class="preview-item">
+        <canvas id="icon48" width="48" height="48"></canvas>
+        <div>48×48</div>
+        <button onclick="downloadIcon('icon48', 48)">Download</button>
+      </div>
+      
+      <div class="preview-item">
+        <canvas id="icon128" width="128" height="128"></canvas>
+        <div>128×128</div>
+        <button onclick="downloadIcon('icon128', 128)">Download</button>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+      <button onclick="downloadAll()" style="background: #FFD700; color: #333; font-size: 1.1rem;">
+        📦 Download All Icons
+      </button>
+    </div>
+    
+    <div class="instructions">
+      <strong>Instructions:</strong>
+      <ol>
+        <li>Customize colors and symbol above</li>
+        <li>Click "Download All Icons" button</li>
+        <li>Save each file with the correct name:
+          <ul>
+            <li>icon16.png → 16×16 version</li>
+            <li>icon48.png → 48×48 version</li>
+            <li>icon128.png → 128×128 version</li>
+          </ul>
+        </li>
+        <li>Place the files in both:
+          <ul>
+            <li>extensions/chrome/icons/</li>
+            <li>extensions/firefox/icons/</li>
+          </ul>
+        </li>
+        <li>Load the extension in your browser!</li>
+      </ol>
+    </div>
+  </div>
+  
+  <script>
+    function drawIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      const bgColor = document.getElementById('bgColor').value;
+      const fgColor = document.getElementById('fgColor').value;
+      const symbol = document.getElementById('symbol').value || '⇄';
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+      
+      // Draw background
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, size, size);
+      
+      // Draw symbol
+      ctx.fillStyle = fgColor;
+      ctx.font = `bold ${size * 0.6}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(symbol, size / 2, size / 2);
+    }
+    
+    function generateIcons() {
+      drawIcon('icon16', 16);
+      drawIcon('icon48', 48);
+      drawIcon('icon128', 128);
+    }
+    
+    function downloadIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = `icon${size}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    function downloadAll() {
+      setTimeout(() => downloadIcon('icon16', 16), 100);
+      setTimeout(() => downloadIcon('icon48', 48), 300);
+      setTimeout(() => downloadIcon('icon128', 128), 500);
+    }
+    
+    // Generate icons on load
+    generateIcons();
+    
+    // Regenerate on input change
+    document.getElementById('bgColor').addEventListener('input', generateIcons);
+    document.getElementById('fgColor').addEventListener('input', generateIcons);
+    document.getElementById('symbol').addEventListener('input', generateIcons);
+  </script>
+</body>
+</html>

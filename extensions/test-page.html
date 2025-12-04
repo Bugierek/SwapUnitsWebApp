@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwapUnits Extension Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    
+    .intro {
+      text-align: center;
+      margin-bottom: 3rem;
+      font-size: 1.1rem;
+      opacity: 0.95;
+    }
+    
+    .test-section {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .test-section h2 {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 0.5rem;
+    }
+    
+    .test-item {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 8px;
+      border-left: 4px solid #FFD700;
+    }
+    
+    .highlight {
+      background: rgba(255, 215, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    
+    .instructions {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    
+    .instructions ol {
+      margin-left: 1.5rem;
+      margin-top: 1rem;
+    }
+    
+    .instructions li {
+      margin: 0.5rem 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔄 SwapUnits Extension Test Page</h1>
+  
+  <div class="intro">
+    This page contains various units for testing the SwapUnits browser extension.<br>
+    Select any highlighted value to test the conversion feature!
+  </div>
+  
+  <div class="instructions">
+    <strong>How to test:</strong>
+    <ol>
+      <li>Make sure the SwapUnits extension is installed and enabled</li>
+      <li>Select any text with a unit below (including the number and unit)</li>
+      <li>A tooltip should appear automatically</li>
+      <li>Choose your target unit and click "Convert"</li>
+      <li>Try the copy button to copy the result</li>
+    </ol>
+  </div>
+  
+  <div class="test-section">
+    <h2>💰 Currency</h2>
+    <div class="test-item">
+      The laptop costs <span class="highlight">$1,299</span> in the US store.
+    </div>
+    <div class="test-item">
+      European price: <span class="highlight">€1,199</span>
+    </div>
+    <div class="test-item">
+      UK price: <span class="highlight">£999</span>
+    </div>
+    <div class="test-item">
+      Japan price: <span class="highlight">¥180,000</span>
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>📏 Length</h2>
+    <div class="test-item">
+      The distance to the airport is <span class="highlight">30 km</span>.
+    </div>
+    <div class="test-item">
+      The room is <span class="highlight">5 meters</span> wide.
+    </div>
+    <div class="test-item">
+      Mount Everest is <span class="highlight">29,032 ft</span> tall.
+    </div>
+    <div class="test-item">
+      The marathon is <span class="highlight">26.2 miles</span> long.
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>⚖️ Mass (Weight)</h2>
+    <div class="test-item">
+      My luggage weighs <span class="highlight">23 kg</span>.
+    </div>
+    <div class="test-item">
+      The package is <span class="highlight">500 grams</span>.
+    </div>
+    <div class="test-item">
+      Baby weighs <span class="highlight">8 pounds</span>.
+    </div>
+    <div class="test-item">
+      Recipe needs <span class="highlight">12 oz</span> of flour.
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>🌡️ Temperature</h2>
+    <div class="test-item">
+      Water boils at <span class="highlight">100°C</span>.
+    </div>
+    <div class="test-item">
+      Room temperature is <span class="highlight">72°F</span>.
+    </div>
+    <div class="test-item">
+      Absolute zero is <span class="highlight">0 K</span>.
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>📦 Volume</h2>
+    <div class="test-item">
+      Gas tank holds <span class="highlight">60 liters</span>.
+    </div>
+    <div class="test-item">
+      Bottle contains <span class="highlight">500 mL</span>.
+    </div>
+    <div class="test-item">
+      Pool is <span class="highlight">20,000 gallons</span>.
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>📐 Area</h2>
+    <div class="test-item">
+      The apartment is <span class="highlight">85 m²</span>.
+    </div>
+    <div class="test-item">
+      Land plot: <span class="highlight">2 acres</span>.
+    </div>
+    <div class="test-item">
+      Room size: <span class="highlight">200 ft²</span>.
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>🚗 Speed</h2>
+    <div class="test-item">
+      Speed limit is <span class="highlight">120 km/h</span>.
+    </div>
+    <div class="test-item">
+      Highway speed: <span class="highlight">65 mph</span>.
+    </div>
+    <div class="test-item">
+      Sound travels at <span class="highlight">343 m/s</span>.
+    </div>
+  </div>
+  
+  <div class="test-section">
+    <h2>🧪 Mixed Examples</h2>
+    <div class="test-item">
+      I drove <span class="highlight">150 miles</span> at <span class="highlight">60 mph</span> and used <span class="highlight">8 gallons</span> of fuel.
+    </div>
+    <div class="test-item">
+      The recipe needs <span class="highlight">2 cups</span> of flour, <span class="highlight">250g</span> of sugar, and bake at <span class="highlight">350°F</span>.
+    </div>
+    <div class="test-item">
+      The box weighs <span class="highlight">5 kg</span>, measures <span class="highlight">50 cm</span> × <span class="highlight">30 cm</span>, and costs <span class="highlight">$45</span>.
+    </div>
+  </div>
+  
+  <div style="text-align: center; margin-top: 3rem; opacity: 0.9;">
+    <p>Made with ❤️ by SwapUnits</p>
+    <p style="margin-top: 0.5rem;">
+      <a href="https://swapunits.com" style="color: white;">Visit SwapUnits.com</a>
+    </p>
+  </div>
+</body>
+</html>

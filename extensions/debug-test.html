@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Extension Debug Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #00ff00;
+    }
+    .test-box {
+      background: #2d2d2d;
+      border: 2px solid #00ff00;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .highlight {
+      background: yellow;
+      color: black;
+      padding: 2px 5px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+    button {
+      background: #00ff00;
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px 5px;
+      cursor: pointer;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #00cc00;
+    }
+    #output {
+      background: #000;
+      border: 1px solid #00ff00;
+      padding: 15px;
+      margin-top: 20px;
+      min-height: 200px;
+      white-space: pre-wrap;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔧 SwapUnits Extension Debug</h1>
+  
+  <div class="test-box">
+    <h2>Step 1: Check Extension Loaded</h2>
+    <button onclick="testExtensionLoaded()">Test Extension Connection</button>
+    <p>This will verify the extension is loaded and background script responds.</p>
+  </div>
+  
+  <div class="test-box">
+    <h2>Step 2: Test Text Selection</h2>
+    <p>Select the text below (including the dollar sign):</p>
+    <p class="highlight">$100</p>
+    <p>Tooltip should appear with conversion options.</p>
+  </div>
+  
+  <div class="test-box">
+    <h2>Step 3: More Test Values</h2>
+    <p>Try selecting these:</p>
+    <ul>
+      <li class="highlight">30 km</li>
+      <li class="highlight">5 kg</li>
+      <li class="highlight">72°F</li>
+      <li class="highlight">€500</li>
+    </ul>
+  </div>
+  
+  <div class="test-box">
+    <h2>Console Output:</h2>
+    <div id="output">Waiting for tests...</div>
+  </div>
+  
+  <script>
+    const output = document.getElementById('output');
+    
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      output.textContent += `[${timestamp}] ${message}\n`;
+      console.log(message);
+    }
+    
+    // Override console.log to show in our output
+    const originalLog = console.log;
+    console.log = function(...args) {
+      log(args.join(' '));
+      originalLog.apply(console, args);
+    };
+    
+    const originalError = console.error;
+    console.error = function(...args) {
+      log('❌ ERROR: ' + args.join(' '));
+      originalError.apply(console, args);
+    };
+    
+    function testExtensionLoaded() {
+      log('Testing extension connection...');
+      
+      if (typeof chrome === 'undefined' || !chrome.runtime) {
+        log('❌ chrome.runtime not available - extension not loaded!');
+        return;
+      }
+      
+      log('✅ chrome.runtime available');
+      log('Sending test message to background script...');
+      
+      chrome.runtime.sendMessage(
+        { action: 'getUnitsForCategory', category: 'Length' },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            log('❌ Message error: ' + chrome.runtime.lastError.message);
+            return;
+          }
+          
+          if (response && response.units) {
+            log('✅ Background script responded!');
+            log('✅ Received ' + response.units.length + ' units');
+            log('Units: ' + response.units.map(u => u.symbol).join(', '));
+          } else {
+            log('❌ Invalid response: ' + JSON.stringify(response));
+          }
+        }
+      );
+    }
+    
+    // Auto-test on load
+    setTimeout(() => {
+      log('Page loaded. Extension should inject content script.');
+      log('Try selecting the highlighted text above.');
+    }, 500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SwapUnits Converter</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      width: 350px;
+      min-height: fit-content;
+      max-height: 600px;
+      overflow-y: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #ffffff;
+      color: #1e293b;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    
+    body.dark-mode {
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    
+    .header {
+      padding: 16px 16px 12px;
+      text-align: center;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      position: relative;
+    }
+    
+    body.dark-mode .header {
+      background: #1e293b;
+      border-bottom-color: #334155;
+    }
+    
+    .dark-mode-toggle {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+    
+    .dark-mode-toggle:hover {
+      background: #f1f5f9;
+    }
+    
+    body.dark-mode .dark-mode-toggle:hover {
+      background: #334155;
+    }
+    
+    .dark-mode-toggle svg {
+      color: #64748b;
+      transition: color 0.2s;
+    }
+    
+    body.dark-mode .dark-mode-toggle svg {
+      color: #94a3b8;
+    }
+    
+    .dark-mode-toggle:hover svg {
+      color: #8b5cf6;
+    }
+    
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: #1e293b;
+      margin-bottom: 6px;
+      transition: all 0.3s ease;
+    }
+    
+    body.dark-mode .logo {
+      color: #e2e8f0;
+    }
+    
+    .logo:hover {
+      color: #8b5cf6;
+    }
+    
+    .logo svg {
+      color: #8b5cf6;
+      transition: transform 0.3s ease;
+    }
+    
+    .logo:hover svg {
+      transform: rotate(180deg);
+    }
+    
+    .header p {
+      font-size: 12px;
+      color: #64748b;
+    }
+    
+    body.dark-mode .header p {
+      color: #94a3b8;
+    }
+    
+    .content {
+      padding: 14px 16px;
+      background: #f8fafc;
+    }
+    
+    body.dark-mode .content {
+      background: #0f172a;
+    }
+    
+    .info-box {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    
+    body.dark-mode .info-box {
+      background: #1e293b;
+      border-color: #334155;
+    }
+    
+    .info-box h2 {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #1e293b;
+    }
+    
+    body.dark-mode .info-box h2 {
+      color: #e2e8f0;
+    }
+    
+    .info-box p {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #64748b;
+    }
+    
+    body.dark-mode .info-box p {
+      color: #94a3b8;
+    }
+    
+    .steps {
+      list-style: none;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    
+    .steps li {
+      padding-left: 18px;
+      position: relative;
+      margin-bottom: 6px;
+      color: #64748b;
+    }
+    
+    body.dark-mode .steps li {
+      color: #94a3b8;
+    }
+    
+    .steps li::before {
+      content: '→';
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+      color: #8b5cf6;
+    }
+    
+    .btn-primary {
+      width: 100% !important;
+      padding: 10px;
+      background: #8b5cf6;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    
+    .btn-primary:hover {
+      background: #7c3aed;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+    }
+    
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    
+    .footer {
+      padding: 12px 16px;
+      text-align: center;
+      background: #ffffff;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    body.dark-mode .footer {
+      background: #1e293b;
+      border-top-color: #334155;
+    }
+    
+    .footer a {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 500;
+      transition: color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    body.dark-mode .footer a {
+      color: #94a3b8;
+    }
+    
+    .footer a:hover {
+      color: #8b5cf6;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <button class="dark-mode-toggle" id="darkModeToggle" title="Toggle dark mode">
+      <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/>
+        <line x1="12" y1="1" x2="12" y2="3"/>
+        <line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/>
+        <line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="moon-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+    <div class="logo">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 1-9 9c-2.52 0-4.93-1-6.74-2.74L3 16"/>
+        <path d="M8 16H3v5"/>
+        <path d="M3 12a9 9 0 0 1 9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+        <path d="M16 8h5V3"/>
+      </svg>
+      <span>SwapUnits</span>
+    </div>
+    <p>Convert units instantly on any webpage</p>
+  </div>
+  
+  <div class="content">
+    <div class="info-box">
+      <h2>How to use:</h2>
+      <ol class="steps">
+        <li>Select any text with a unit (e.g., "30 USD", "5 kg", "10 km")</li>
+        <li>A popup will appear with auto-converted results</li>
+        <li>Use the settings icon to change target units</li>
+        <li>Enjoy instant conversions on any webpage!</li>
+      </ol>
+    </div>
+    
+    <div class="info-box">
+      <h2>Supported units:</h2>
+      <p>
+        Currency, Length, Mass, Temperature, Volume, Area, Speed, and more!
+      </p>
+    </div>
+    
+    <button class="btn-primary" id="openWebApp">
+      Open Full Converter
+    </button>
+  </div>
+  
+  <div class="footer">
+    <a href="https://swapunits.com" target="_blank" title="Visit SwapUnits.com">
+      Powered by SwapUnits.com
+    </a>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
