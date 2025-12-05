@@ -19,7 +19,21 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Performance optimizations
+  compress: true, // Enable gzip compression
+  poweredByHeader: false, // Remove X-Powered-By header
+  
+  // Enable experimental features for better performance
+  experimental: {
+    optimizePackageImports: ['lucide-react'], // Tree-shake lucide-react imports
+  },
+  
   webpack(config) {
+    // Enable production optimizations
+    config.optimization = {
+      ...config.optimization,
+      minimize: true,
+    };
     return config;
   },
 };

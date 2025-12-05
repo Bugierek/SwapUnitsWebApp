@@ -12,6 +12,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap', // Use font-display: swap for better performance
+  preload: true, // Preload the font
 });
 
 // Replace with your actual deployed URL
@@ -75,7 +77,7 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  maximumScale: 5, // Allow users to zoom up to 5x for accessibility
   colorScheme: 'light dark',
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#0b1221' },
@@ -140,6 +142,12 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Preconnect to external origins for faster resource loading */}
+        <link rel="preconnect" href="https://api.frankfurter.dev" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api.frankfurter.dev" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        
         <style id="swapunits-theme-base" dangerouslySetInnerHTML={{ __html: backgroundStyle }} />
         <script
           id="swapunits-theme-init"

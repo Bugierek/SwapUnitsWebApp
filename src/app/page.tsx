@@ -7,9 +7,13 @@ import dynamic from 'next/dynamic';
 import type { UnitConverterHandle } from '@/components/unit-converter';
 import { SiteTopbar } from '@/components/site-topbar';
 import { Toaster } from '@/components/ui/toaster';
-import { Footer } from '@/components/footer';
 import { PresetList } from '@/components/preset-list';
 import { HistoryList } from '@/components/history-list';
+
+// Lazy load Footer component since it's below the fold
+const Footer = dynamic(() => import('@/components/footer').then(mod => mod.Footer), {
+  ssr: false,
+});
 import { getFilteredAndSortedPresets } from '@/lib/unit-data';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import type { Preset, UnitCategory, ConversionHistoryItem, FavoriteItem } from '@/types';
@@ -238,8 +242,6 @@ export default function Home() {
                   isLoading={isLoadingHistory}
                 />
                 <PresetList
-                  presetsToDisplay={displayPresetsForListDesktop}
-                  onPresetSelect={onDesktopPresetSelect}
                   favorites={favorites}
                   onFavoriteSelect={onDesktopPresetSelect}
                   onRemoveFavorite={removeFavorite}
