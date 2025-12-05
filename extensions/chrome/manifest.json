@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SwapUnits Converter",
+  "name": "SwapUnits - Instant Unit Converter",
   "version": "1.0.0",
-  "description": "Convert units instantly by selecting text on any webpage",
+  "description": "Convert units by selecting text. 7+ categories, 42 currencies, dark mode. Auto-converts with smart defaults.",
   "permissions": [
     "activeTab",
     "storage",

@@ -2,6 +2,16 @@
 
 Convert units instantly by selecting text on any webpage!
 
+## 🚀 Chrome Web Store Submission Status
+
+✅ **Technical Requirements**: Complete (Manifest V3, minimal permissions)  
+✅ **Privacy Policy**: Created ([PRIVACY.md](PRIVACY.md))  
+✅ **Store Description**: Complete ([STORE_LISTING.md](STORE_LISTING.md))  
+⏳ **Screenshots**: Needed (see [SCREENSHOT_GUIDE.md](SCREENSHOT_GUIDE.md))  
+⏳ **Promotional Tile**: Needed (440x280)  
+
+📋 **See [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md) for complete submission guide**
+
 ## Features
 
 ✅ **Automatic Detection** - Select any text with a unit (e.g., "30 USD", "5 kg", "10 km")  

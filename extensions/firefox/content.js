@@ -14,7 +14,12 @@ const UNIT_PATTERNS = [
   { regex: /(\d+(?:\.\d+)?)\s*(?:m\/s|mps)/gi, category: 'Speed', unit: 'm/s' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:mph|mi\/h)/gi, category: 'Speed', unit: 'mph' },
   
-  // Length
+  // Length - Height notation (MUST come first: 6'2" = 6 feet 2 inches)
+  { regex: /(\d+)\s*'\s*(\d+)\s*"/gi, category: 'Length', unit: 'height', isHeight: true },
+  
+  // Length (feet and inches with apostrophes)
+  { regex: /(\d+(?:\.\d+)?)\s*'/gi, category: 'Length', unit: 'ft' },
+  { regex: /(\d+(?:\.\d+)?)\s*"/gi, category: 'Length', unit: 'in' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:km|kilometers?|kilometres?)/gi, category: 'Length', unit: 'km' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:m|meters?|metres?)(?!\w)/gi, category: 'Length', unit: 'm' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:cm|centimeters?|centimetres?)/gi, category: 'Length', unit: 'cm' },
@@ -60,6 +65,25 @@ function detectUnit(text) {
     const match = pattern.regex.exec(text);
     if (match) {
       console.log('Pattern matched:', pattern, match);
+      
+      // Special handling for height notation (e.g., 6'2")
+      if (pattern.isHeight && match[1] && match[2]) {
+        const feet = parseFloat(match[1]);
+        const inches = parseFloat(match[2]);
+        if (!isNaN(feet) && !isNaN(inches)) {
+          // Convert to total inches: (feet * 12) + inches
+          const totalInches = (feet * 12) + inches;
+          console.log('Detected height:', { feet, inches, totalInches });
+          return {
+            value: totalInches,
+            unit: 'in', // Convert from total inches
+            category: pattern.category,
+            originalText: match[0],
+            isHeight: true
+          };
+        }
+      }
+      
       // Extract number (try both capture groups)
       let numStr = match[1] || match[2] || match[0];
       numStr = numStr.replace(/[^\d.-]/g, '');

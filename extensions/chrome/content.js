@@ -14,7 +14,9 @@ const UNIT_PATTERNS = [
   { regex: /(\d+(?:\.\d+)?)\s*(?:m\/s|mps)/gi, category: 'Speed', unit: 'm/s' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:mph|mi\/h)/gi, category: 'Speed', unit: 'mph' },
   
-  // Length
+  // Length (feet and inches with apostrophes must come before other patterns)
+  { regex: /(\d+(?:\.\d+)?)\s*'/gi, category: 'Length', unit: 'ft' },
+  { regex: /(\d+(?:\.\d+)?)\s*"/gi, category: 'Length', unit: 'in' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:km|kilometers?|kilometres?)/gi, category: 'Length', unit: 'km' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:m|meters?|metres?)(?!\w)/gi, category: 'Length', unit: 'm' },
   { regex: /(\d+(?:\.\d+)?)\s*(?:cm|centimeters?|centimetres?)/gi, category: 'Length', unit: 'cm' },
