@@ -16,8 +16,10 @@ const inter = Inter({
   preload: true, // Preload the font
 });
 
-// Replace with your actual deployed URL
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:9002'; // Fallback for local dev
+// Determine site URL - uses env var from apphosting.yaml or falls back to localhost
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+  (typeof window !== 'undefined' && window.location.origin) || 
+  'http://localhost:9002';
 
 export const metadata: Metadata = {
   // Define metadataBase for resolving relative paths, especially for images

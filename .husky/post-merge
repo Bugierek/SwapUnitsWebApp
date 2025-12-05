@@ -1,0 +1,12 @@
+#!/bin/sh
+# Auto-update apphosting.yaml URL after merge
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$BRANCH" = "master" ]; then
+  sed -i '' 's|value: https://unitswap.xyz|value: https://swapunits.com|g' apphosting.yaml
+  echo "✓ Updated apphosting.yaml to use swapunits.com for master branch"
+elif [ "$BRANCH" = "dev" ]; then
+  sed -i '' 's|value: https://swapunits.com|value: https://unitswap.xyz|g' apphosting.yaml
+  echo "✓ Updated apphosting.yaml to use unitswap.xyz for dev branch"
+fi

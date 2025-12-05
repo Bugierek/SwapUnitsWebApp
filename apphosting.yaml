@@ -9,6 +9,12 @@ runConfig:
 
 # Environment variables and secrets.
 env:
+  # Site URL - override this per branch in Firebase Console
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: https://unitswap.xyz
+    availability:
+      - BUILD
+      - RUNTIME
   # Grant access to secrets in Cloud Secret Manager.
   # See https://firebase.google.com/docs/app-hosting/configure#secret-parameters
   - secret: RESEND_API_KEY
