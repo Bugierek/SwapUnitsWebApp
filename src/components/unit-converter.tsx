@@ -3394,6 +3394,7 @@ return (
                             <li>Type a query like <span className="font-semibold text-foreground">“100 kg to g”</span> in the finder.</li>
                             <li>Pick units from the dropdowns to refine the result.</li>
                             <li>Copy results — your history/favorites stay private in your browser.</li>
+                            <li>Try the browser extension — select any text on any website to convert units instantly.</li>
                             <li>Want this on your site? Use the widget builder to embed it.</li>
                           </ul>
                         </div>
