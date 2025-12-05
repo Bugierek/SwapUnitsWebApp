@@ -19,6 +19,7 @@ import type { ConversionHistoryItem } from '@/types';
 import { SI_MULTIPLES, SI_SUBMULTIPLES, ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { getConversionSources } from '@/lib/conversion-sources';
 import { formatConversionValue } from '@/lib/number-format';
+import { cn } from '@/lib/utils';
 
 const formatValue = (exp: number) => `10${exp >= 0 ? `^${exp}` : `^(${exp})`}`;
 
@@ -38,6 +39,7 @@ export default function NistSiTenfoldPage() {
   const [fromPrefix, setFromPrefix] = React.useState(prefixOptions[8]); // kilo default
   const [toPrefix, setToPrefix] = React.useState(prefixOptions[prefixOptions.length - 3]); // milli default
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
+  const [isSwapped, setIsSwapped] = React.useState(false);
   const numericValue = Number(inputValue);
   const isValueValid = Number.isFinite(numericValue);
   const conversionSources = React.useMemo(
@@ -197,17 +199,33 @@ export default function NistSiTenfoldPage() {
                 </div>
               </div>
 
-              <div className="flex w-full justify-center">
+              <div className="flex w-full items-center justify-center pt-6 sm:w-auto">
                 <button
                   type="button"
                   onClick={() => {
                     setFromPrefix(toPrefix);
                     setToPrefix(fromPrefix);
+                    setIsSwapped((prev) => !prev);
                   }}
-                  className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-background text-foreground transition hover:border-primary/60 hover:text-primary"
+                  className="h-12 w-full inline-flex items-center justify-center rounded-[1.75rem] border-0 p-0 text-primary text-base font-semibold transition hover:bg-primary/5 sm:w-14"
                   aria-label="Swap prefixes"
                 >
-                  <ArrowLeftRight className="h-4 w-4" />
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className={cn('transition-transform text-primary', isSwapped && 'rotate-180 scale-x-[-1]')}
+                    aria-hidden="true"
+                  >
+                    <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                      <path d="M21 3v5h-5" />
+                      <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                      <path d="M8 16H3v5" />
+                    </g>
+                  </svg>
                 </button>
               </div>
 
