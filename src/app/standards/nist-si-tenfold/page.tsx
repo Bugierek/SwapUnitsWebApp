@@ -67,18 +67,19 @@ export default function NistSiTenfoldPage() {
   }, [numericValue, fromPrefix.symbol, toPrefix.symbol, computed]);
 
   const handleHistorySelect = React.useCallback((item: ConversionHistoryItem) => {
-    if (item.meta?.kind !== 'si-prefix') {
+    if (!item.meta || item.meta.kind !== 'si-prefix') {
       return;
     }
-    const fromMatch = prefixOptions.find((opt) => opt.symbol === item.meta.fromPrefixSymbol);
+    const meta = item.meta;
+    const fromMatch = prefixOptions.find((opt) => opt.symbol === meta.fromPrefixSymbol);
     if (fromMatch) {
       setFromPrefix(fromMatch);
     }
-    const toMatch = prefixOptions.find((opt) => opt.symbol === item.meta.toPrefixSymbol);
+    const toMatch = prefixOptions.find((opt) => opt.symbol === meta.toPrefixSymbol);
     if (toMatch) {
       setToPrefix(toMatch);
     }
-    const nextValue = item.meta.inputText ?? String(item.fromValue);
+    const nextValue = meta.inputText ?? String(item.fromValue);
     setInputValue(nextValue);
   }, [prefixOptions]);
 
