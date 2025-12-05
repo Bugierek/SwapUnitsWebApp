@@ -70,7 +70,7 @@ export default function NistSiTenfoldPage() {
     if (!item.meta || item.meta.kind !== 'si-prefix') {
       return;
     }
-    const meta = item.meta;
+    const meta = item.meta as Extract<ConversionHistoryItem['meta'], { kind: 'si-prefix' }>;
     const fromMatch = prefixOptions.find((opt) => opt.symbol === meta.fromPrefixSymbol);
     if (fromMatch) {
       setFromPrefix(fromMatch);
