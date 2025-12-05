@@ -451,7 +451,7 @@ export default function WidgetBuilderPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Textarea value={iframeCode} readOnly className="h-48 md:h-64 text-xs font-mono" />
+              <Textarea value={iframeCode} readOnly className="h-48 md:h-64 text-xs font-mono break-all" />
               <p className="text-xs text-muted-foreground">Powered by SwapUnits</p>
             </CardContent>
           </Card>

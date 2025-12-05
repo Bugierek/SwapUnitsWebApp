@@ -79,7 +79,7 @@ export const metadata: Metadata = {
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 5, // Allow users to zoom up to 5x for accessibility
+  maximumScale: 1,
   colorScheme: 'light dark',
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#0b1221' },
