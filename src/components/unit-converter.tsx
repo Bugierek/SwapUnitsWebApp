@@ -3184,6 +3184,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         {(onSaveFavoriteProp || hasToggleFavorites) && (
           <div className="absolute right-3 top-3 z-[2]">
             <button
+              key={`fav-${rhfCategory}-${rhfFromUnit}-${rhfToUnit}-${activeFavorite ? 'active' : 'inactive'}`}
               type="button"
               onClick={hasToggleFavorites ? () => handleToggleFavoriteInternal() : handleSaveToFavoritesInternal}
               disabled={finalSaveDisabled || showPlaceholder}
@@ -3193,6 +3194,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               aria-label={favoriteButtonLabel}
             >
               <Star
+                key={activeFavorite ? 'filled' : 'empty'}
                 className={cn(
                   'h-4 w-4 flex-shrink-0',
                   activeFavorite
