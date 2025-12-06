@@ -522,58 +522,59 @@ export function FxHistoryChart({ from, to, className, highlightDate, onDateSelec
 
 
 
-            {/* Hover price indicator */}
+            </svg>
+            
+            {/* Hover price indicator (HTML overlay) */}
             {activePoint && hoverIndex !== null && (
-              <g>
-                <rect
-                  x={width - marginRight}
-                  y={activePoint.y - 8}
-                  width={marginRight - 2}
-                  height="16"
-                  fill="hsl(var(--primary))"
-                  rx="3"
-                />
-                <text
-                  x={width - marginRight + (marginRight - 2) / 2}
-                  y={activePoint.y + 3.5}
-                  textAnchor="middle"
-                  style={{ fontSize: '10px' }}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fontWeight="600"
-                  fill="hsl(var(--primary-foreground))"
-                  className="select-none"
-                >
-                  {activePoint.value.toFixed(4)}
-                </text>
-              </g>
+              <div
+                className="absolute rounded bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground shadow-sm pointer-events-none"
+                style={{
+                  right: '2px',
+                  top: `${(activePoint.y / height) * 100}%`,
+                  transform: 'translateY(-50%)',
+                  zIndex: 40,
+                }}
+              >
+                {activePoint.value.toFixed(4)}
+              </div>
             )}
 
-            {/* Green price indicator for highlighted date */}
+            {/* Green price indicator for highlighted date (HTML overlay) */}
             {highlightIdx !== null && points[highlightIdx] && (
-              <g>
-                <rect
-                  x={width - marginRight}
-                  y={points[highlightIdx].y - 8}
-                  width={marginRight - 2}
-                  height="16"
-                  fill="#10b981"
-                  rx="3"
-                />
-                <text
-                  x={width - marginRight + (marginRight - 2) / 2}
-                  y={points[highlightIdx].y + 3.5}
-                  textAnchor="middle"
-                  style={{ fontSize: '10px' }}
-                  fontFamily="system-ui, -apple-system, sans-serif"
-                  fontWeight="600"
-                  fill="white"
-                  className="select-none"
-                >
-                  {points[highlightIdx].value.toFixed(4)}
-                </text>
-              </g>
+              <div
+                className="absolute rounded bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white shadow-sm pointer-events-none"
+                style={{
+                  right: '2px',
+                  top: `${(points[highlightIdx].y / height) * 100}%`,
+                  transform: 'translateY(-50%)',
+                  zIndex: 40,
+                }}
+              >
+                {points[highlightIdx].value.toFixed(4)}
+              </div>
             )}
-            </svg>
+            
+            {/* Green date indicator on X-axis for highlighted date (HTML overlay) */}
+            {highlightIdx !== null && points[highlightIdx] && (() => {
+              const dateText = new Date(points[highlightIdx].date + 'T00:00:00Z').toLocaleDateString('en-GB', { 
+                day: 'numeric', 
+                month: 'short',
+                year: days > 365 ? 'numeric' : undefined
+              });
+              return (
+                <div
+                  className="absolute rounded bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white shadow-sm pointer-events-none"
+                  style={{
+                    left: `${(points[highlightIdx].x / width) * 100}%`,
+                    bottom: '4px',
+                    transform: 'translateX(-50%)',
+                    zIndex: 40,
+                  }}
+                >
+                  {dateText}
+                </div>
+              );
+            })()}
             {activePoint && hoverIndex !== null && (
               <div
                 className="absolute flex flex-col items-center gap-0.5 rounded-md border border-border bg-popover px-2 py-1 text-popover-foreground shadow-lg backdrop-blur-sm"
