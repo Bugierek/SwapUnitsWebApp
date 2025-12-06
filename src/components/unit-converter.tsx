@@ -25,11 +25,11 @@ import {
   ChevronRight,
   ChevronsUpDown,
   ArrowUpRight,
-  Calendar,
   Check,
   Info,
   Search,
 } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import { useRouter } from 'next/navigation';
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -113,6 +113,7 @@ interface UnitConverterProps {
   hideFinder?: boolean;
   enableQuickstartTour?: boolean;
   onUnitsChange?: (fromUnit: string, toUnit: string) => void;
+  onDateChange?: (date: Date | undefined) => void;
 }
 
 export interface UnitConverterHandle {
@@ -231,6 +232,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     favorites = [],
     onToggleFavorite,
     onUnitsChange,
+    onDateChange,
   },
   ref,
 ) {
@@ -3252,52 +3254,39 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             {rhfCategory === 'Currency' && fxRateDateMessage && (
               <div className="flex flex-col gap-3 pb-2 text-xs font-normal text-muted-foreground">
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <label htmlFor="fx-date-inline" className="sr-only">
-                    Rate date
-                  </label>
                   <span className="font-normal">{fxRateDateMessage}</span>
-                  <div className="relative inline-flex items-center">
-                    <button
-                      type="button"
-                      aria-label="Select FX rate date"
-                      className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                    >
-                      <Calendar className="h-4 w-4" aria-hidden="true" />
-                    </button>
-                    <input
-                      id="fx-date-inline"
-                      type="date"
-                      min="1999-01-04"
-                      max={new Date().toISOString().split('T')[0]}
-                      value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
-                      onChange={(e) => {
-                        const dateStr = e.target.value;
+                  <DatePicker
+                    date={selectedFxDate}
+                    onDateChange={(date) => {
+                      if (!date) {
+                        setSelectedFxDate(undefined);
+                        setIsHistoricalMode(false);
+                        setFxRates(null);
+                        fetchFxRates(undefined, true);
+                        onDateChange?.(undefined);
+                      } else {
                         const todayKey = new Date().toISOString().split('T')[0];
-                        if (dateStr) {
-                          const date = new Date(dateStr + 'T00:00:00Z');
-                          const pickedKey = date.toISOString().split('T')[0];
-                          if (pickedKey === todayKey) {
-                            setSelectedFxDate(undefined);
-                            setIsHistoricalMode(false);
-                            setFxRates(null);
-                            fetchFxRates(undefined, true);
-                          } else {
-                            setIsHistoricalMode(true);
-                            setSelectedFxDate(date);
-                            setFxRates(null);
-                            fetchFxRates(date, true);
-                          }
-                        } else {
+                        const pickedKey = date.toISOString().split('T')[0];
+                        if (pickedKey === todayKey) {
                           setSelectedFxDate(undefined);
                           setIsHistoricalMode(false);
                           setFxRates(null);
                           fetchFxRates(undefined, true);
+                          onDateChange?.(undefined);
+                        } else {
+                          setIsHistoricalMode(true);
+                          setSelectedFxDate(date);
+                          setFxRates(null);
+                          fetchFxRates(date, true);
+                          onDateChange?.(date);
                         }
-                      }}
-                      aria-label="Select FX rate date"
-                      className="absolute inset-0 h-6 w-6 cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer"
-                    />
-                  </div>
+                      }
+                    }}
+                    minDate={new Date('1999-01-04T00:00:00Z')}
+                    maxDate={new Date()}
+                    placeholder="Pick date"
+                    className="h-7 text-xs"
+                  />
                 </div>
                 {isFetchingFx && (
                   <div className="flex items-center gap-2 text-[11px] text-muted-foreground">

@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Copy, Check, Info, Calculator, Calendar } from 'lucide-react';
+import { Copy, Check, Info, Calculator } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 
 import type { UnitCategory, ConversionHistoryItem } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -702,33 +703,35 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
           {category === 'Currency' && fxRates && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>{fxRateDateMessage}</span>
-              <div className="relative inline-flex h-6 w-6 items-center justify-center">
-                <input
-                  ref={fxDateInputRef}
-                  type="date"
-                  min="1999-01-04"
-                  max={new Date().toISOString().split('T')[0]}
-                  value={selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : ''}
-                  onChange={(e) => {
-                    const dateStr = e.target.value;
-                    if (dateStr) {
-                      const date = new Date(dateStr + 'T00:00:00Z');
-                      setSelectedFxDate(date);
-                      setIsHistoricalMode(true);
-                      setFxRates(null);
-                      fetchPairFxRates(date, true);
-                    } else {
+              <DatePicker
+                date={selectedFxDate}
+                onDateChange={(date) => {
+                  if (!date) {
+                    setSelectedFxDate(undefined);
+                    setIsHistoricalMode(false);
+                    setFxRates(null);
+                    fetchPairFxRates(undefined, true);
+                  } else {
+                    const todayKey = new Date().toISOString().split('T')[0];
+                    const pickedKey = date.toISOString().split('T')[0];
+                    if (pickedKey === todayKey) {
                       setSelectedFxDate(undefined);
                       setIsHistoricalMode(false);
                       setFxRates(null);
                       fetchPairFxRates(undefined, true);
+                    } else {
+                      setIsHistoricalMode(true);
+                      setSelectedFxDate(date);
+                      setFxRates(null);
+                      fetchPairFxRates(date, true);
                     }
-                  }}
-                  aria-label="Select FX rate date"
-                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                />
-                <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              </div>
+                  }
+                }}
+                minDate={new Date('1999-01-04T00:00:00Z')}
+                maxDate={new Date()}
+                placeholder="Pick date"
+                className="h-7 text-xs"
+              />
             </div>
           )}
           {category === 'Currency' && isFetchingFx && (

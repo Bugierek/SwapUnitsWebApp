@@ -8,7 +8,8 @@ import { unitData, categoryDisplayOrder } from "@/lib/unit-data";
 import type { UnitCategory } from "@/types";
 import { convertUnitsDetailed } from "@/lib/conversion-math";
 import type { FxRatesResponse, CurrencyCode } from "@/lib/fx";
-import { Copy as CopyIcon, Check as CheckIcon, RefreshCw, ChevronDown, Calendar } from "lucide-react";
+import { Copy as CopyIcon, Check as CheckIcon, RefreshCw, ChevronDown } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { UnitIcon } from "@/components/unit-icon";
 import { FxHistoryChart } from "@/components/fx-history-chart";
 import { FxSparkline } from "@/components/fx-sparkline";
@@ -524,38 +525,32 @@ export default function WidgetPage() {
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
               <span>{fxRateDateMessage}</span>
               {fxHistoryEnabled && (
-                <div className="relative inline-flex h-6 w-6 items-center justify-center">
-                  <input
-                    type="date"
-                    min="1999-01-04"
-                    max={new Date().toISOString().split("T")[0]}
-                    value={selectedFxDate ? selectedFxDate.toISOString().split("T")[0] : ""}
-                    onChange={(e) => {
-                      const dateStr = e.target.value;
+                <DatePicker
+                  date={selectedFxDate}
+                  onDateChange={(date) => {
+                    if (!date) {
+                      setSelectedFxDate(undefined);
+                      setIsHistoricalMode(false);
+                      setFxRates(null);
+                    } else {
                       const todayKey = new Date().toISOString().split("T")[0];
-                      if (dateStr) {
-                        const date = new Date(dateStr + "T00:00:00Z");
-                        const pickedKey = date.toISOString().split("T")[0];
-                        if (pickedKey === todayKey) {
-                          setSelectedFxDate(undefined);
-                          setIsHistoricalMode(false);
-                          setFxRates(null);
-                        } else {
-                          setSelectedFxDate(date);
-                          setIsHistoricalMode(true);
-                          setFxRates(null);
-                        }
-                      } else {
+                      const pickedKey = date.toISOString().split("T")[0];
+                      if (pickedKey === todayKey) {
                         setSelectedFxDate(undefined);
                         setIsHistoricalMode(false);
                         setFxRates(null);
+                      } else {
+                        setSelectedFxDate(date);
+                        setIsHistoricalMode(true);
+                        setFxRates(null);
                       }
-                    }}
-                    aria-label="Select FX rate date"
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0 appearance-none [-webkit-calendar-picker-indicator]:opacity-0 [-webkit-calendar-picker-indicator]:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                  />
-                  <Calendar className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                </div>
+                    }
+                  }}
+                  minDate={new Date("1999-01-04T00:00:00Z")}
+                  maxDate={new Date()}
+                  placeholder="Pick date"
+                  className="h-6 text-[11px]"
+                />
               )}
             </div>
           )}

@@ -38,6 +38,41 @@ type FxHistoryChartProps = {
 export function FxHistoryChart({ from, to, className, highlightDate, onDateSelect, inputValue = 1 }: FxHistoryChartProps) {
   const { toast } = useToast();
   const [days, setDays] = React.useState(365);
+  const userSelectedRangeRef = React.useRef(false);
+  const lastHighlightDateRef = React.useRef<Date | null>(null);
+  
+  // Expand chart range if selected date is older than current range
+  React.useEffect(() => {
+    if (highlightDate) {
+      const now = new Date();
+      const daysDiff = Math.ceil((now.getTime() - highlightDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Check if this is a new date selection (not just a re-render)
+      const isNewDate = lastHighlightDateRef.current?.getTime() !== highlightDate.getTime();
+      
+      // Reset user selection flag when a new date is picked
+      if (isNewDate) {
+        userSelectedRangeRef.current = false;
+      }
+      
+      lastHighlightDateRef.current = highlightDate;
+      
+      // Only auto-expand if it's a new date and user hasn't manually selected a range
+      if (isNewDate && !userSelectedRangeRef.current && daysDiff > days) {
+        // Expand to next level: 7 -> 30 -> 90 -> 365 -> all
+        if (days < 30) {
+          setDays(30);
+        } else if (days < 90) {
+          setDays(90);
+        } else if (days < 365) {
+          setDays(365);
+        } else {
+          setDays(Math.min(daysDiff + 30, 9999));
+        }
+      }
+    }
+  }, [highlightDate, days]);
+  
   const { data, loading, error } = useFxHistory(from, to, days);
   const [lastHighlightKey, setLastHighlightKey] = React.useState<string>('');
 
@@ -62,6 +97,16 @@ export function FxHistoryChart({ from, to, className, highlightDate, onDateSelec
   const highlightIdx = React.useMemo(() => {
     if (!highlightDate || !points.length) return null;
     const targetTs = highlightDate.getTime();
+    
+    // Check if highlightDate is within the visible range
+    const oldestPointDate = new Date(`${points[0].date}T00:00:00Z`).getTime();
+    const newestPointDate = new Date(`${points[points.length - 1].date}T00:00:00Z`).getTime();
+    
+    // If the selected date is outside the visible range, don't show highlight
+    if (targetTs < oldestPointDate || targetTs > newestPointDate) {
+      return null;
+    }
+    
     return points.reduce(
       (acc, p, idx) => {
         const ts = new Date(`${p.date}T00:00:00Z`).getTime();
@@ -205,7 +250,10 @@ export function FxHistoryChart({ from, to, className, highlightDate, onDateSelec
         {TIMEFRAMES.map((tf) => (
           <button
             key={tf.days}
-            onClick={() => setDays(tf.days)}
+            onClick={() => {
+              userSelectedRangeRef.current = true;
+              setDays(tf.days);
+            }}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-semibold transition',
               days === tf.days

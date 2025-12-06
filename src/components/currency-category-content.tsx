@@ -64,6 +64,7 @@ export function CurrencyCategoryContent({
           hideFinder
           enableQuickstartTour={false}
           onUnitsChange={handleUnitsChange}
+          onDateChange={setHighlightDate}
         />
       </section>
 
