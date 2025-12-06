@@ -43,11 +43,11 @@ function CustomCaption(props: CustomCaptionProps) {
       {/* Previous arrow */}
       <Button
         variant="outline"
-        className="h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+        className="h-9 w-9 md:h-7 md:w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
         disabled={!previousMonth}
         onClick={() => previousMonth && goToMonth(previousMonth)}
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className="h-5 w-5 md:h-4 md:w-4" />
       </Button>
       
       {/* Month dropdown */}
@@ -59,12 +59,12 @@ function CustomCaption(props: CustomCaptionProps) {
           goToMonth(newDate)
         }}
       >
-        <SelectTrigger className="h-7 w-[110px] text-sm">
+        <SelectTrigger className="h-9 md:h-7 w-[110px] text-base md:text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper">
           {months.map((month, i) => (
-            <SelectItem key={i} value={i.toString()}>
+            <SelectItem key={i} value={i.toString()} className="text-base md:text-sm">
               {month}
             </SelectItem>
           ))}
@@ -80,12 +80,12 @@ function CustomCaption(props: CustomCaptionProps) {
           goToMonth(newDate)
         }}
       >
-        <SelectTrigger className="h-7 w-[80px] text-sm">
+        <SelectTrigger className="h-9 md:h-7 w-[80px] text-base md:text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent position="popper">
           {years.map((year) => (
-            <SelectItem key={year} value={year.toString()}>
+            <SelectItem key={year} value={year.toString()} className="text-base md:text-sm">
               {year}
             </SelectItem>
           ))}
@@ -95,11 +95,11 @@ function CustomCaption(props: CustomCaptionProps) {
       {/* Next arrow */}
       <Button
         variant="outline"
-        className="h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+        className="h-9 w-9 md:h-7 md:w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
         disabled={!nextMonth}
         onClick={() => nextMonth && goToMonth(nextMonth)}
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-5 w-5 md:h-4 md:w-4" />
       </Button>
     </div>
   )
@@ -120,7 +120,7 @@ function Calendar({
       fixedWeeks
       fromYear={fromYear}
       toYear={toYear}
-      className={cn("p-3", className)}
+      className={cn("p-4 md:p-3", className)}
       components={{
         MonthCaption: (captionProps) => <CustomCaption {...captionProps} fromYear={fromYear} toYear={toYear} />,
       }}
@@ -133,12 +133,12 @@ function Calendar({
         month_grid: "w-full border-collapse space-y-1",
         weekdays: "flex",
         weekday:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+          "text-muted-foreground rounded-md w-11 md:w-9 font-normal text-base md:text-[0.8rem]",
         week: "flex w-full mt-2",
-        day: "h-9 w-9 text-center text-sm p-0 relative",
+        day: "h-11 w-11 md:h-9 md:w-9 text-center text-base md:text-sm p-0 relative",
         day_button: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 cursor-pointer"
+          "h-11 w-11 md:h-9 md:w-9 p-0 font-normal aria-selected:opacity-100 cursor-pointer"
         ),
         range_end: "day-range-end",
         selected:
