@@ -32,6 +32,10 @@ export function CurrencyCategoryContent({
     []
   );
 
+  const handleDateChange = React.useCallback((date: Date | undefined) => {
+    setHighlightDate(date ?? null);
+  }, []);
+
   const handleDateSelect = React.useCallback((date: Date) => {
     setHighlightDate(date);
     converterRef.current?.setHistoricalDate(date);
@@ -64,7 +68,7 @@ export function CurrencyCategoryContent({
           hideFinder
           enableQuickstartTour={false}
           onUnitsChange={handleUnitsChange}
-          onDateChange={setHighlightDate}
+          onDateChange={handleDateChange}
         />
       </section>
 
