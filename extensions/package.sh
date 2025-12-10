@@ -9,13 +9,15 @@ mkdir -p dist
 # Package Chrome extension
 echo "Packaging Chrome extension..."
 cd chrome
-zip -r ../dist/swapunits-chrome-v1.0.0.zip * -x "*.DS_Store"
+CHROME_VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+zip -r ../dist/swapunits-chrome-v${CHROME_VERSION}.zip * -x "*.DS_Store"
 cd ..
 
 # Package Firefox extension
 echo "Packaging Firefox extension..."
 cd firefox
-zip -r ../dist/swapunits-firefox-v1.0.0.zip * -x "*.DS_Store"
+FIREFOX_VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+zip -r ../dist/swapunits-firefox-v${FIREFOX_VERSION}.zip * -x "*.DS_Store"
 cd ..
 
 echo "✅ Done! Extensions packaged in dist/ folder"

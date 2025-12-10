@@ -1,13 +1,15 @@
 {
   "manifest_version": 2,
   "name": "SwapUnits Converter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Convert units instantly by selecting text on any webpage",
   "permissions": [
     "activeTab",
     "storage",
     "contextMenus",
-    "https://api.exchangerate-api.com/*"
+    "https://api.exchangerate-api.com/*",
+    "https://www.googletagmanager.com/*",
+    "https://www.google-analytics.com/*"
   ],
   "browser_action": {
     "default_popup": "popup.html",

@@ -87,8 +87,9 @@ export function BrowserExtensionDialog() {
             <div className="grid gap-2 sm:grid-cols-2">
               {/* Chrome Button */}
               <a
-                href="/extensions/chrome.crx"
-                download
+                href="https://chromewebstore.google.com/detail/swapunits-instant-unit-co/dkehohebmfndijiffaclijmmmgmdkcgg"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group relative flex flex-col items-center gap-2 rounded-lg border-2 border-border/60 bg-background p-3 transition hover:border-primary/60 hover:bg-primary/5"
               >
                 <Chrome className="h-8 w-8 text-foreground transition group-hover:text-primary" />
@@ -103,7 +104,7 @@ export function BrowserExtensionDialog() {
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                   asChild
                 >
-                  <span>Download for Chrome</span>
+                  <span>Get from Chrome Web Store</span>
                 </Button>
               </a>
 
@@ -131,7 +132,7 @@ export function BrowserExtensionDialog() {
             </div>
             <p className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground">
               <Lightbulb className="h-3 w-3 text-primary" />
-              <span><strong>Note:</strong> Chrome Web Store version coming soon! Currently available as manual download.</span>
+              <span><strong>Note:</strong> Chrome extension now available on Chrome Web Store! Firefox version available as manual download.</span>
             </p>
           </div>
 

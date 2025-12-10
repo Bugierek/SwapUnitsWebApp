@@ -51,4 +51,13 @@ extensions/SCREENSHOT_GUIDE.md
 extensions/STORE_LISTING.md
 extensions/SUBMISSION_CHECKLIST.md
 
+# Extension files with analytics tracking IDs
+extensions/chrome/popup.html
+extensions/firefox/popup.html
+extensions/chrome/manifest.json
+extensions/firefox/manifest.json
+extensions/dist/
+extensions/*.crx
+extensions/*.zip
+
 
