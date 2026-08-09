@@ -9,9 +9,13 @@ export async function POST(request: Request) {
     const { category, fromUnit, toUnit, additionalNotes } = await request.json();
 
     // In development, use the resend.dev domain for testing
-    const fromEmail = process.env.NODE_ENV === 'development' 
+    const fromEmail = process.env.NODE_ENV === 'development'
       ? 'onboarding@resend.dev'
       : 'notifications@unitswap.xyz';
+
+    const siteDomain = (process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com')
+      .replace(/\/$/, '')
+      .replace(/^https?:\/\//, '');
 
     const data = await resend.emails.send({
       from: `UnitSwap <${fromEmail}>`,
@@ -115,7 +119,7 @@ export async function POST(request: Request) {
               ` : ''}
             </div>
             <div class="footer">
-              This conversion pair request was submitted via unitswap.xyz
+              This conversion pair request was submitted via ${siteDomain}
             </div>
           </body>
         </html>
