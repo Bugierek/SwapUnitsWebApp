@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
 import type { CategoryInfo } from '@/lib/category-info';
-import type { ConversionHistoryItem, Preset, UnitCategory, FavoriteItem, VehiclePreset } from '@/types';
+import type { ConversionHistoryItem, Preset, UnitCategory, FavoriteItem, VehiclePreset, ConversionHistoryMeta } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -165,6 +165,7 @@ export function ConversionPairPageContent({
     fromUnit: string;
     toValue: number;
     toUnit: string;
+    meta?: ConversionHistoryMeta;
   }) => {
     addHistoryItem(payload);
   }, [addHistoryItem]);

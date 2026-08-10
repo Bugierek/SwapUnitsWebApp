@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Copy, Check, Info, Calculator } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 
-import type { UnitCategory, ConversionHistoryItem } from '@/types';
+import type { UnitCategory, ConversionHistoryItem, ConversionHistoryMeta } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,6 +41,7 @@ interface PairConverterProps {
     fromUnit: string;
     toValue: number;
     toUnit: string;
+    meta?: ConversionHistoryMeta;
   }) => void;
 }
 
@@ -172,6 +173,9 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         fromUnit: activeFrom.symbol,
         toValue: result,
         toUnit: activeTo.symbol,
+        meta: category === 'Currency' && fxRates
+          ? { kind: 'currency-fx-date', fxDateKey: fxRates.date, isHistorical: isHistoricalMode }
+          : undefined,
       });
     } catch (error) {
       console.error('Failed to copy conversion result:', error);
@@ -181,7 +185,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
         duration: 2000, // Show for 2 seconds
       });
     }
-  }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast]);
+  }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast, fxRates, isHistoricalMode]);
 
   const fetchPairFxRates = React.useCallback((date?: Date, force = false) => {
     if (isFetchingFx) return;
