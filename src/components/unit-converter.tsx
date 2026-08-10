@@ -75,6 +75,7 @@ import {
   formatScientificValue,
   getDecimalPrecisionFromInput,
   precisionBoostFromDecimalPlaces,
+  scientificBounds,
   type PrecisionMode,
 } from '@/lib/number-format';
 import { FxSparkline } from '@/components/fx-sparkline';
@@ -247,9 +248,23 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
     const units = getUnitsForCategory(category);
     if (!units.length) return null;
     const from = units[Math.floor(Math.random() * units.length)].symbol;
-    const to = units.find((u) => u.symbol !== from)?.symbol ?? from;
+
+    // Prefer a "to" unit that keeps the default 1-unit conversion in normal (non-scientific)
+    // range, since "to" otherwise tends toward the smallest-factor unit (sorted arrays +
+    // first-non-matching lookup), which paired with a large random "from" (e.g. years, metric
+    // tons, terabytes) routinely landed outside the scientific-notation bounds on page load.
+    const seedValue = Number.isFinite(initialValue) ? initialValue : 1;
+    const otherUnits = units.filter((u) => u.symbol !== from);
+    const inRangeUnits = otherUnits.filter((u) => {
+      const result = convertNumericValue(category, from, u.symbol, seedValue);
+      if (result === null) return false;
+      const abs = Math.abs(result);
+      return abs === 0 || (abs >= scientificBounds.lower && abs < scientificBounds.upper);
+    });
+    const pool = inRangeUnits.length > 0 ? inRangeUnits : otherUnits;
+    const to = pool[Math.floor(Math.random() * pool.length)]?.symbol ?? from;
     return { category, from, to };
-  }, [initialCategory, initialFromUnit, initialToUnit, lockedCategory]);
+  }, [initialCategory, initialFromUnit, initialToUnit, initialValue, lockedCategory]);
 
   const defaultCategory = (lockedCategory ?? randomizedDefaults?.category ?? initialCategory) as UnitCategory;
   const defaultUnits = getUnitsForCategory(defaultCategory);

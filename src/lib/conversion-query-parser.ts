@@ -160,7 +160,8 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
 const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
   'Wh/km': ['Wh/mi', 'mi/kWh'],
   'Wh/mi': ['Wh/km', 'km/kWh'],
-  'L/100km': ['MPG (US)', 'MPG (UK)', 'km/L'],
+  'L/100km': ['L/100mi', 'MPG (US)', 'MPG (UK)', 'km/L'],
+  'L/100mi': ['L/100km', 'MPG (US)', 'MPG (UK)', 'km/L'],
   'MPG (US)': ['L/100km', 'km/L'],
   'MPG (UK)': ['L/100km', 'km/L'],
 };
