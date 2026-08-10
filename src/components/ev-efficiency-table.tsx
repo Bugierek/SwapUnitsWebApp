@@ -68,15 +68,25 @@ export function EvEfficiencyTable({ models }: EvEfficiencyTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sortedModels.map((vehicle) => (
+        {sortedModels.map((vehicle) => {
+          const navigateToVehicle = () =>
+            router.push(
+              `${buildConversionPairUrl('Fuel Economy', 'kWh/100mi', 'mi/kWh')}?value=${vehicle.epaCombinedKwhPer100mi}`,
+            );
+          return (
           <TableRow
             key={vehicle.id}
             className="cursor-pointer"
-            onClick={() =>
-              router.push(
-                `${buildConversionPairUrl('Fuel Economy', 'kWh/100mi', 'mi/kWh')}?value=${vehicle.epaCombinedKwhPer100mi}`,
-              )
-            }
+            role="button"
+            tabIndex={0}
+            aria-label={`Convert ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ''} efficiency`}
+            onClick={navigateToVehicle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigateToVehicle();
+              }
+            }}
           >
             <TableCell className="font-medium text-foreground">
               {vehicle.make} {vehicle.model}
@@ -85,7 +95,8 @@ export function EvEfficiencyTable({ models }: EvEfficiencyTableProps) {
             <TableCell className="text-muted-foreground">{vehicle.epaCombinedKwhPer100mi.toLocaleString()}</TableCell>
             <TableCell className="text-muted-foreground">{vehicle.epaCombinedMpge?.toLocaleString() ?? '—'}</TableCell>
           </TableRow>
-        ))}
+          );
+        })}
       </TableBody>
     </Table>
   );
