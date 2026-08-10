@@ -1,4 +1,5 @@
 import type { UnitCategory } from '@/types';
+import { EV_FUEL_ECONOMY_UNIT_SYMBOLS } from '@/lib/unit-data';
 
 export type ConversionSource = {
   id: string;
@@ -33,8 +34,18 @@ const DOE_AFDC_FUEL_PROPERTIES: ConversionSource = {
   organization: 'U.S. Department of Energy',
   url: 'https://afdc.energy.gov/fuels/properties',
   summary:
-    'Lists gasoline lower heating value (about 32 MJ/gal, which is roughly 9.5 kWh per liter), letting the app convert between liquid-fuel efficiency (km/L) and EV metrics (km/kWh, kWh/100 km, Wh/km).',
-  appliesToUnits: ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi', 'Wh/km', 'Wh/mi'],
+    'Lists gasoline energy content, used alongside the EPA MPGe consumer-label constant (33,705 Wh/gallon, about 8.90 kWh per liter) to convert between liquid-fuel efficiency (km/L) and EV metrics (km/kWh, kWh/100 km, Wh/km).',
+  appliesToUnits: [...EV_FUEL_ECONOMY_UNIT_SYMBOLS],
+};
+
+const EPA_MPGE_METHODOLOGY: ConversionSource = {
+  id: 'epa-mpge-methodology',
+  title: 'Petroleum-Equivalent Fuel Economy Calculation — 10 CFR 474.3',
+  organization: 'U.S. Department of Energy',
+  url: 'https://www.ecfr.gov/current/title-10/chapter-II/subchapter-D/part-474/section-474.3',
+  summary:
+    "EPA's consumer MPGe label uses a fixed 33,705 Wh/gallon energy-equivalence constant from five-cycle dynamometer testing, while a separate Petroleum Equivalency Factor for manufacturer CAFE compliance credit is being phased down from 82,049 to 28,996 Wh/gallon between model years 2010 and 2030 — two different constants for two different purposes.",
+  appliesToUnits: [...EV_FUEL_ECONOMY_UNIT_SYMBOLS],
 };
 
 const IEC_80000_13: ConversionSource = {
@@ -74,7 +85,7 @@ const categorySources: Record<UnitCategory, ConversionSource[]> = {
   Volume: [NIST_GUIDE_SOURCE],
   Energy: [NIST_GUIDE_SOURCE],
   Speed: [NIST_GUIDE_SOURCE],
-  'Fuel Economy': [NIST_GUIDE_SOURCE, EPA_FUEL_ECONOMY_GUIDE, DOE_AFDC_FUEL_PROPERTIES],
+  'Fuel Economy': [NIST_GUIDE_SOURCE, EPA_FUEL_ECONOMY_GUIDE, DOE_AFDC_FUEL_PROPERTIES, EPA_MPGE_METHODOLOGY],
   'Data Storage': [IEC_80000_13],
   'Data Transfer Rate': [IEC_80000_13],
   Bitcoin: [BITCOIN_CORE_DENOMINATION],

@@ -16,11 +16,16 @@ import { Footer } from '@/components/footer';
 import { CategoryTopbarBridge } from '@/components/category-topbar-bridge';
 import { UnitConverter } from '@/components/unit-converter';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
+import { getEvModels } from '@/lib/ev-models';
 import { ScrollIntoViewOnMount } from '@/components/scroll-into-view-on-mount';
 import dynamic from 'next/dynamic';
 
 const CurrencyCategoryContent = dynamic(
   () => import('@/components/currency-category-content').then(mod => ({ default: mod.CurrencyCategoryContent }))
+);
+
+const FuelEconomyCategoryContent = dynamic(
+  () => import('@/components/fuel-economy-category-content').then(mod => ({ default: mod.FuelEconomyCategoryContent }))
 );
 
 type CategoryPageParams = {
@@ -413,6 +418,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           </div>
         </section>
       )}
+
+      {info.category === 'Fuel Economy' && <FuelEconomyCategoryContent models={getEvModels()} />}
 
       <section className="rounded-3xl border border-primary/40 bg-primary/5 px-6 py-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

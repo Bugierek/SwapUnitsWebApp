@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 
 import type { CategoryInfo } from '@/lib/category-info';
-import type { ConversionHistoryItem, Preset, UnitCategory, FavoriteItem } from '@/types';
+import type { ConversionHistoryItem, Preset, UnitCategory, FavoriteItem, VehiclePreset } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +26,9 @@ import { useFavorites } from '@/hooks/use-favorites';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useToast } from '@/hooks/use-toast';
 import { formatConversionValue } from '@/lib/number-format';
+import { isEvInvolvingFuelEconomyPair, isEvFuelEconomyUnit } from '@/lib/unit-data';
+import { VehiclePresetChips } from '@/components/vehicle-preset-chips';
+import { EvRangeCostEstimator } from '@/components/ev-range-cost-estimator';
 
 type ExampleRow = {
   input: number;
@@ -102,6 +105,16 @@ export function ConversionPairPageContent({
   const { favorites, isLoadingFavorites } = useFavorites();
   const pairConverterRef = React.useRef<PairConverterHandle>(null);
   const { toast } = useToast();
+  const [selectedVehicle, setSelectedVehicle] = React.useState<VehiclePreset | undefined>(undefined);
+
+  const isEvPair =
+    categoryInfo.category === 'Fuel Economy' && isEvInvolvingFuelEconomyPair(fromSymbol, toSymbol);
+  const evUnitSymbol = isEvFuelEconomyUnit(fromSymbol) ? fromSymbol : toSymbol;
+
+  const handleVehicleSelect = React.useCallback((preset: VehiclePreset, value: number) => {
+    setSelectedVehicle(preset);
+    pairConverterRef.current?.setValueForUnit(evUnitSymbol, value);
+  }, [evUnitSymbol]);
 
   const navigateToPair = React.useCallback(
     (category: UnitCategory, from: string, to: string, value?: number | string | null) => {
@@ -252,6 +265,16 @@ export function ConversionPairPageContent({
               Back to main converter
             </Link>
           </div>
+
+          {isEvPair && (
+            <VehiclePresetChips
+              unitSymbol={evUnitSymbol}
+              selectedId={selectedVehicle?.id}
+              onSelect={handleVehicleSelect}
+            />
+          )}
+
+          {isEvPair && <EvRangeCostEstimator initialVehicle={selectedVehicle} />}
 
           {exampleRows.length > 0 && (
             <section className="space-y-4">

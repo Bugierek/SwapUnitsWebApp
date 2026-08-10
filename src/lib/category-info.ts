@@ -499,6 +499,26 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
         answer:
           'Include charging efficiency and ambient temperature. Cold weather and high-speed driving reduce mi/kWh even if the rated consumption stays constant.',
       },
+      {
+        question: 'What counts as a good kWh/100km or mi/kWh figure for an EV?',
+        answer:
+          'Roughly: efficient sedans and small crossovers run 14-18 kWh/100km (about 3.7-4.6 mi/kWh), midsize SUVs 18-24 kWh/100km (2.7-3.7 mi/kWh), and larger trucks or SUVs often exceed 24 kWh/100km (under 2.7 mi/kWh). Lower kWh/100km and higher mi/kWh both mean better efficiency.',
+      },
+      {
+        question: 'Why does my real-world EV efficiency differ from the rated figure?',
+        answer:
+          'Cold weather, highway speeds, HVAC use, and battery degradation all increase real-world consumption above the rated (typically mild-weather, moderate-speed) test figure. A 20-30% gap in cold conditions is common.',
+      },
+      {
+        question: 'How do I estimate driving range from an efficiency figure?',
+        answer:
+          'Divide usable battery capacity (kWh) by consumption per 100 km or 100 mi, then multiply by 100. For example, a 60 kWh battery at 18 kWh/100km gives roughly 333 km of range.',
+      },
+      {
+        question: "Why doesn't a gas-to-EV conversion here match the MPGe on an EPA label?",
+        answer:
+          "EPA's consumer MPGe label uses a fixed energy-equivalence constant (33,705 Wh per gallon of gasoline) derived from five-cycle dynamometer testing. A separate, unrelated figure — the Petroleum Equivalency Factor, used only for manufacturer fuel-economy compliance credit — is being phased down from 82,049 Wh/gallon toward 28,996 Wh/gallon by model year 2030. The two constants serve different purposes and are often confused.",
+      },
     ],
   },
   'Data Storage': {

@@ -16,7 +16,9 @@ import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types
 // Bitcoin: Bitcoin (BTC)
 // Currency: Currency (dynamic rates)
 
-const LITER_GASOLINE_KWH_EQUIVALENCE = 9.5; // DOE AFDC gasoline energy equivalent (kWh/L)
+const EPA_MPGE_WH_PER_GALLON = 33705; // EPA consumer-label MPGe constant (fueleconomy.gov / 40 CFR 600.116)
+const US_GALLON_TO_LITER = 3.785411784; // matches the Volume category's 'gal' factor below
+const LITER_GASOLINE_KWH_EQUIVALENCE = (EPA_MPGE_WH_PER_GALLON / 1000) / US_GALLON_TO_LITER; // ≈ 8.9039 kWh/L
 const WH_PER_KM_FACTOR = LITER_GASOLINE_KWH_EQUIVALENCE * 1000; // converts Wh/km to km/L via inverse relationship
 const MILES_TO_KILOMETERS = 1.609344;
 
@@ -28,14 +30,22 @@ const fuelEconomyUnits: Unit[] = [
   { name: 'Kilometer per kWh', symbol: 'km/kWh', factor: LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
   { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.609344 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
   { name: 'kWh per 100 km', symbol: 'kWh/100km', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'inverse_consumption' }, 
-  { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: (100 * LITER_GASOLINE_KWH_EQUIVALENCE) / 1.609344 , unitType: 'inverse_consumption' }, 
+  { name: 'kWh per 100 miles', symbol: 'kWh/100mi', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE * MILES_TO_KILOMETERS, unitType: 'inverse_consumption' },
   { name: 'Watt-hour per kilometer', symbol: 'Wh/km', factor: WH_PER_KM_FACTOR, unitType: 'inverse_consumption' },
   { name: 'Watt-hour per mile', symbol: 'Wh/mi', factor: WH_PER_KM_FACTOR * MILES_TO_KILOMETERS, unitType: 'inverse_consumption' },
 ];
 
+export const EV_FUEL_ECONOMY_UNIT_SYMBOLS = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi', 'Wh/km', 'Wh/mi'] as const;
+
+export const isEvFuelEconomyUnit = (symbol: string): boolean =>
+  (EV_FUEL_ECONOMY_UNIT_SYMBOLS as readonly string[]).includes(symbol);
+
+export const isEvInvolvingFuelEconomyPair = (fromSymbol: string, toSymbol: string): boolean =>
+  isEvFuelEconomyUnit(fromSymbol) || isEvFuelEconomyUnit(toSymbol);
+
 fuelEconomyUnits.sort((a, b) => {
   const preferredOrderICE = ['km/L', 'L/100km', 'MPG (US)', 'MPG (UK)'];
-  const preferredOrderEV = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi', 'Wh/km', 'Wh/mi'];
+  const preferredOrderEV: readonly string[] = EV_FUEL_ECONOMY_UNIT_SYMBOLS;
 
   const getUnitRank = (unit: Unit) => {
     let rank = 100;
