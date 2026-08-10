@@ -8,7 +8,9 @@ const MAX_HISTORY_ITEMS = 8;
 
 export function useConversionHistory() {
   const [history, setHistory] = useState<ConversionHistoryItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true); // Added isLoading state
+  // Not a real fetch - just "has the mount effect read localStorage yet" (sub-millisecond).
+  // Starts false so SSR/first paint shows the real empty state instead of a loading placeholder.
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // Load history from localStorage on initial mount

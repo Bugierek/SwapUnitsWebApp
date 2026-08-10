@@ -46,6 +46,7 @@ interface PairConverterProps {
 
 export interface PairConverterHandle {
   applyHistorySelect: (item: ConversionHistoryItem) => boolean;
+  setValueForUnit: (unitSymbol: string, value: number) => void;
 }
 
 export const PairConverter = React.forwardRef<PairConverterHandle, PairConverterProps>(function PairConverter(
@@ -330,9 +331,19 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     return true;
   }, [fromUnit.symbol, toUnit.symbol]);
 
+  const setValueForUnit = React.useCallback((unitSymbol: string, value: number): void => {
+    if (unitSymbol === toUnit.symbol && unitSymbol !== fromUnit.symbol) {
+      setIsSwapped(true);
+    } else if (unitSymbol === fromUnit.symbol) {
+      setIsSwapped(false);
+    }
+    setInputValue(String(value));
+  }, [fromUnit.symbol, toUnit.symbol]);
+
   React.useImperativeHandle(ref, () => ({
     applyHistorySelect,
-  }), [applyHistorySelect]);
+    setValueForUnit,
+  }), [applyHistorySelect, setValueForUnit]);
 
   const resolveCurrencyPairRate = React.useCallback((): number | null => {
     if (category !== 'Currency') return null;

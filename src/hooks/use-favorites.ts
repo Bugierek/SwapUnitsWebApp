@@ -9,7 +9,9 @@ const MAX_FAVORITE_ITEMS = 6; // Maximum number of favorites to store
 
 export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
+  // Not a real fetch - just "has the mount effect read localStorage yet" (sub-millisecond).
+  // Starts false so SSR/first paint shows the real empty state instead of a loading placeholder.
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
 
   useEffect(() => {
     // Load favorites from localStorage on initial mount

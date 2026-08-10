@@ -49,6 +49,17 @@ export type FavoriteItem = {
   name: string;
 };
 
+export type VehiclePreset = {
+  id: string;
+  make: string;
+  model: string;
+  trim?: string;
+  modelYear: number;
+  epaCombinedKwhPer100mi: number; // EPA's own label unit; see src/lib/ev-models.ts
+  epaCombinedMpge?: number;
+  sourceUrl?: string;
+};
+
 export type NumberFormat = 'normal' | 'scientific';
 
 export type ConversionHistoryMeta =
