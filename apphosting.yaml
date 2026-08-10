@@ -11,7 +11,7 @@ runConfig:
 env:
   # Site URL - override this per branch in Firebase Console
   - variable: NEXT_PUBLIC_SITE_URL
-    value: https://unitswap.xyz
+    value: https://swapunits.com
     availability:
       - BUILD
       - RUNTIME
