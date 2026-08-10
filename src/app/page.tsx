@@ -3,17 +3,12 @@
 import * as React from 'react';
 import Script from 'next/script';
 
-import dynamic from 'next/dynamic';
-import type { UnitConverterHandle } from '@/components/unit-converter';
+import { UnitConverter, type UnitConverterHandle } from '@/components/unit-converter';
+import { Footer } from '@/components/footer';
 import { SiteTopbar } from '@/components/site-topbar';
 import { Toaster } from '@/components/ui/toaster';
 import { PresetList } from '@/components/preset-list';
 import { HistoryList } from '@/components/history-list';
-
-// Lazy load Footer component since it's below the fold
-const Footer = dynamic(() => import('@/components/footer').then(mod => mod.Footer), {
-  ssr: false,
-});
 import { getFilteredAndSortedPresets } from '@/lib/unit-data';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import type { Preset, UnitCategory, ConversionHistoryItem, FavoriteItem } from '@/types';
@@ -44,19 +39,6 @@ const jsonLd = {
 };
 
 const MAX_FAVORITES_FOR_BUTTON_DISABLE = 5;
-
-const UnitConverter = dynamic(
-  () =>
-    import('@/components/unit-converter').then((mod) => mod.UnitConverter),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-[620px] w-full items-center justify-center rounded-2xl border border-border/60 bg-muted text-sm text-muted-foreground">
-        Loading converter…
-      </div>
-    ),
-  },
-);
 
 const formatHistoryNumberMobile = (num: number): string => {
   if (!isFinite(num)) return '-';

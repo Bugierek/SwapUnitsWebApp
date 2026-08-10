@@ -166,6 +166,10 @@ const FINDER_UNIT_EXAMPLES = [
 
 const FINDER_CATEGORY_EXAMPLES = ['energy', 'pressure', 'length', 'bitcoin', 'bandwidth', 'speed', 'currency'];
 
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 const formatNumber = (
   num: number,
   requestedFormat: NumberFormat = 'normal',
@@ -237,41 +241,17 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   },
   ref,
 ) {
-  const randomizedDefaults = React.useMemo(() => {
-    if (lockedCategory) return null;
-    // Only randomize when caller is using the standard defaults (no overrides)
-    if (initialFromUnit || initialToUnit) return null;
-    if (initialCategory && initialCategory !== 'Mass') return null;
-    const candidates = categoryDisplayOrder.filter((cat) => cat !== 'SI Prefixes');
-    if (!candidates.length) return null;
-    const category = candidates[Math.floor(Math.random() * candidates.length)] as UnitCategory;
-    const units = getUnitsForCategory(category);
-    if (!units.length) return null;
-    const from = units[Math.floor(Math.random() * units.length)].symbol;
-
-    // Prefer a "to" unit that keeps the default 1-unit conversion in normal (non-scientific)
-    // range, since "to" otherwise tends toward the smallest-factor unit (sorted arrays +
-    // first-non-matching lookup), which paired with a large random "from" (e.g. years, metric
-    // tons, terabytes) routinely landed outside the scientific-notation bounds on page load.
-    const seedValue = Number.isFinite(initialValue) ? initialValue : 1;
-    const otherUnits = units.filter((u) => u.symbol !== from);
-    const inRangeUnits = otherUnits.filter((u) => {
-      const result = convertNumericValue(category, from, u.symbol, seedValue);
-      if (result === null) return false;
-      const abs = Math.abs(result);
-      return abs === 0 || (abs >= scientificBounds.lower && abs < scientificBounds.upper);
-    });
-    const pool = inRangeUnits.length > 0 ? inRangeUnits : otherUnits;
-    const to = pool[Math.floor(Math.random() * pool.length)]?.symbol ?? from;
-    return { category, from, to };
-  }, [initialCategory, initialFromUnit, initialToUnit, initialValue, lockedCategory]);
-
-  const defaultCategory = (lockedCategory ?? randomizedDefaults?.category ?? initialCategory) as UnitCategory;
+  // Deterministic on both server and first client render (no Math.random() here) so the
+  // real converter can be server-rendered instead of hidden behind a client-only loading
+  // placeholder. The homepage's randomized "surprise pair" is applied imperatively after
+  // mount by the effect calling applyRandomizedDefaults(), further down this component.
+  const defaultCategory = (lockedCategory ?? initialCategory) as UnitCategory;
   const defaultUnits = getUnitsForCategory(defaultCategory);
-  const resolvedFromUnit = initialFromUnit ?? randomizedDefaults?.from ?? defaultUnits[0]?.symbol ?? '';
+  const categoryDefaultPair = getCategoryDefaultPair(defaultCategory);
+  const resolvedFromUnit = initialFromUnit ?? categoryDefaultPair?.fromUnit ?? defaultUnits[0]?.symbol ?? '';
   const resolvedToUnit =
     initialToUnit ??
-    randomizedDefaults?.to ??
+    categoryDefaultPair?.toUnit ??
     defaultUnits.find((unit) => unit.symbol !== resolvedFromUnit)?.symbol ??
     resolvedFromUnit;
   const resolvedValue = Number.isFinite(initialValue) ? initialValue : 1;
@@ -500,13 +480,18 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
   const [shouldAutoFocusFinder, setShouldAutoFocusFinder] = React.useState(false);
   const finderAutoFocusRequestedRef = React.useRef(false);
   const pendingFinderSelectionRef = React.useRef(false);
-  const finderExamples = React.useMemo(() => {
-    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
-    return {
-      value: pick(FINDER_VALUE_EXAMPLES),
-      units: pick(FINDER_UNIT_EXAMPLES),
-      category: pick(FINDER_CATEGORY_EXAMPLES),
-    };
+  // Deterministic on server + first client render; randomized after mount below.
+  const [finderExamples, setFinderExamples] = React.useState(() => ({
+    value: FINDER_VALUE_EXAMPLES[0],
+    units: FINDER_UNIT_EXAMPLES[0],
+    category: FINDER_CATEGORY_EXAMPLES[0],
+  }));
+  React.useEffect(() => {
+    setFinderExamples({
+      value: pickRandom(FINDER_VALUE_EXAMPLES),
+      units: pickRandom(FINDER_UNIT_EXAMPLES),
+      category: pickRandom(FINDER_CATEGORY_EXAMPLES),
+    });
   }, []);
   const focusFromValueInput = React.useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -1770,6 +1755,70 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       lockedCategory,
     ],
   );
+
+  // Applies the homepage's randomized "surprise pair" after mount. Mirrors handleParsedConversion's
+  // finder-selection pattern further down: setting category and fromUnit/toUnit via setValue() in
+  // the same synchronous call is NOT atomic from the rhfCategory watcher effect's perspective - RHF's
+  // watch() subscribers can fire between individual setValue() calls, so the watcher can observe a
+  // torn intermediate state (new category, still-old fromUnit/toUnit), decide they're invalid for the
+  // new category, and force-reset them to that category's fixed default pair via applyCategoryDefaults,
+  // silently discarding the random pick (confirmed via live debugging - this reliably reproduced).
+  // pendingFinderSelectionRef makes the watcher skip entirely until the whole update (deferred to a
+  // microtask, same as handleParsedConversion) has landed.
+  const applyRandomizedDefaults = React.useCallback(
+    (category: UnitCategory, fromUnit: string, toUnit: string, value: number) => {
+      pendingFinderSelectionRef.current = true;
+      setSelectedCategoryLocal(category);
+      setValue('category', category, { shouldDirty: true, shouldValidate: true });
+
+      Promise.resolve()
+        .then(() => {
+          setValue('fromUnit', fromUnit, { shouldDirty: true, shouldValidate: true });
+          setValue('toUnit', toUnit, { shouldDirty: true, shouldValidate: true });
+          setValue('value', value, { shouldDirty: true, shouldValidate: true });
+          setLastValidInputValue(value);
+          setConversionResult(convertUnits({ category, fromUnit, toUnit, value }));
+        })
+        .finally(() => {
+          pendingFinderSelectionRef.current = false;
+        });
+    },
+    [convertUnits, setValue, setConversionResult, setLastValidInputValue, pendingFinderSelectionRef],
+  );
+
+  const hasRandomizedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (hasRandomizedRef.current) return;
+    hasRandomizedRef.current = true;
+    if (lockedCategory) return;
+    // Only randomize when caller is using the standard defaults (no overrides)
+    if (initialFromUnit || initialToUnit) return;
+    if (initialCategory && initialCategory !== 'Mass') return;
+
+    const candidates = categoryDisplayOrder.filter((cat) => cat !== 'SI Prefixes');
+    if (!candidates.length) return;
+    const category = pickRandom(candidates) as UnitCategory;
+    const units = getUnitsForCategory(category);
+    if (!units.length) return;
+    const from = pickRandom(units).symbol;
+
+    // Prefer a "to" unit that keeps the default 1-unit conversion in normal (non-scientific)
+    // range, since "to" otherwise tends toward the smallest-factor unit (sorted arrays +
+    // first-non-matching lookup), which paired with a large random "from" (e.g. years, metric
+    // tons, terabytes) routinely landed outside the scientific-notation bounds on page load.
+    const seedValue = Number.isFinite(initialValue) ? initialValue : 1;
+    const otherUnits = units.filter((u) => u.symbol !== from);
+    const inRangeUnits = otherUnits.filter((u) => {
+      const result = convertNumericValue(category, from, u.symbol, seedValue);
+      if (result === null) return false;
+      const abs = Math.abs(result);
+      return abs === 0 || (abs >= scientificBounds.lower && abs < scientificBounds.upper);
+    });
+    const pool = inRangeUnits.length > 0 ? inRangeUnits : otherUnits;
+    const to = pickRandom(pool)?.symbol ?? from;
+
+    applyRandomizedDefaults(category, from, to, seedValue);
+  }, [applyRandomizedDefaults, initialCategory, initialFromUnit, initialToUnit, initialValue, lockedCategory]);
 
   const updateUnitsForCategory = React.useCallback(
     (
