@@ -195,6 +195,42 @@ const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
   ],
 };
 
+type CompoundStep = { symbol: string; token: string };
+type CompoundChainDef = { category: UnitCategory; steps: CompoundStep[]; requiredSteps: number };
+
+const COMPOUND_NUMBER_TOKEN = '-?\\d+(?:\\.\\d+)?';
+
+// Mixed-unit input, e.g. "5 ft 7 in" or "1 h 32 min 15 sec". Deliberately abbreviation-only
+// (no "feet"/"inches"/"hours" word forms) to keep the grammar small and unambiguous - each
+// chain must match a contiguous prefix starting from its largest unit, in order.
+const COMPOUND_CHAINS: CompoundChainDef[] = [
+  {
+    category: 'Length' as UnitCategory,
+    steps: [
+      { symbol: 'ft', token: 'ft' },
+      { symbol: 'in', token: 'in' },
+    ],
+    requiredSteps: 2,
+  },
+  {
+    category: 'Mass' as UnitCategory,
+    steps: [
+      { symbol: 'lb', token: 'lb' },
+      { symbol: 'oz', token: 'oz' },
+    ],
+    requiredSteps: 2,
+  },
+  {
+    category: 'Time' as UnitCategory,
+    steps: [
+      { symbol: 'h', token: 'h' },
+      { symbol: 'min', token: 'min' },
+      { symbol: 's', token: 'sec' },
+    ],
+    requiredSteps: 2,
+  },
+];
+
 let cachedAliasIndex: AliasIndex | null = null;
 let cachedCategoryAliasMap: Map<string, UnitCategory> | null = null;
 
@@ -229,9 +265,27 @@ function getCategoryAliasMap(): Map<string, UnitCategory> {
   return map;
 }
 
+// Used by the finder UI to let a compound-shaped query ("5 ft 7 in") win over an
+// autocomplete suggestion that happens to match one of its tokens by prefix (e.g. "ft to cm").
+// Deliberately shape-only (matchAnyCompoundShape, not tryParseCompoundQuantity) - a compound
+// value with an invalid explicit target ("5 ft 7 in to m2") must still win here, so the caller
+// gets a chance to show the real "bad target" error instead of silently falling back to an
+// unrelated auto-highlighted suggestion.
+export function isCompoundQuantityQuery(rawQuery: string): boolean {
+  return matchAnyCompoundShape(rawQuery) !== null;
+}
+
 export function parseConversionQuery(rawQuery: string): ParseResult {
   if (!rawQuery || !rawQuery.trim()) {
     return { ok: false, error: 'Empty query' };
+  }
+
+  // Compound detection runs on the raw string, before normalizeQuery's cubic/square-unit
+  // shorthand pass ("ft3" -> "ft³") gets a chance to eat an unspaced inches/oz/sec value
+  // that happens to be exactly 2 or 3 (e.g. "5ft3in" would otherwise become "5ft³in").
+  const rawCompoundResult = tryParseCompoundQuantity(rawQuery);
+  if (rawCompoundResult) {
+    return rawCompoundResult;
   }
 
   let normalized = normalizeQuery(rawQuery);
@@ -779,6 +833,173 @@ function tryParseSingleUnitQuery(
     category: alias.category,
     valueStrategy: hasExplicitValue ? 'explicit' : 'preserve-existing',
   };
+}
+
+function getUnitFactor(category: UnitCategory, symbol: string): number | null {
+  const unit = ((unitData[category]?.units ?? []) as Unit[]).find((u) => u.symbol === symbol);
+  return unit ? unit.factor : null;
+}
+
+function getCategoryBaseUnitSymbol(category: UnitCategory): string | null {
+  const units = (unitData[category]?.units ?? []) as Unit[];
+  return units.find((u) => u.factor === 1)?.symbol ?? null;
+}
+
+// Resolves the target unit for a parsed compound quantity: an explicit trailing "to X" wins
+// (must resolve to a unit in the same category, otherwise the whole compound parse is rejected
+// rather than silently guessing a different target); with no explicit target, default to the
+// category's base/SI unit - matches how someone reading "5 ft 7 in" or "2 lb 8 oz" expects a
+// single authoritative conversion (meters, kilograms), not this parser's usual "interesting
+// example pair" default used for plain single-unit browsing.
+function resolveCompoundTarget(
+  category: UnitCategory,
+  collapseSymbol: string,
+  remainder: string,
+): string | null {
+  const trailing = remainder.replace(CONNECTOR_GLOBAL_REGEX, ' ').trim();
+  if (!trailing) {
+    return getCategoryBaseUnitSymbol(category) ?? collapseSymbol;
+  }
+
+  const targetAlias = resolveAlias(getAliasIndex(), trailing);
+  if (!targetAlias || targetAlias.category !== category) {
+    return null;
+  }
+  return targetAlias.symbol;
+}
+
+function finalizeCompound(
+  category: UnitCategory,
+  collapseSymbol: string,
+  collapsedValue: number,
+  remainder: string,
+): UnitParseSuccess | null {
+  const toUnit = resolveCompoundTarget(category, collapseSymbol, remainder);
+  if (!toUnit) return null;
+
+  return {
+    ok: true,
+    kind: 'unit',
+    value: collapsedValue,
+    fromUnit: collapseSymbol,
+    toUnit,
+    category,
+    valueStrategy: 'explicit',
+  };
+}
+
+type CompoundShapeMatch = {
+  category: UnitCategory;
+  collapseSymbol: string;
+  collapsedValue: number;
+  remainder: string;
+};
+
+// Matches the VALUE shape only (e.g. "5 ft 7 in") - deliberately does not care whether the
+// trailing remainder resolves to a valid same-category target. Kept separate from the full
+// resolve so callers can tell "this text is a compound quantity, with a target problem" apart
+// from "this text was never a compound quantity at all" - the two need different handling
+// upstream (an honest error vs. silently deferring to normal single-unit/suggestion parsing).
+function matchCompoundShape(normalized: string, chain: CompoundChainDef): CompoundShapeMatch | null {
+  let rest = normalized;
+  const parts: { symbol: string; amount: number }[] = [];
+
+  for (const step of chain.steps) {
+    // No \b here deliberately: a \b can't tell "unspaced adjacent digit" (5ft3in) from
+    // "continuation of the same token" - it treats digits and letters as the same word
+    // class. Matching the literal token directly and letting the *next* step's leading
+    // number requirement do the real disambiguation is what makes "5ft3in" parse right.
+    const stepRegex = new RegExp(`^(${COMPOUND_NUMBER_TOKEN})\\s*${escapeRegex(step.token)}`, 'i');
+    const match = rest.match(stepRegex);
+    if (!match) break;
+    const amount = Number(match[1]);
+    if (!Number.isFinite(amount)) break;
+    parts.push({ symbol: step.symbol, amount });
+    rest = rest.slice(match[0].length).trim();
+  }
+
+  if (parts.length < chain.requiredSteps) {
+    return null;
+  }
+
+  const collapseSymbol = chain.steps[0].symbol;
+  const collapseFactor = getUnitFactor(chain.category, collapseSymbol);
+  if (collapseFactor === null) return null;
+
+  let totalBase = 0;
+  for (const part of parts) {
+    const factor = getUnitFactor(chain.category, part.symbol);
+    if (factor === null) return null;
+    totalBase += part.amount * factor;
+  }
+
+  return { category: chain.category, collapseSymbol, collapsedValue: totalBase / collapseFactor, remainder: rest };
+}
+
+// Feet/inches prime notation, e.g. 6' 2" - a distinct grammar from the word-token chains above
+// (no "ft"/"in" text at all), so it carries no risk of colliding with the "in" connector word.
+// Accepts straight quotes plus the common curly/typographic variants (e.g. iOS "smart quotes",
+// or text pasted from a word processor) and the proper prime/double-prime symbols.
+const FEET_MARK = `'’′`;
+const INCH_MARK = `"”″`;
+const COMPOUND_PRIME_REGEX = new RegExp(
+  `^(${COMPOUND_NUMBER_TOKEN})\\s*[${FEET_MARK}]\\s*(${COMPOUND_NUMBER_TOKEN})\\s*[${INCH_MARK}]\\s*(.*)$`,
+);
+
+function matchPrimeShape(normalized: string): CompoundShapeMatch | null {
+  const primeMatch = normalized.match(COMPOUND_PRIME_REGEX);
+  if (!primeMatch) return null;
+  const feet = Number(primeMatch[1]);
+  const inches = Number(primeMatch[2]);
+  const ftFactor = getUnitFactor('Length' as UnitCategory, 'ft');
+  const inFactor = getUnitFactor('Length' as UnitCategory, 'in');
+  if (!Number.isFinite(feet) || !Number.isFinite(inches) || !ftFactor || !inFactor) return null;
+  const totalBase = feet * ftFactor + inches * inFactor;
+  return {
+    category: 'Length' as UnitCategory,
+    collapseSymbol: 'ft',
+    collapsedValue: totalBase / ftFactor,
+    remainder: primeMatch[3],
+  };
+}
+
+// Natural phrasing puts the compound quantity after a lead-in ("convert 5 ft 7 in to cm",
+// "how much is 6' 2\" in meters") - strips only a leading STOP_WORDS phrase, nothing else, so
+// this never touches the sq/cu/squared/cubed-notation hazard the rest of normalizeQuery has.
+function stripLeadingStopWords(text: string): string {
+  let result = text;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const stopWord of STOP_WORDS) {
+      const stopRegex = new RegExp(`^\\s*${escapeRegex(stopWord)}\\b\\s*`, 'i');
+      const match = result.match(stopRegex);
+      if (match) {
+        result = result.slice(match[0].length);
+        changed = true;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
+function matchAnyCompoundShape(rawQuery: string): CompoundShapeMatch | null {
+  if (!rawQuery || !rawQuery.trim()) return null;
+  const stripped = stripLeadingStopWords(rawQuery.trim());
+  const primeShape = matchPrimeShape(stripped);
+  if (primeShape) return primeShape;
+  for (const chain of COMPOUND_CHAINS) {
+    const shape = matchCompoundShape(stripped, chain);
+    if (shape) return shape;
+  }
+  return null;
+}
+
+function tryParseCompoundQuantity(rawQuery: string): UnitParseSuccess | null {
+  const shape = matchAnyCompoundShape(rawQuery);
+  if (!shape) return null;
+  return finalizeCompound(shape.category, shape.collapseSymbol, shape.collapsedValue, shape.remainder);
 }
 
 function tryParseCategoryQuery(normalized: string): CategoryParseSuccess | null {

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import type { UnitCategory } from '@/types';
 import { Input } from '@/components/ui/input';
 import { UnitIcon } from './unit-icon';
-import { parseConversionQuery, type ParsedConversionPayload } from '@/lib/conversion-query-parser';
+import { parseConversionQuery, isCompoundQuantityQuery, type ParsedConversionPayload } from '@/lib/conversion-query-parser';
 import { categoryDisplayOrder } from '@/lib/unit-data';
 
 // Scientific notation: 1e5, 2.5e-3, etc.
@@ -179,7 +179,11 @@ export function ConversionCombobox({
 
   React.useEffect(() => {
     if (!presetQuery) return;
-    const normalizedPreset = normalizeInput(presetQuery);
+    // Same precaution as tryParse: a compound preset must be checked/parsed from the raw
+    // text before this combobox's normalizeInput can corrupt an unspaced value like "ft3in".
+    const normalizedPreset = isCompoundQuantityQuery(presetQuery)
+      ? presetQuery.trim()
+      : normalizeInput(presetQuery);
     setSearch(normalizedPreset);
     setCommittedInput(normalizedPreset);
     setOpen(true);
@@ -755,8 +759,34 @@ export function ConversionCombobox({
   const tryParse = React.useCallback(
     (query: string) => {
       if (!onParsedConversion && !onParseError) return false;
+
+      // Compound quantities ("5ft3in") must be checked on the ORIGINAL text before this
+      // combobox's own normalizeInput runs - it has its own cubic/square-unit shorthand pass
+      // ("ft3" -> "ft³") that would otherwise eat an unspaced compound value first, the same
+      // hazard normalizeQuery has on the conversion-query-parser side.
+      if (isCompoundQuantityQuery(query)) {
+        const compoundParsed = parseConversionQuery(query);
+        if (compoundParsed.ok) {
+          handleParsedSelection(compoundParsed, query);
+          return true;
+        }
+        // The value shape matched ("5 ft 7 in") but something else failed - almost always an
+        // explicit target that doesn't resolve or is a different category ("...to m2"). Show
+        // the real error instead of falling through: an unrelated auto-highlighted suggestion
+        // ("ft to cm") would otherwise get silently applied below.
+        onParseError?.(compoundParsed.error);
+        return true;
+      }
+
       const normalized = normalizeInput(query);
-      if (!LETTER_REGEX.test(normalized.replace(CONNECTOR_TOKEN_REGEX, ' '))) return false;
+      // Prime-notation compound quantities (6' 2") are letter-free, so they'd otherwise be
+      // rejected by the letter check meant to filter out bare numbers.
+      if (
+        !LETTER_REGEX.test(normalized.replace(CONNECTOR_TOKEN_REGEX, ' ')) &&
+        !isCompoundQuantityQuery(normalized)
+      ) {
+        return false;
+      }
 
       const parsed = parseConversionQuery(normalized);
       if (parsed.ok) {
@@ -807,7 +837,13 @@ export function ConversionCombobox({
       if (event.key === 'Enter') {
         const hasHighlight =
           highlightedIndex >= 0 && highlightedIndex < displayItems.length;
-        if (!hasHighlight && query && tryParse(query)) {
+        // A compound quantity ("5 ft 7 in") must win over an auto-highlighted suggestion
+        // that only matches one of its tokens by prefix (e.g. "ft to cm") - that highlight
+        // was never a deliberate user choice, just the list's default first item. Checked
+        // against rawValue, not query: query has already been through this combobox's own
+        // normalizeInput, which can mangle an unspaced compound value (see tryParse).
+        const preferParse = !hasHighlight || isCompoundQuantityQuery(rawValue);
+        if (preferParse && query && tryParse(rawValue)) {
           event.preventDefault();
           return;
         }
