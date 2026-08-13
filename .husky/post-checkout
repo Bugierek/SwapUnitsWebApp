@@ -1,5 +1,9 @@
 #!/bin/sh
-# Auto-update apphosting.yaml URL based on branch
+# Auto-update apphosting.yaml URL based on branch.
+# NOTE for forks: swapunits.com/unitswap.xyz are this project's own domains
+# (Bugierek/SwapUnitsWebApp). If you forked this repo, either replace them
+# below with your own domain(s) or delete this hook - it's not required for
+# the app to run, just a convenience for this project's specific deploy setup.
 
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
