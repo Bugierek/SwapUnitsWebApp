@@ -15,6 +15,22 @@ export const buildBreadcrumbJsonLd = (items: { name: string; url: string }[]) =>
   })),
 });
 
+export const buildWebsiteJsonLd = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'SwapUnits',
+  url: SITE_URL,
+});
+
+export const buildOrganizationJsonLd = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'SwapUnits',
+  url: SITE_URL,
+  logo: `${SITE_URL}/apple-touch-icon.png`,
+  sameAs: ['https://github.com/Bugierek/SwapUnitsWebApp'],
+});
+
 export const buildFaqJsonLd = (faqs: FAQItem[]) => ({
   '@context': 'https://schema.org',
   '@type': 'FAQPage',

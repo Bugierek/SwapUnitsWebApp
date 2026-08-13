@@ -6,19 +6,20 @@ import { listAllConversionPairs } from "@/lib/conversion-pairs";
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://swapunits.com";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
-
+  // Deliberately no lastModified: we don't track real per-page content-change dates, and
+  // stamping every URL with the current build time on every entry is worse than omitting
+  // it - Google explicitly distrusts sitemaps where every URL shares the same/current
+  // timestamp and may start ignoring the field entirely.
   const entries: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}/`, lastModified: now },
-    { url: `${baseUrl}/widget`, lastModified: now },
-    { url: `${baseUrl}/widget-builder`, lastModified: now },
+    { url: `${baseUrl}/` },
+    { url: `${baseUrl}/widget` },
+    { url: `${baseUrl}/widget-builder` },
   ];
 
   categoryDisplayOrder.forEach((category) => {
     const slug = getCategorySlug(category);
     entries.push({
       url: `${baseUrl}/measurements/${slug}`,
-      lastModified: now,
     });
   });
 
@@ -28,7 +29,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
   listAllConversionPairs().forEach(({ categorySlug, pairSlug }) => {
     entries.push({
       url: `${baseUrl}/conversions/${categorySlug}/${pairSlug}`,
-      lastModified: now,
     });
   });
 
