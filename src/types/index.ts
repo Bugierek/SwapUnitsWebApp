@@ -69,6 +69,11 @@ export type ConversionHistoryMeta =
       fromPrefixSymbol: string;
       toPrefixSymbol: string;
       inputText?: string;
+    }
+  | {
+      kind: 'currency-fx-date';
+      fxDateKey: string; // 'YYYY-MM-DD', the actual rate date used (FxRatesResponse.date)
+      isHistorical: boolean; // true if the user explicitly picked a historical date, false if "latest"
     };
 
 export type ConversionHistoryItem = {

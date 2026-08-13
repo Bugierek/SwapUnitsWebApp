@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"; // Import cn utility
 import { GoogleAnalytics } from "@/components/google-analytics"; // Import GoogleAnalytics
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
+import { buildWebsiteJsonLd, buildOrganizationJsonLd } from "@/lib/structured-data";
 
 // Use Inter font - known for readability
 const inter = Inter({
@@ -155,6 +156,8 @@ export default async function RootLayout({
           id="swapunits-theme-init"
           dangerouslySetInnerHTML={{ __html: themeInitScript }}
         />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(buildWebsiteJsonLd()) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(buildOrganizationJsonLd()) }} />
       </head>
       <body
         className={cn(

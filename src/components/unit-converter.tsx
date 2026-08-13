@@ -17,7 +17,7 @@ import type { MeasurementCategoryOption } from '@/components/measurement-categor
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { unitData, getUnitsForCategory, categoryDisplayOrder } from '@/lib/unit-data';
-import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem } from '@/types';
+import type { UnitCategory, ConversionResult, Preset, NumberFormat, ConversionHistoryItem, FavoriteItem, ConversionHistoryMeta } from '@/types';
 import {
   Copy,
   Star,
@@ -101,6 +101,7 @@ interface UnitConverterProps {
     fromUnit: string;
     toValue: number;
     toUnit: string;
+    meta?: ConversionHistoryMeta;
   }) => void;
   onSaveFavorite?: (favoriteData: Omit<FavoriteItem, 'id'>) => void;
   disableAddFavoriteButton?: boolean;
@@ -2755,6 +2756,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           fromUnit: rhfFromUnit,
           toValue: conversionResult.value,
           toUnit: rhfToUnit,
+          meta: rhfCategory === 'Currency' && fxRates
+            ? { kind: 'currency-fx-date', fxDateKey: fxRates.date, isHistorical: isHistoricalMode }
+            : undefined,
         });
       }
     } else {
@@ -2775,6 +2779,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     onResultCopied,
     rhfCategory,
     precisionMode,
+    fxRates,
+    isHistoricalMode,
   ]);
 
   const formulaContentNode = React.useMemo(() => {
@@ -3108,6 +3114,9 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 fromUnit: rhfFromUnit,
                 toValue: conversionResult.value,
                 toUnit: rhfToUnit,
+                meta: rhfCategory === 'Currency' && fxRates
+                  ? { kind: 'currency-fx-date', fxDateKey: fxRates.date, isHistorical: isHistoricalMode }
+                  : undefined,
             });
         }
     } else {
@@ -3117,7 +3126,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
             variant: "destructive",
         });
     }
-  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfFromUnit, getValues]);
+  }, [showPlaceholder, conversionResult, formattedResultString, rhfToUnit, toast, onResultCopied, rhfCategory, rhfFromUnit, getValues, fxRates, isHistoricalMode]);
 
 
   const handleSaveToFavoritesInternal = React.useCallback(() => {

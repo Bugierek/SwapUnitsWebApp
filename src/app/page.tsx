@@ -11,7 +11,7 @@ import { PresetList } from '@/components/preset-list';
 import { HistoryList } from '@/components/history-list';
 import { getFilteredAndSortedPresets } from '@/lib/unit-data';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
-import type { Preset, UnitCategory, ConversionHistoryItem, FavoriteItem } from '@/types';
+import type { Preset, UnitCategory, ConversionHistoryItem, FavoriteItem, ConversionHistoryMeta } from '@/types';
 
 import { useConversionHistory } from '@/hooks/use-conversion-history';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -85,8 +85,9 @@ export default function Home() {
     fromUnit: string;
     toValue: number;
     toUnit: string;
+    meta?: ConversionHistoryMeta;
   }) => {
-    const meta = data.category === 'SI Prefixes'
+    const meta: ConversionHistoryMeta | undefined = data.category === 'SI Prefixes'
       ? {
           kind: 'si-prefix' as const,
           route: '/standards/nist-si-tenfold',
@@ -94,7 +95,7 @@ export default function Home() {
           toPrefixSymbol: data.toUnit,
           inputText: `${data.fromValue} ${data.fromUnit} to ${data.toUnit}`,
         }
-      : undefined;
+      : data.meta;
     addHistoryItem(meta ? { ...data, meta } : data);
   }, [addHistoryItem]);
 

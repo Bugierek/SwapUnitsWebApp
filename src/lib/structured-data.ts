@@ -2,6 +2,8 @@ import type { UnitCategory } from '@/types';
 
 export type FAQItem = { question: string; answer: string };
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://swapunits.com';
+
 export const buildBreadcrumbJsonLd = (items: { name: string; url: string }[]) => ({
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
@@ -9,8 +11,24 @@ export const buildBreadcrumbJsonLd = (items: { name: string; url: string }[]) =>
     '@type': 'ListItem',
     position: index + 1,
     name: item.name,
-    item: item.url,
+    item: item.url.startsWith('http') ? item.url : `${SITE_URL}${item.url}`,
   })),
+});
+
+export const buildWebsiteJsonLd = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'SwapUnits',
+  url: SITE_URL,
+});
+
+export const buildOrganizationJsonLd = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'SwapUnits',
+  url: SITE_URL,
+  logo: `${SITE_URL}/apple-touch-icon.png`,
+  sameAs: ['https://github.com/Bugierek/SwapUnitsWebApp'],
 });
 
 export const buildFaqJsonLd = (faqs: FAQItem[]) => ({

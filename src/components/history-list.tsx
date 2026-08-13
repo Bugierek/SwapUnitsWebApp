@@ -68,6 +68,14 @@ const getHistoryCategoryLabel = (item: ConversionHistoryItem): string => {
   return item.category;
 };
 
+// Constructs the date from local-timezone components (not a UTC anchor) so the calendar date
+// ('YYYY-MM-DD') never shifts when formatted, regardless of the viewer's timezone.
+const getHistoryFxDateLabel = (item: ConversionHistoryItem): string | null => {
+  if (item.meta?.kind !== 'currency-fx-date') return null;
+  const [year, month, day] = item.meta.fxDateKey.split('-').map(Number);
+  return `FX rate: ${format(new Date(year, month - 1, day), 'MMM d, yyyy')}`;
+};
+
 export const HistoryList = React.memo(function HistoryListComponent({ items, onHistorySelect, onClearHistory, className, isLoading }: HistoryListProps) {
     const { toast } = useToast(); 
     const [isClearDialogOpen, setIsClearDialogOpen] = React.useState(false);
@@ -189,6 +197,7 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                             <ul className="space-y-1">
                                 {items.map((item) => {
                                     const categoryLabel = getHistoryCategoryLabel(item);
+                                    const fxDateLabel = getHistoryFxDateLabel(item);
                                     const isSiPrefix = item.meta?.kind === 'si-prefix';
                                     const isHighlight = highlightId === item.id;
                                     return (
@@ -217,6 +226,11 @@ export const HistoryList = React.memo(function HistoryListComponent({ items, onH
                                                     <span className="block text-[0.5rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground leading-tight">
                                                         {categoryLabel} · {format(new Date(item.timestamp), 'MMM d, yyyy p')}
                                                     </span>
+                                                    {fxDateLabel && (
+                                                      <span className="block text-[0.5rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground leading-tight">
+                                                        {fxDateLabel}
+                                                      </span>
+                                                    )}
                                                 </span>
                                             </button>
                                             <Button

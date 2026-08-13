@@ -61,6 +61,14 @@ const getHistoryCategoryLabel = (item: ConversionHistoryItem): string => {
   return item.category;
 };
 
+// Constructs the date from local-timezone components (not a UTC anchor) so the calendar date
+// ('YYYY-MM-DD') never shifts when formatted, regardless of the viewer's timezone.
+const getHistoryFxDateLabel = (item: ConversionHistoryItem): string | null => {
+  if (item.meta?.kind !== 'currency-fx-date') return null;
+  const [year, month, day] = item.meta.fxDateKey.split('-').map(Number);
+  return `FX rate: ${format(new Date(year, month - 1, day), 'MMM d, yyyy')}`;
+};
+
 export function SiteTopbar({
   handleLogoClick,
   history = [],
@@ -213,6 +221,7 @@ export function SiteTopbar({
                         {history.map((item) => {
                           const isSiPrefix = item.meta?.kind === 'si-prefix';
                           const categoryLabel = getHistoryCategoryLabel(item);
+                          const fxDateLabel = getHistoryFxDateLabel(item);
                           return (
                           <li
                             key={item.id}
@@ -238,6 +247,11 @@ export function SiteTopbar({
                                   <span className="block text-xs leading-tight text-muted-foreground">
                                     {categoryLabel} · {format(new Date(item.timestamp), 'MMM d, p')}
                                   </span>
+                                  {fxDateLabel && (
+                                    <span className="block text-xs leading-tight text-muted-foreground">
+                                      {fxDateLabel}
+                                    </span>
+                                  )}
                                 </span>
                               </Button>
                             </SheetClose>
