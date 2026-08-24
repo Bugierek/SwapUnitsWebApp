@@ -25,7 +25,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   // Individual conversion pair pages (e.g. /conversions/length-conversion/m-to-ft) - these are
   // what actually drive search traffic, but were previously undiscoverable via the sitemap.
-  // ~710 pairs at time of writing, well under the 50,000-URL single-sitemap limit.
+  // ~1440 pairs at time of writing (jumped from ~710 after expanding Currency from 12 to 30
+  // currencies), well under the 50,000-URL single-sitemap limit.
   listAllConversionPairs().forEach(({ categorySlug, pairSlug }) => {
     entries.push({
       url: `${baseUrl}/conversions/${categorySlug}/${pairSlug}`,

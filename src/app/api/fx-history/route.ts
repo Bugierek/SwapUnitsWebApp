@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { CurrencyCode } from '@/lib/fx';
+import { getUnitsForCategory } from '@/lib/unit-data';
 
 type FrankfurterResponse = {
   base: string;
@@ -11,9 +12,9 @@ type FrankfurterResponse = {
 // Ensure each query is handled dynamically (don’t freeze the first render)
 export const dynamic = 'force-dynamic';
 
-const VALID_CODES: CurrencyCode[] = [
-  'EUR','USD','GBP','CHF','JPY','PLN','CAD','AUD','NZD','SEK','NOK','DKK'
-];
+// Derived from unit-data.ts (not hand-copied) so this allowlist can't drift out of
+// sync with the actual supported currency list, the way it previously did.
+const VALID_CODES = getUnitsForCategory('Currency').map((u) => u.symbol) as CurrencyCode[];
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
