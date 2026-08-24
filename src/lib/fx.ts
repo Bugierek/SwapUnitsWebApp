@@ -10,7 +10,25 @@ export type CurrencyCode =
   | 'NZD'
   | 'SEK'
   | 'NOK'
-  | 'DKK';
+  | 'DKK'
+  | 'BRL'
+  | 'CNY'
+  | 'CZK'
+  | 'HKD'
+  | 'HUF'
+  | 'IDR'
+  | 'ILS'
+  | 'INR'
+  | 'ISK'
+  | 'KRW'
+  | 'MXN'
+  | 'MYR'
+  | 'PHP'
+  | 'RON'
+  | 'SGD'
+  | 'THB'
+  | 'TRY'
+  | 'ZAR';
 
 export type FxRatesResponse = {
   base: CurrencyCode;
