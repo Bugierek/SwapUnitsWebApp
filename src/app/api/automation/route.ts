@@ -50,6 +50,12 @@ async function runAutomationScript(config: unknown, skipConfirm: boolean): Promi
 }
 
 export async function POST(request: Request) {
+  // Local-only tool: it spawns node and rewrites source files. `next dev` sets
+  // NODE_ENV=development; `next build`/`next start` (and so every deploy) set production.
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
+
   try {
     const body = await request.json();
     const config = body?.config;
