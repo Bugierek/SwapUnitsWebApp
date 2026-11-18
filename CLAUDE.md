@@ -1,6 +1,47 @@
-# SwapUnits — deploy & branching notes
+# SwapUnits — project notes
 
-Specific to Bugierek/SwapUnitsWebApp's own deployment (domains, Firebase project, this machine's local VS Code settings). This repo is public and forkable - if you forked it, this file describes the original owner's setup, not yours.
+The **Architecture** section describes the code and applies to any clone. Everything after it is specific to Bugierek/SwapUnitsWebApp's own deployment (domains, Firebase project, this machine's local VS Code settings). This repo is public and forkable - if you forked it, those sections describe the original owner's setup, not yours.
+
+## Architecture
+
+Next.js 15 App Router, React 18, Tailwind + shadcn primitives (`src/components/ui/`). No database: history and favorites live in `localStorage` (`src/hooks/use-conversion-history.ts`, `use-favorites.ts`).
+
+### Data and math (`src/lib/`)
+- `unit-data.ts`: the single source of units, presets (`allPresets`) and `categoryDisplayOrder`. Each unit's `factor` is relative to its category's base unit (base units are listed in the file header).
+- `conversion-math.ts`: `convertNumericValue()` computes `value × from.factor ÷ to.factor`, with three exceptions: Temperature (hard-coded °C/°F/K formulas), Fuel Economy (`unitType: 'inverse_consumption'` inverts the value) and Currency (`factor` is a placeholder `1`; live rates arrive via `fxContext`).
+- `fx.ts`: Frankfurter v1 API (ECB reference rates, EUR base), served through `/api/fx` and `/api/fx/historical`. `/api/fx-history` calls Frankfurter directly and bypasses `fx.ts`.
+- `category-info.ts`: per-category slug, SEO copy and FAQ. `conversion-sources.ts`: the citations shown under results.
+
+### Surfaces
+| Surface | Entry | Converter UI |
+|---|---|---|
+| Homepage | `app/page.tsx` | `UnitConverter` (`components/unit-converter.tsx`, ~4k lines) |
+| Category pages | `app/measurements/[slug]` | `UnitConverter` + category content |
+| Pair pages (SEO) | `app/conversions/[categorySlug]/[pairSlug]` | `PairConverter` |
+| Embeddable widget | `app/widget/page.tsx` | standalone; uses neither converter |
+| Widget builder | `app/widget-builder/page.tsx` | config UI for the widget |
+| Browser extensions | `extensions/chrome`, `extensions/firefox` | plain JS; shares nothing with `src/` |
+
+- **Finder** = `unit-converter.tsx` + `combobox.tsx` + `lib/conversion-query-parser.ts`. The combobox is lazy-loaded (`import('./combobox')`), so it won't show up as a static import. The combobox and the parser each have their own µ/sq/^2 normalization, so a matching change needs to go into both.
+- **Widget** shares `unit-data`, `conversion-math`, `UnitIcon`, `FxHistoryChart` and `FxSparkline`. Logic written inside `unit-converter.tsx` or `pair-converter.tsx` does not reach it, so decide each time whether to port it.
+- **Extensions** have their own regex detection, their own fallback factor tables and a different FX provider. Fixing a unit in `src/lib` doesn't fix them.
+
+### Routing and SEO
+- `src/middleware.ts`: category subdomains are **shortcuts**. `length.swapunits.com/` 308-redirects to `swapunits.com/measurements/length-conversion`; any other subdomain or path (including `www`) 308-redirects to the same path on the apex. Content deliberately stays on the apex: `localStorage` (favorites, history, theme) is per hostname, and canonicals, the sitemap and internal links all use the apex. Hosts other than swapunits.com/unitswap.xyz (e.g. the `*.hosted.app` default URL) pass through. It must stay in `src/`: a root-level `middleware.ts` is silently ignored with a `src/app` layout, which is why the earlier versions never ran.
+- Subdomains need, per domain, `*.<domain>` connected on the App Hosting backend (both already are; their certificates cover the wildcard) and a `*` A record at Namecheap pointing at the same IP as the apex. Test locally with `curl -sI -H "X-Forwarded-Host: length.swapunits.com" http://localhost:3000/` (`*.localhost` isn't supported; see the comment in the file).
+- Pair pages are statically generated for **every ordered pair** of units in each category except SI Prefixes (`listAllConversionPairs()`), and `sitemap.ts` uses the same list. Adding a unit to an n-unit category adds 2n pages. Pair URLs are built from unit **symbols**, so renaming a symbol breaks indexed URLs and users' saved favorites and history.
+
+### Adding units
+Use `scripts/automation/add-conversion-pair.mjs` (documented in `docs/conversion-pair-automation.md`). It edits `unit-data`, `category-keywords`, `conversion-query-parser`, `conversion-sources` and `unit-converter` in one pass. `/automation` is a browser UI for the same script, running it through `/api/automation`. Both only work under `npm run dev`; in any production build (so on both live sites) they return 404.
+
+### Verifying changes
+- `next.config.ts` sets `ignoreBuildErrors` and `ignoreDuringBuilds`, so a passing `npm run build` proves nothing. Run `npx tsc --noEmit` and `npm run lint`. `tsc` already reports errors in untouched files (`src/ai/`, the parser test, a few components), so compare against that baseline rather than expecting zero.
+- There's a vitest config and one parser test (`src/lib/__tests__/`), but vitest isn't in `package.json` and there's no `test` script, so the tests don't run as-is.
+
+### Stale or leftover files
+- `.github/copilot-instructions.md` describes genkit, a `typecheck` script, turbopack, Firebase and React Query. None of those are in `package.json` anymore.
+- `src/ai/` imports genkit, which isn't installed, and nothing imports `src/ai/`.
+- `docs/blueprint.md` (the original scaffold spec), `tmp/popover-debug.tsx` and `src/components/SwapUnitsWebApp.code-workspace` are leftovers.
 
 ## Branches and domains
 
