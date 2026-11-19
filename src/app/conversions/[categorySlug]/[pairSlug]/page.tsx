@@ -1,22 +1,36 @@
 import * as React from 'react';
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { getCategoryInfoBySlug } from '@/lib/category-info';
-import { listAllConversionPairs, parseConversionPairSlug, normalizeUnitForSlug } from '@/lib/conversion-pairs';
-import { unitData, getUnitsForCategory, getPresetsForCategory } from '@/lib/unit-data';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { getCategoryInfoBySlug, type CategoryInfo } from '@/lib/category-info';
+import { listAllConversionPairs, resolveConversionPairSlug } from '@/lib/conversion-pairs';
+import { getUnitsForCategory, getPresetsForCategory } from '@/lib/unit-data';
 import { convertNumericValue } from '@/lib/conversion-math';
-import type { UnitCategory } from '@/types';
+import { fetchFxRates, type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
+import { getConversionRelation, type FxContext } from '@/lib/conversion-formula';
+import {
+  buildCurrencyRateSentence,
+  buildFormulaInsight,
+  buildPairDescription,
+  buildPairFaq,
+  buildPairTitle,
+  buildQuickTableHint,
+  type PairCopyInput,
+} from '@/lib/pair-metadata';
+import type { Unit, UnitCategory } from '@/types';
 import { ConversionPairPageContent } from '@/components/conversion-pair-page-content';
-import { buildBreadcrumbJsonLd, buildFaqJsonLd, defaultFaqForPair } from '@/lib/structured-data';
+import { buildBreadcrumbJsonLd, buildFaqJsonLd } from '@/lib/structured-data';
 
 type PageParams = {
   categorySlug: string;
   pairSlug: string;
 }
 
+type SearchParamsInput = { [key: string]: string | string[] | undefined } | undefined;
+
 const sampleMultipliers: number[] = [0.25, 0.5, 1, 2, 5, 10, 25, 100];
 const temperatureSampleSet: number[] = [-40, -10, 0, 32, 68, 100];
 const fuelEconomySampleSet: number[] = [2, 4, 6, 8, 10, 15, 20];
+const currencySampleSet: number[] = [1, 5, 10, 20, 50, 100, 500, 1000];
 
 const buildSampleValues = (category: UnitCategory): number[] => {
   if (category === 'Temperature') {
@@ -25,49 +39,110 @@ const buildSampleValues = (category: UnitCategory): number[] => {
   if (category === 'Fuel Economy') {
     return fuelEconomySampleSet;
   }
+  if (category === 'Currency') {
+    return currencySampleSet;
+  }
   return sampleMultipliers;
 };
 
-const formulaDescription = (
-  category: UnitCategory,
-  fromSymbol: string,
-  toSymbol: string,
-): string => {
-  if (category === 'Temperature') {
-    // Temperature formula descriptions
-    const formulas = {
-      'C->F': '°F = °C × 9/5 + 32',
-      'F->C': '°C = (°F - 32) × 5/9',
-      'C->K': 'K = °C + 273.15',
-      'K->C': '°C = K - 273.15',
-      'F->K': 'K = (°F - 32) × 5/9 + 273.15',
-      'K->F': '°F = (K - 273.15) × 9/5 + 32'
-    };
-    const key = `${fromSymbol[0]}->${toSymbol[0]}`;
-    if (formulas[key as keyof typeof formulas]) {
-      return `Use the formula: ${formulas[key as keyof typeof formulas]}`;
+// Same symbol list (and order) PairConverter sends to /api/fx, so the server render and the
+// API route share one cached Frankfurter response.
+const FX_SYMBOLS = getUnitsForCategory('Currency')
+  .map((unit) => unit.symbol as CurrencyCode)
+  .filter((code) => code !== 'EUR');
+const FX_TIMEOUT_MS = 3000;
+
+// Latest ECB rates for currency pages. fetchFxRates caches for 1 hour (next.revalidate), so pages
+// pick up new rates hourly. Any failure or a slow response falls back to client-side loading.
+// cache() shares one request between generateMetadata and the page.
+const getServerFxRates = React.cache(async (): Promise<FxRatesResponse | null> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const timeout = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), FX_TIMEOUT_MS);
+    });
+    const data = await Promise.race([fetchFxRates('EUR', FX_SYMBOLS), timeout]);
+    if (!data || typeof data.date !== 'string' || !data.rates || typeof data.rates !== 'object') {
+      return null;
     }
-    return 'Temperature conversions require special formulas with both multiplication and addition/subtraction steps.';
+    return data;
+  } catch (error) {
+    console.error('Server FX fetch failed (pair page):', error);
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
+});
 
-  if (category === 'Data Storage') {
-    return 'Data storage units use base-2 multipliers (powers of 1024) instead of base-10. For example, 1 KB = 1024 bytes.';
+type ResolvedPairPage = {
+  categoryInfo: CategoryInfo;
+  fromUnit: Unit;
+  toUnit: Unit;
+  canonicalSlug: string;
+  canonicalPath: string;
+  isCanonical: boolean;
+};
+
+// Shared by generateMetadata and the page so both resolve the same units and canonical slug.
+const resolvePairPage = (categorySlug: string, pairSlug: string): ResolvedPairPage | null => {
+  const categoryInfo = getCategoryInfoBySlug(categorySlug);
+  if (!categoryInfo || categoryInfo.category === 'SI Prefixes') {
+    return null;
   }
+  const pair = resolveConversionPairSlug(categoryInfo.category, pairSlug);
+  if (!pair) {
+    return null;
+  }
+  return {
+    categoryInfo,
+    fromUnit: pair.fromUnit,
+    toUnit: pair.toUnit,
+    canonicalSlug: pair.canonicalSlug,
+    canonicalPath: `/conversions/${categoryInfo.slug}/${pair.canonicalSlug}`,
+    isCanonical: pair.isCanonical,
+  };
+};
 
-  if (category === 'Fuel Economy') {
-    if (fromSymbol.includes('/100') || toSymbol.includes('/100')) {
-      return 'Converting between efficiency (km/L, MPG) and consumption (L/100km) units requires using the inverse relationship: consumption = 100 ÷ efficiency.';
+const buildPairCopyInput = async (resolved: ResolvedPairPage): Promise<{
+  copy: PairCopyInput;
+  fxRates: FxRatesResponse | null;
+}> => {
+  const { categoryInfo, fromUnit, toUnit } = resolved;
+  const category = categoryInfo.category;
+  const fxRates = category === 'Currency' ? await getServerFxRates() : null;
+  const fxContext: FxContext | null = fxRates
+    ? { base: fxRates.base as CurrencyCode, rates: fxRates.rates }
+    : null;
+  return {
+    fxRates,
+    copy: {
+      category,
+      from: { symbol: fromUnit.symbol, name: fromUnit.name },
+      to: { symbol: toUnit.symbol, name: toUnit.name },
+      relation: getConversionRelation(category, fromUnit.symbol, toUnit.symbol, fxContext),
+      reverseRelation: getConversionRelation(category, toUnit.symbol, fromUnit.symbol, fxContext),
+      fxContext,
+      fxDate: fxRates?.date ?? null,
+    },
+  };
+};
+
+const readSearchParam = (searchParams: SearchParamsInput, key: string): string | undefined => {
+  const raw = searchParams?.[key];
+  return Array.isArray(raw) ? raw[0] : raw;
+};
+
+const toQueryString = (searchParams: SearchParamsInput): string => {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams ?? {})) {
+    if (Array.isArray(value)) {
+      value.forEach((item) => query.append(key, item));
+    } else if (value !== undefined) {
+      query.append(key, value);
     }
-    return 'Direct fuel economy conversions use multiplication by the conversion factor to account for different distance and volume units.';
   }
-
-  if (category === 'Data Transfer Rate') {
-    if ((fromSymbol.includes('bps') && toSymbol.includes('/s')) || (fromSymbol.includes('/s') && toSymbol.includes('bps'))) {
-      return 'When converting between bits (b) and bytes (B), remember that 1 byte = 8 bits.';
-    }
-  }
-
-  return 'Most unit conversions use a simple multiplication or division by a conversion factor. The calculator shows the exact formula used.';
+  const serialized = query.toString();
+  return serialized ? `?${serialized}` : '';
 };
 
 export function generateStaticParams() {
@@ -77,156 +152,120 @@ export function generateStaticParams() {
   }));
 }
 
+// Next 15 passes params and searchParams as promises.
 type PageProps = {
-  params: PageParams | Promise<PageParams>;
-  searchParams?: URLSearchParams | { [key: string]: string | string[] | undefined };
+  params: Promise<PageParams>;
+  searchParams?: Promise<SearchParamsInput>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  // Await params to ensure they are fully resolved
-  const resolvedParams = await Promise.resolve(params);
-  const { categorySlug, pairSlug } = resolvedParams;
-  
-  const categoryInfo = getCategoryInfoBySlug(categorySlug);
-  if (!categoryInfo) {
+  const { categorySlug, pairSlug } = await params;
+  const resolved = resolvePairPage(categorySlug, pairSlug);
+  if (!resolved) {
     return {};
   }
 
-  const pair = parseConversionPairSlug(pairSlug);
-  if (!pair) {
-    return {};
-  }
-
-  const { fromSymbol, toSymbol } = pair;
-  const title = `${fromSymbol} ↔ ${toSymbol} Conversion | ${categoryInfo.title}`;
-  const description = `Convert between ${fromSymbol} and ${toSymbol} with tables, quick examples, and an interactive calculator for ${categoryInfo.title.toLowerCase()}.`;
+  const { copy } = await buildPairCopyInput(resolved);
+  // The root layout's "%s | SwapUnits" template adds the brand to <title> only; the OG and
+  // Twitter titles don't get the template, so they carry the brand explicitly.
+  const title = buildPairTitle(copy);
+  const brandedTitle = `${title} | SwapUnits`;
+  const description = buildPairDescription(copy);
 
   return {
     title,
     description,
     alternates: {
-      canonical: `/conversions/${categorySlug}/${pairSlug}`,
+      canonical: resolved.canonicalPath,
     },
     openGraph: {
-      title,
+      title: brandedTitle,
       description,
+      url: resolved.canonicalPath,
+      siteName: 'SwapUnits',
       type: 'article',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: brandedTitle,
+      description,
     },
   };
 }
 
 export default async function ConversionPairPage({ params, searchParams }: PageProps) {
-  // Await params to ensure they are fully resolved
-  const resolvedParams = await Promise.resolve(params);
-  const resolvedSearchParams = await Promise.resolve(searchParams);
-  const { categorySlug, pairSlug } = resolvedParams;
-  const normalizedValue = (() => {
-    if (resolvedSearchParams instanceof URLSearchParams) {
-      return resolvedSearchParams.get('value') ?? undefined;
-    }
-    const raw = resolvedSearchParams?.value;
-    if (Array.isArray(raw)) {
-      return raw[0];
-    }
-    return raw;
-  })();
+  const { categorySlug, pairSlug } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  const resolved = resolvePairPage(categorySlug, pairSlug);
+  if (!resolved) {
+    notFound();
+  }
+
+  // Lowercase, URL-encoded or raw-symbol variants (e.g. degc-to-degf, %C2%B5m-to-mm) 308 to the
+  // one canonical slug, keeping the query string (value, fxDate, fxMode).
+  if (!resolved.isCanonical) {
+    permanentRedirect(`${resolved.canonicalPath}${toQueryString(resolvedSearchParams)}`);
+  }
+
+  const normalizedValue = readSearchParam(resolvedSearchParams, 'value');
   const parsedInitialValue = normalizedValue !== undefined ? Number(normalizedValue) : undefined;
   const initialValue = parsedInitialValue !== undefined && Number.isFinite(parsedInitialValue)
     ? parsedInitialValue
     : undefined;
   const initialFxDate = (() => {
-    let raw: string | undefined;
-    if (resolvedSearchParams instanceof URLSearchParams) {
-      raw = resolvedSearchParams.get('fxDate') ?? undefined;
-    } else {
-      const val = resolvedSearchParams?.fxDate;
-      raw = Array.isArray(val) ? val[0] : (val as string | undefined);
-    }
+    const raw = readSearchParam(resolvedSearchParams, 'fxDate');
     if (!raw) return null;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
     const d = new Date(raw + 'T00:00:00Z');
     return Number.isNaN(d.getTime()) ? null : d;
   })();
-  const initialFxMode = (() => {
-    let raw: string | undefined;
-    if (resolvedSearchParams instanceof URLSearchParams) {
-      raw = resolvedSearchParams.get('fxMode') ?? undefined;
-    } else {
-      const val = resolvedSearchParams?.fxMode;
-      raw = Array.isArray(val) ? val[0] : (val as string | undefined);
-    }
-    return raw === 'historical' ? 'historical' : 'latest';
-  })();
+  const initialFxMode = readSearchParam(resolvedSearchParams, 'fxMode') === 'historical' ? 'historical' : 'latest';
 
-  const categoryInfo = getCategoryInfoBySlug(categorySlug);
-  if (!categoryInfo) {
-    notFound();
-  }
-
-  const pair = parseConversionPairSlug(pairSlug);
-  if (!pair) {
-    notFound();
-  }
-
-  const { fromSymbol, toSymbol } = pair;
-  const unitEntry = unitData[categoryInfo.category];
-  const units = unitEntry?.units ?? [];
-  const normalizeForCompare = (val: string) => normalizeUnitForSlug(val).toLowerCase();
-  const matchSymbol = (sym: string) =>
-    units.find((unit) => unit.symbol === sym) ??
-    units.find((unit) => unit.symbol.toLowerCase() === sym.toLowerCase()) ??
-    units.find((unit) => normalizeForCompare(unit.symbol) === normalizeForCompare(sym));
-
-  const fromUnitDetails = matchSymbol(fromSymbol);
-  const toUnitDetails = matchSymbol(toSymbol);
-
-  if (!fromUnitDetails || !toUnitDetails) {
-    notFound();
-  }
+  const { categoryInfo, fromUnit: fromUnitDetails, toUnit: toUnitDetails, canonicalPath } = resolved;
+  const category = categoryInfo.category;
+  const { copy, fxRates } = await buildPairCopyInput(resolved);
 
   // Use the canonical symbols from our data so calculations resolve (e.g., µ-prefixed units).
   const resolvedFromSymbol = fromUnitDetails.symbol;
   const resolvedToSymbol = toUnitDetails.symbol;
+  const fxContext = copy.fxContext ?? undefined;
 
-  const sampleInputs = buildSampleValues(categoryInfo.category);
-  const exampleRows = sampleInputs
-    .map((sample) => {
-      const converted = convertNumericValue(categoryInfo.category, resolvedFromSymbol, resolvedToSymbol, sample);
-      if (converted === null) return null;
-      return {
-        input: sample,
-        output: converted,
-      };
-    })
-    .filter((row): row is { input: number; output: number } => row !== null)
-    .slice(0, 10);
+  const buildRows = (from: string, to: string) =>
+    buildSampleValues(category)
+      .map((sample) => {
+        const converted = convertNumericValue(category, from, to, sample, fxContext);
+        if (converted === null) return null;
+        return {
+          input: sample,
+          output: converted,
+        };
+      })
+      .filter((row): row is { input: number; output: number } => row !== null)
+      .slice(0, 10);
 
-  const reverseExampleRows = sampleInputs
-    .map((sample) => {
-      const converted = convertNumericValue(categoryInfo.category, resolvedToSymbol, resolvedFromSymbol, sample);
-      if (converted === null) return null;
-      return {
-        input: sample,
-        output: converted,
-      };
-    })
-    .filter((row): row is { input: number; output: number } => row !== null)
-    .slice(0, 10);
+  const exampleRows = buildRows(resolvedFromSymbol, resolvedToSymbol);
+  const reverseExampleRows = buildRows(resolvedToSymbol, resolvedFromSymbol);
 
-  const otherUnits = getUnitsForCategory(categoryInfo.category).filter(
-    (unit) => unit.symbol !== fromSymbol && unit.symbol !== toSymbol,
+  const otherUnits = getUnitsForCategory(category).filter(
+    (unit) => unit.symbol !== resolvedFromSymbol && unit.symbol !== resolvedToSymbol,
   );
 
-  const navbarPresets = getPresetsForCategory(categoryInfo.category).slice(0, 12);
-  const formulaInsight = formulaDescription(categoryInfo.category, resolvedFromSymbol, resolvedToSymbol);
+  const navbarPresets = getPresetsForCategory(category).slice(0, 12);
 
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: 'Home', url: '/' },
-    { name: categoryInfo.title, url: `/measurements/${categorySlug}` },
-    { name: `${resolvedFromSymbol} to ${resolvedToSymbol}`, url: `/conversions/${categorySlug}/${pairSlug}` },
+    { name: categoryInfo.title, url: `/measurements/${categoryInfo.slug}` },
+    { name: `${resolvedFromSymbol} to ${resolvedToSymbol}`, url: canonicalPath },
   ]);
 
-  const faqJsonLd = buildFaqJsonLd(defaultFaqForPair(resolvedFromSymbol, resolvedToSymbol, categoryInfo.category));
+  const faqJsonLd = buildFaqJsonLd(buildPairFaq(copy));
+
+  // Only seed the live converter with server rates when it will show latest rates anyway;
+  // historical links (?fxMode=historical&fxDate=...) keep loading their own date client-side.
+  const initialFxRates = category === 'Currency' && initialFxMode === 'latest' && !initialFxDate
+    ? fxRates
+    : null;
 
   return (
     <>
@@ -238,7 +277,9 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
         toSymbol={resolvedToSymbol}
         fromUnit={{ symbol: resolvedFromSymbol, name: fromUnitDetails.name }}
         toUnit={{ symbol: resolvedToSymbol, name: toUnitDetails.name }}
-        formulaInsight={formulaInsight}
+        formulaInsight={buildFormulaInsight(copy)}
+        quickTableHint={buildQuickTableHint(copy)}
+        rateSummary={category === 'Currency' ? buildCurrencyRateSentence(copy) : null}
         exampleRows={exampleRows}
         reverseExampleRows={reverseExampleRows}
         otherUnits={otherUnits.map((unit) => ({ symbol: unit.symbol, name: unit.name }))}
@@ -246,6 +287,7 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
         initialValue={initialValue}
         initialFxDate={initialFxDate}
         initialFxMode={initialFxMode}
+        initialFxRates={initialFxRates}
       />
     </>
   );

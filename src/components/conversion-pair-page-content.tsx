@@ -25,7 +25,8 @@ import { useConversionHistory } from '@/hooks/use-conversion-history';
 import { useFavorites } from '@/hooks/use-favorites';
 import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useToast } from '@/hooks/use-toast';
-import { formatConversionValue } from '@/lib/number-format';
+import { formatSignificant } from '@/lib/conversion-formula';
+import type { FxRatesResponse } from '@/lib/fx';
 import { isEvInvolvingFuelEconomyPair, isEvFuelEconomyUnit } from '@/lib/unit-data';
 import { VehiclePresetChips } from '@/components/vehicle-preset-chips';
 import { EvRangeCostEstimator } from '@/components/ev-range-cost-estimator';
@@ -47,6 +48,10 @@ type ConversionPairPageContentProps = {
   fromUnit: SimpleUnit;
   toUnit: SimpleUnit;
   formulaInsight: string;
+  /** Intro under the quick table; depends on whether the pair is proportional, temperature or reciprocal. */
+  quickTableHint: string;
+  /** Server-rendered rate line for currency pages, e.g. "1 USD = 0.92 EUR · 1 EUR = 1.08 USD (...)". */
+  rateSummary?: string | null;
   exampleRows: ExampleRow[];
   reverseExampleRows: ExampleRow[];
   otherUnits: SimpleUnit[];
@@ -54,10 +59,12 @@ type ConversionPairPageContentProps = {
   initialValue?: number;
   initialFxDate?: Date | null;
   initialFxMode?: 'latest' | 'historical';
+  /** Latest FX rates fetched on the server (currency pages in latest mode only). */
+  initialFxRates?: FxRatesResponse | null;
 };
 
-const formatNumber = (value: number): string =>
-  formatConversionValue(value, { precisionBoost: 0 }).formatted;
+// Significant digits rather than fixed decimals, so small values (1 µm = 0.000001 m) don't round to 0.
+const formatNumber = (value: number): string => formatSignificant(value, 6);
 
 const formatHistoryNumber = (num: number): string => {
   if (!isFinite(num)) return '-';
@@ -92,6 +99,8 @@ export function ConversionPairPageContent({
   fromUnit,
   toUnit,
   formulaInsight,
+  quickTableHint,
+  rateSummary,
   exampleRows,
   reverseExampleRows,
   otherUnits,
@@ -99,6 +108,7 @@ export function ConversionPairPageContent({
   initialValue,
   initialFxDate,
   initialFxMode = 'latest',
+  initialFxRates,
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -254,6 +264,7 @@ export function ConversionPairPageContent({
               initialValue={initialValue ?? 1}
               initialFxDate={initialFxDate ?? undefined}
               initialFxMode={initialFxMode}
+              initialFxRates={initialFxRates}
               onCopyResult={handleCopyResult}
             />
           </section>
@@ -283,9 +294,10 @@ export function ConversionPairPageContent({
                 <h2 className="text-xl font-semibold text-foreground">
                   {fromSymbol} to {toSymbol} quick table
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  Multiply any row by the same factor to scale results. Use the converter above to enter exact values with your own units.
-                </p>
+                {rateSummary && (
+                  <p className="text-sm font-medium text-foreground">{rateSummary}</p>
+                )}
+                <p className="text-sm text-muted-foreground">{quickTableHint}</p>
               </div>
 
               <Table>
@@ -318,7 +330,7 @@ export function ConversionPairPageContent({
                   {toSymbol} back to {fromSymbol}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Keep the reciprocal handy when double-checking calculations or undoing a conversion.
+                  Use the reverse table when double-checking calculations or undoing a conversion.
                 </p>
               </div>
 
