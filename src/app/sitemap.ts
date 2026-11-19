@@ -18,8 +18,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   categoryDisplayOrder.forEach((category) => {
     const slug = getCategorySlug(category);
+    // SI Prefixes' slug is a full path ("standards/nist-si-tenfold") with its own route, not a
+    // /measurements/ page - /measurements/standards/nist-si-tenfold is a 404.
     entries.push({
-      url: `${baseUrl}/measurements/${slug}`,
+      url: slug.includes('/') ? `${baseUrl}/${slug}` : `${baseUrl}/measurements/${slug}`,
     });
   });
 
