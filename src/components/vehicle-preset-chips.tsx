@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Car } from 'lucide-react';
 
 import type { VehiclePreset } from '@/types';
-import { evModels, getVehiclePresetValueForUnit } from '@/lib/ev-models';
+import { evModels, formatEvModelName, getVehiclePresetValueForUnit } from '@/lib/ev-models';
 import { cn } from '@/lib/utils';
 
 interface VehiclePresetChipsProps {
@@ -12,6 +12,10 @@ interface VehiclePresetChipsProps {
   selectedId?: string;
   onSelect: (preset: VehiclePreset, value: number) => void;
 }
+
+// Fixed locale, so the server HTML and the first client render match.
+const formatChipValue = (value: number): string =>
+  value.toLocaleString('en-US', { maximumFractionDigits: 2 });
 
 export function VehiclePresetChips({ unitSymbol, selectedId, onSelect }: VehiclePresetChipsProps) {
   return (
@@ -32,18 +36,16 @@ export function VehiclePresetChips({ unitSymbol, selectedId, onSelect }: Vehicle
             <button
               key={preset.id}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => onSelect(preset, value)}
               className={cn(
                 'rounded-2xl border border-border/60 bg-background px-4 py-3 text-left text-sm transition hover:border-primary/60 hover:bg-primary/5',
                 isSelected && 'border-primary/60 bg-primary/5',
               )}
             >
-              <span className="block font-semibold text-foreground">
-                {preset.make} {preset.model}
-                {preset.trim ? ` ${preset.trim}` : ''}
-              </span>
+              <span className="block font-semibold text-foreground">{formatEvModelName(preset)}</span>
               <span className="text-xs text-muted-foreground">
-                {value.toLocaleString(undefined, { maximumFractionDigits: 2 })} {unitSymbol}
+                {preset.modelYear} · {formatChipValue(value)} {unitSymbol}
               </span>
             </button>
           );

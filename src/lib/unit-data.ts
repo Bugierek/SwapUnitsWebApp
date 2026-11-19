@@ -21,13 +21,19 @@ const US_GALLON_TO_LITER = 3.785411784; // matches the Volume category's 'gal' f
 const LITER_GASOLINE_KWH_EQUIVALENCE = (EPA_MPGE_WH_PER_GALLON / 1000) / US_GALLON_TO_LITER; // ≈ 8.9039 kWh/L
 const WH_PER_KM_FACTOR = LITER_GASOLINE_KWH_EQUIVALENCE * 1000; // converts Wh/km to km/L via inverse relationship
 const MILES_TO_KILOMETERS = 1.609344;
+// km/L per mile per US gallon (1.609344 km ÷ 3.785411784 L).
+const MPG_US_FACTOR = 0.425143707430272;
 
 const fuelEconomyUnits: Unit[] = [
   { name: 'Kilometer per Liter', symbol: 'km/L', factor: 1, unitType: 'direct_efficiency' },
   { name: 'Liter per 100 km', symbol: 'L/100km', factor: 100, unitType: 'inverse_consumption' },
   { name: 'Liter per 100 miles', symbol: 'L/100mi', factor: 100 * MILES_TO_KILOMETERS, unitType: 'inverse_consumption' },
-  { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: 0.425143707430272, unitType: 'direct_efficiency' },
+  { name: 'Mile per Gallon (US)', symbol: 'MPG (US)', factor: MPG_US_FACTOR, unitType: 'direct_efficiency' },
   { name: 'Mile per Gallon (UK)', symbol: 'MPG (UK)', factor: 0.3540061899346471, unitType: 'direct_efficiency' },
+  // EPA's MPGe is miles per 33,705 Wh, the energy-equivalent of one US gallon of gasoline. The
+  // EV units in this category already convert through that same constant, so 1 MPGe is exactly
+  // 1 MPG (US) here: 120 MPGe = 33.705 kWh ÷ 1.2 = 28.0875 kWh/100mi.
+  { name: 'Mile per gallon equivalent', symbol: 'MPGe', factor: MPG_US_FACTOR, unitType: 'direct_efficiency' },
   { name: 'Kilometer per kWh', symbol: 'km/kWh', factor: LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
   { name: 'Mile per kWh', symbol: 'mi/kWh', factor: 1.609344 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'direct_efficiency' }, 
   { name: 'kWh per 100 km', symbol: 'kWh/100km', factor: 100 * LITER_GASOLINE_KWH_EQUIVALENCE, unitType: 'inverse_consumption' }, 
@@ -36,7 +42,9 @@ const fuelEconomyUnits: Unit[] = [
   { name: 'Watt-hour per mile', symbol: 'Wh/mi', factor: WH_PER_KM_FACTOR * MILES_TO_KILOMETERS, unitType: 'inverse_consumption' },
 ];
 
-export const EV_FUEL_ECONOMY_UNIT_SYMBOLS = ['km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi', 'Wh/km', 'Wh/mi'] as const;
+// Also the display order of the EV units, after the liquid-fuel ones. MPGe comes first so it sits
+// next to MPG (US) / MPG (UK) in unit lists.
+export const EV_FUEL_ECONOMY_UNIT_SYMBOLS = ['MPGe', 'km/kWh', 'mi/kWh', 'kWh/100km', 'kWh/100mi', 'Wh/km', 'Wh/mi'] as const;
 
 export const isEvFuelEconomyUnit = (symbol: string): boolean =>
   (EV_FUEL_ECONOMY_UNIT_SYMBOLS as readonly string[]).includes(symbol);

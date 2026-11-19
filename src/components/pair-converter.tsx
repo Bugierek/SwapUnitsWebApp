@@ -46,6 +46,8 @@ interface PairConverterProps {
   initialFxRates?: FxRatesResponse | null;
   /** Date.now() when the server rendered initialFxRates; older than FX_RATES_MAX_AGE_MS -> refetch. */
   initialFxRatesRenderedAt?: number | null;
+  /** Starting amount in the "from" unit (default 1). ?value= still replaces it after hydration. */
+  initialValue?: number;
   onCopyResult?: (payload: {
     category: UnitCategory;
     fromValue: number;
@@ -111,13 +113,15 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     toUnit,
     initialFxRates = null,
     initialFxRatesRenderedAt = null,
+    initialValue = 1,
     onCopyResult,
   }: PairConverterProps,
   ref,
 ) {
   const [isSwapped, setIsSwapped] = React.useState(false);
-  // The page is static HTML, so it always renders 1; ?value= is applied after hydration.
-  const [inputValue, setInputValue] = React.useState<string>('1');
+  // The page is static HTML, so it always renders initialValue (1 unless the page passes a
+  // realistic starting value, as Fuel Economy pages do); ?value= is applied after hydration.
+  const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
   const [precisionMode, setPrecisionMode] = React.useState<PrecisionMode>('rounded');
   const todayKey = React.useMemo(() => toDateKey(new Date()), []);

@@ -22,6 +22,7 @@ import {
 import type { UnitCategory } from '@/types';
 import { ConversionPairPageContent } from '@/components/conversion-pair-page-content';
 import { buildBreadcrumbJsonLd, buildFaqJsonLd } from '@/lib/structured-data';
+import { getFuelEconomyDefaultValue } from '@/lib/ev-models';
 
 type PageParams = {
   categorySlug: string;
@@ -30,15 +31,33 @@ type PageParams = {
 
 const sampleMultipliers: number[] = [0.25, 0.5, 1, 2, 5, 10, 25, 100];
 const temperatureSampleSet: number[] = [-40, -10, 0, 32, 68, 100];
-const fuelEconomySampleSet: number[] = [2, 4, 6, 8, 10, 15, 20];
 const currencySampleSet: number[] = [1, 5, 10, 20, 50, 100, 500, 1000];
 
-const buildSampleValues = (category: UnitCategory): number[] => {
+// Realistic values per Fuel Economy unit (EVs from about 20 to 50 kWh/100mi, gasoline cars from
+// about 15 to 50 MPG), so quick-table rows describe real vehicles rather than 2, 4, 6...
+const fuelEconomySampleSets: Record<string, number[]> = {
+  'km/L': [8, 10, 12, 15, 18, 20, 25],
+  'L/100km': [4, 5, 6, 7, 8, 10, 12],
+  'L/100mi': [8, 10, 12, 14, 16, 18, 20],
+  'MPG (US)': [15, 20, 25, 30, 35, 40, 50],
+  'MPG (UK)': [20, 25, 30, 35, 40, 50, 60],
+  MPGe: [60, 70, 80, 90, 100, 110, 120, 130, 140],
+  'km/kWh': [3, 4, 5, 6, 7, 8],
+  'mi/kWh': [2, 2.5, 3, 3.5, 4, 4.5, 5],
+  'kWh/100km': [12, 15, 18, 21, 24, 27, 30],
+  'kWh/100mi': [20, 25, 30, 35, 40, 45, 50],
+  'Wh/km': [120, 150, 180, 210, 240, 270, 300],
+  'Wh/mi': [200, 250, 300, 350, 400, 450, 500],
+};
+const fuelEconomyFallbackSampleSet: number[] = [2, 4, 6, 8, 10, 15, 20];
+
+// Sample inputs for a quick table whose input column is in `unitSymbol`.
+const buildSampleValues = (category: UnitCategory, unitSymbol: string): number[] => {
   if (category === 'Temperature') {
     return temperatureSampleSet;
   }
   if (category === 'Fuel Economy') {
-    return fuelEconomySampleSet;
+    return fuelEconomySampleSets[unitSymbol] ?? fuelEconomyFallbackSampleSet;
   }
   if (category === 'Currency') {
     return currencySampleSet;
@@ -190,7 +209,7 @@ export default async function ConversionPairPage({ params }: PageProps) {
   const fxContext = copy.fxContext ?? undefined;
 
   const buildRows = (from: string, to: string) =>
-    buildSampleValues(category)
+    buildSampleValues(category, from)
       .map((sample) => {
         const converted = convertNumericValue(category, from, to, sample, fxContext);
         if (converted === null) return null;
@@ -227,6 +246,11 @@ export default async function ConversionPairPage({ params }: PageProps) {
   // refetches rates when the page is older than the 1-hour revalidate window.
   const initialFxRatesRenderedAt = initialFxRates ? Date.now() : null;
 
+  // Fuel Economy pages open on a realistic value (a 25 kWh/100mi EV or a 30 MPG car, converted
+  // into the "from" unit) instead of 1 kWh/100mi = 100 mi/kWh. Other categories start at 1.
+  const initialValue =
+    category === 'Fuel Economy' ? getFuelEconomyDefaultValue(resolvedFromSymbol) ?? undefined : undefined;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
@@ -246,6 +270,7 @@ export default async function ConversionPairPage({ params }: PageProps) {
         navbarPresets={navbarPresets}
         initialFxRates={initialFxRates}
         initialFxRatesRenderedAt={initialFxRatesRenderedAt}
+        initialValue={initialValue}
       />
     </>
   );
