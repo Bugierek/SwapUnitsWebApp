@@ -56,11 +56,10 @@ type ConversionPairPageContentProps = {
   reverseExampleRows: ExampleRow[];
   otherUnits: SimpleUnit[];
   navbarPresets: Preset[];
-  initialValue?: number;
-  initialFxDate?: Date | null;
-  initialFxMode?: 'latest' | 'historical';
-  /** Latest FX rates fetched on the server (currency pages in latest mode only). */
+  /** Latest FX rates fetched on the server (currency pages only). */
   initialFxRates?: FxRatesResponse | null;
+  /** Date.now() when the server rendered initialFxRates into the page. */
+  initialFxRatesRenderedAt?: number | null;
 };
 
 // Significant digits rather than fixed decimals, so small values (1 µm = 0.000001 m) don't round to 0.
@@ -105,10 +104,8 @@ export function ConversionPairPageContent({
   reverseExampleRows,
   otherUnits,
   navbarPresets,
-  initialValue,
-  initialFxDate,
-  initialFxMode = 'latest',
   initialFxRates,
+  initialFxRatesRenderedAt,
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -261,10 +258,8 @@ export function ConversionPairPageContent({
               category={categoryInfo.category}
               fromUnit={fromUnit}
               toUnit={toUnit}
-              initialValue={initialValue ?? 1}
-              initialFxDate={initialFxDate ?? undefined}
-              initialFxMode={initialFxMode}
               initialFxRates={initialFxRates}
+              initialFxRatesRenderedAt={initialFxRatesRenderedAt}
               onCopyResult={handleCopyResult}
             />
           </section>

@@ -1,8 +1,11 @@
 import * as React from 'react';
 import type { Metadata } from 'next';
-import { notFound, permanentRedirect } from 'next/navigation';
-import { getCategoryInfoBySlug, type CategoryInfo } from '@/lib/category-info';
-import { listAllConversionPairs, resolveConversionPairSlug } from '@/lib/conversion-pairs';
+import { notFound } from 'next/navigation';
+import {
+  listAllConversionPairs,
+  resolveConversionPairPage,
+  type ResolvedConversionPairPage,
+} from '@/lib/conversion-pairs';
 import { getUnitsForCategory, getPresetsForCategory } from '@/lib/unit-data';
 import { convertNumericValue } from '@/lib/conversion-math';
 import { fetchFxRates, type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
@@ -16,7 +19,7 @@ import {
   buildQuickTableHint,
   type PairCopyInput,
 } from '@/lib/pair-metadata';
-import type { Unit, UnitCategory } from '@/types';
+import type { UnitCategory } from '@/types';
 import { ConversionPairPageContent } from '@/components/conversion-pair-page-content';
 import { buildBreadcrumbJsonLd, buildFaqJsonLd } from '@/lib/structured-data';
 
@@ -24,8 +27,6 @@ type PageParams = {
   categorySlug: string;
   pairSlug: string;
 }
-
-type SearchParamsInput = { [key: string]: string | string[] | undefined } | undefined;
 
 const sampleMultipliers: number[] = [0.25, 0.5, 1, 2, 5, 10, 25, 100];
 const temperatureSampleSet: number[] = [-40, -10, 0, 32, 68, 100];
@@ -74,36 +75,7 @@ const getServerFxRates = React.cache(async (): Promise<FxRatesResponse | null> =
   }
 });
 
-type ResolvedPairPage = {
-  categoryInfo: CategoryInfo;
-  fromUnit: Unit;
-  toUnit: Unit;
-  canonicalSlug: string;
-  canonicalPath: string;
-  isCanonical: boolean;
-};
-
-// Shared by generateMetadata and the page so both resolve the same units and canonical slug.
-const resolvePairPage = (categorySlug: string, pairSlug: string): ResolvedPairPage | null => {
-  const categoryInfo = getCategoryInfoBySlug(categorySlug);
-  if (!categoryInfo || categoryInfo.category === 'SI Prefixes') {
-    return null;
-  }
-  const pair = resolveConversionPairSlug(categoryInfo.category, pairSlug);
-  if (!pair) {
-    return null;
-  }
-  return {
-    categoryInfo,
-    fromUnit: pair.fromUnit,
-    toUnit: pair.toUnit,
-    canonicalSlug: pair.canonicalSlug,
-    canonicalPath: `/conversions/${categoryInfo.slug}/${pair.canonicalSlug}`,
-    isCanonical: pair.isCanonical,
-  };
-};
-
-const buildPairCopyInput = async (resolved: ResolvedPairPage): Promise<{
+const buildPairCopyInput = async (resolved: ResolvedConversionPairPage): Promise<{
   copy: PairCopyInput;
   fxRates: FxRatesResponse | null;
 }> => {
@@ -127,23 +99,20 @@ const buildPairCopyInput = async (resolved: ResolvedPairPage): Promise<{
   };
 };
 
-const readSearchParam = (searchParams: SearchParamsInput, key: string): string | undefined => {
-  const raw = searchParams?.[key];
-  return Array.isArray(raw) ? raw[0] : raw;
-};
-
-const toQueryString = (searchParams: SearchParamsInput): string => {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(searchParams ?? {})) {
-    if (Array.isArray(value)) {
-      value.forEach((item) => query.append(key, item));
-    } else if (value !== undefined) {
-      query.append(key, value);
-    }
-  }
-  const serialized = query.toString();
-  return serialized ? `?${serialized}` : '';
-};
+// Every canonical pair page is pre-rendered at build time and served as static HTML:
+// - force-static: the root layout reads the theme cookie, and any cookies() call makes a route
+//   dynamic (rendered per request, "private, no-store"). Under force-static, cookies() returns
+//   nothing here; the layout's inline theme script still applies the theme saved in localStorage
+//   before first paint.
+// - Nothing on this page reads searchParams. PairConverter applies ?value=, ?fxMode= and ?fxDate=
+//   in the browser after hydration.
+// - Currency pages are ISR: fetchFxRates uses next.revalidate = 3600, which caps those pages'
+//   revalidate at 1 hour. Other pages fetch nothing and stay static until the next deploy.
+// - dynamicParams = false: a slug that isn't canonical (degc-to-degf, usd-to-eur) or doesn't exist
+//   isn't rendered here. Next falls through to ../[...slug]/page.tsx, which renders per request so
+//   it can 308 to the canonical slug with the query string intact, or 404.
+export const dynamic = 'force-static';
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return listAllConversionPairs().map(({ categorySlug, pairSlug }) => ({
@@ -152,15 +121,14 @@ export function generateStaticParams() {
   }));
 }
 
-// Next 15 passes params and searchParams as promises.
+// Next 15 passes params as a promise.
 type PageProps = {
   params: Promise<PageParams>;
-  searchParams?: Promise<SearchParamsInput>;
 };
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { categorySlug, pairSlug } = await params;
-  const resolved = resolvePairPage(categorySlug, pairSlug);
+  const resolved = resolveConversionPairPage(categorySlug, pairSlug);
   if (!resolved) {
     return {};
   }
@@ -193,34 +161,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function ConversionPairPage({ params, searchParams }: PageProps) {
+export default async function ConversionPairPage({ params }: PageProps) {
   const { categorySlug, pairSlug } = await params;
-  const resolvedSearchParams = await searchParams;
 
-  const resolved = resolvePairPage(categorySlug, pairSlug);
+  const resolved = resolveConversionPairPage(categorySlug, pairSlug);
   if (!resolved) {
     notFound();
   }
 
-  // Lowercase, URL-encoded or raw-symbol variants (e.g. degc-to-degf, %C2%B5m-to-mm) 308 to the
-  // one canonical slug, keeping the query string (value, fxDate, fxMode).
+  // Only canonical slugs are rendered here (dynamicParams = false); variants such as degc-to-degf
+  // are redirected, with their query string, by ../[...slug]/page.tsx. One exception: on a
+  // case-insensitive filesystem (macOS, not the Linux servers App Hosting runs), a request for
+  // degc-to-degf finds degC-to-degF's cached files, is served that page, and re-renders it in the
+  // background under the lowercase slug. Whatever that render returned would be written over the
+  // canonical page's cache files (a redirect would also lose its Location header in the cache),
+  // so it fails instead: Next keeps the existing cache entry when a revalidation throws.
   if (!resolved.isCanonical) {
-    permanentRedirect(`${resolved.canonicalPath}${toQueryString(resolvedSearchParams)}`);
+    throw new Error(`Pair page rendered for non-canonical slug "${pairSlug}" (expected "${resolved.canonicalSlug}")`);
   }
-
-  const normalizedValue = readSearchParam(resolvedSearchParams, 'value');
-  const parsedInitialValue = normalizedValue !== undefined ? Number(normalizedValue) : undefined;
-  const initialValue = parsedInitialValue !== undefined && Number.isFinite(parsedInitialValue)
-    ? parsedInitialValue
-    : undefined;
-  const initialFxDate = (() => {
-    const raw = readSearchParam(resolvedSearchParams, 'fxDate');
-    if (!raw) return null;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
-    const d = new Date(raw + 'T00:00:00Z');
-    return Number.isNaN(d.getTime()) ? null : d;
-  })();
-  const initialFxMode = readSearchParam(resolvedSearchParams, 'fxMode') === 'historical' ? 'historical' : 'latest';
 
   const { categoryInfo, fromUnit: fromUnitDetails, toUnit: toUnitDetails, canonicalPath } = resolved;
   const category = categoryInfo.category;
@@ -261,11 +219,13 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
 
   const faqJsonLd = buildFaqJsonLd(buildPairFaq(copy));
 
-  // Only seed the live converter with server rates when it will show latest rates anyway;
-  // historical links (?fxMode=historical&fxDate=...) keep loading their own date client-side.
-  const initialFxRates = category === 'Currency' && initialFxMode === 'latest' && !initialFxDate
-    ? fxRates
-    : null;
+  // Latest rates seed the live converter, so the HTML shows the converted value. Historical links
+  // (?fxMode=historical&fxDate=...) switch to their date in the browser.
+  const initialFxRates = category === 'Currency' ? fxRates : null;
+  // When this HTML was rendered. ISR serves a stale page once before regenerating it in the
+  // background (and a cold-started server starts from the build-time HTML), so PairConverter
+  // refetches rates when the page is older than the 1-hour revalidate window.
+  const initialFxRatesRenderedAt = initialFxRates ? Date.now() : null;
 
   return (
     <>
@@ -284,10 +244,8 @@ export default async function ConversionPairPage({ params, searchParams }: PageP
         reverseExampleRows={reverseExampleRows}
         otherUnits={otherUnits.map((unit) => ({ symbol: unit.symbol, name: unit.name }))}
         navbarPresets={navbarPresets}
-        initialValue={initialValue}
-        initialFxDate={initialFxDate}
-        initialFxMode={initialFxMode}
         initialFxRates={initialFxRates}
+        initialFxRatesRenderedAt={initialFxRatesRenderedAt}
       />
     </>
   );

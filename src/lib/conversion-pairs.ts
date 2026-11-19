@@ -1,4 +1,9 @@
-import { getCategorySlug, categoryInfoList } from '@/lib/category-info';
+import {
+  getCategorySlug,
+  getCategoryInfoBySlug,
+  categoryInfoList,
+  type CategoryInfo,
+} from '@/lib/category-info';
 import { unitData } from '@/lib/unit-data';
 import type { Unit, UnitCategory } from '@/types';
 
@@ -26,27 +31,9 @@ const denormalizeUnitFromSlug = (slugUnit: string): string => {
 };
 
 const encodeUnit = (unit: string): string => normalizeUnitForSlug(unit);
-const decodeUnit = (value: string): string => denormalizeUnitFromSlug(value);
 
 export const buildConversionPairSlug = (fromSymbol: string, toSymbol: string): string =>
   `${encodeUnit(fromSymbol)}${delimiter}${encodeUnit(toSymbol)}`;
-
-export const parseConversionPairSlug = (
-  slug: string,
-): { fromSymbol: string; toSymbol: string } | null => {
-  const parts = slug.split(delimiter);
-  if (parts.length !== 2) return null;
-  try {
-    const fromPart = decodeURIComponent(parts[0]);
-    const toPart = decodeURIComponent(parts[1]);
-    return {
-      fromSymbol: decodeUnit(fromPart),
-      toSymbol: decodeUnit(toPart),
-    };
-  } catch {
-    return null;
-  }
-};
 
 const safeDecodeURIComponent = (value: string): string | null => {
   try {
@@ -120,6 +107,35 @@ export const resolveConversionPairSlug = (
     toUnit,
     canonicalSlug,
     isCanonical: decoded === canonicalSlug,
+  };
+};
+
+export type ResolvedConversionPairPage = ResolvedConversionPair & {
+  categoryInfo: CategoryInfo;
+  /** e.g. "/conversions/temperature-conversion/degC-to-degF" */
+  canonicalPath: string;
+};
+
+/**
+ * Resolves the two dynamic segments of a pair page URL. Returns null for unknown categories,
+ * SI Prefixes (no pair pages) and slugs that don't match two units of the category.
+ */
+export const resolveConversionPairPage = (
+  categorySlug: string,
+  pairSlug: string,
+): ResolvedConversionPairPage | null => {
+  const categoryInfo = getCategoryInfoBySlug(categorySlug);
+  if (!categoryInfo || categoryInfo.category === 'SI Prefixes') {
+    return null;
+  }
+  const pair = resolveConversionPairSlug(categoryInfo.category, pairSlug);
+  if (!pair) {
+    return null;
+  }
+  return {
+    ...pair,
+    categoryInfo,
+    canonicalPath: `/conversions/${categoryInfo.slug}/${pair.canonicalSlug}`,
   };
 };
 
