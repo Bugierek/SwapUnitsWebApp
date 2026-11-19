@@ -39,7 +39,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Travelers comparing running routes or hiking trails shared in a different unit system.',
     ],
     seo: {
-      title: 'Length Converter & Chart | SwapUnits',
+      title: 'Length Converter & Chart',
       description:
         'Convert between meters, feet, miles, inches, and more with quick reference charts and tips on when to use each length unit.',
       keywords: [
@@ -87,7 +87,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Athletes tracking strength gains in kilograms while competitions list attempts in pounds.',
     ],
     seo: {
-      title: 'Mass & Weight Conversion Chart | SwapUnits',
+      title: 'Mass & Weight Conversion Chart',
       description:
         'Instantly convert between grams, kilograms, pounds, ounces, and tons. Explore quick tips, use cases, and detailed mass tables.',
       keywords: [
@@ -135,7 +135,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Home chefs converting international recipes to match local oven settings.',
     ],
     seo: {
-      title: 'Temperature Converter (°C ⇄ °F ⇄ K) | SwapUnits',
+      title: 'Temperature Converter (°C ⇄ °F ⇄ K)',
       description:
         'Convert Celsius, Fahrenheit, and Kelvin with clear formulas, reference tables, and practical temperature tips.',
       keywords: [
@@ -183,7 +183,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Educators comparing historical events across centuries with the same time base.',
     ],
     seo: {
-      title: 'Time Converter & Unit Chart | SwapUnits',
+      title: 'Time Converter & Unit Chart',
       description:
         'Convert between seconds, minutes, hours, days, and scientific time units with practical tips on where each unit fits best.',
       keywords: [
@@ -231,7 +231,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Scuba instructors teaching students how breathing gas pressure changes with depth.',
     ],
     seo: {
-      title: 'Pressure Converter (kPa, bar, atm, psi) | SwapUnits',
+      title: 'Pressure Converter (kPa, bar, atm, psi)',
       description:
         'Compare pressure units with quick conversions, tables, and guidance on when to use kPa, bar, atm, or psi.',
       keywords: [
@@ -279,7 +279,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'GIS analysts translating satellite data pixels into region area summaries.',
     ],
     seo: {
-      title: 'Area Conversion Chart | SwapUnits',
+      title: 'Area Conversion Chart',
       description:
         'Convert square meters, square feet, hectares, acres, and more. Learn the shortcuts that prevent scaling mistakes.',
       keywords: [
@@ -327,7 +327,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Lab technicians dosing reagents when equipment is calibrated in cubic centimeters.',
     ],
     seo: {
-      title: 'Volume Converter (Liters, Gallons, mL) | SwapUnits',
+      title: 'Volume Converter (Liters, Gallons, mL)',
       description:
         'Convert liters to gallons, milliliters, cups, and cubic meters. Explore practical volume tips and tables for kitchen, lab, and industrial work.',
       keywords: [
@@ -375,7 +375,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Mechanical engineers balancing heater specs given in BTU with electrical systems designed in kWh.',
     ],
     seo: {
-      title: 'Energy Converter (Joules, Calories, BTU, kWh) | SwapUnits',
+      title: 'Energy Converter (Joules, Calories, BTU, kWh)',
       description:
         'Convert energy between joules, calories, BTU, and kilowatt-hours. Understand when each unit applies and how to compare them.',
       keywords: [
@@ -423,7 +423,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Athletes comparing treadmill workouts (often mph) with outdoor GPS runs (frequently km/h).',
     ],
     seo: {
-      title: 'Speed Converter (mph, km/h, m/s, knots) | SwapUnits',
+      title: 'Speed Converter (mph, km/h, m/s, knots)',
       description:
         'Convert speeds between miles per hour, kilometers per hour, meters per second, and knots with ready-made references.',
       keywords: [
@@ -471,7 +471,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Corporate sustainability teams compiling cross-brand fuel data into one global report.',
     ],
     seo: {
-      title: 'Fuel Economy Converter (MPG ⇄ L/100 km ⇄ km/L) | SwapUnits',
+      title: 'Fuel Economy Converter (MPG ⇄ L/100 km ⇄ km/L)',
       description:
         'Understand combustion and EV efficiency with side-by-side conversions between MPG, L/100 km, km/L, and kWh/100 km.',
       keywords: [
@@ -539,7 +539,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Consumers comparing cloud storage plans that mix terabytes and gibibytes.',
     ],
     seo: {
-      title: 'Data Storage Converter (Bytes ⇄ KB ⇄ MB ⇄ GB) | SwapUnits',
+      title: 'Data Storage Converter (Bytes ⇄ KB ⇄ MB ⇄ GB)',
       description:
         'Convert digital storage sizes with confidence. Understand the difference between decimal and binary units and use the right factor every time.',
       keywords: [
@@ -587,7 +587,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'IT departments validating that backup windows fit within available bandwidth.',
     ],
     seo: {
-      title: 'Data Transfer Rate Converter (bps, Mbps, MB/s, Gbps) | SwapUnits',
+      title: 'Data Transfer Rate Converter (bps, Mbps, MB/s, Gbps)',
       description:
         'Convert data rates between bits and bytes per second, from Kbps through Gbps. Understand how advertised bandwidth compares to real-world throughput.',
       keywords: [
@@ -635,7 +635,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Educators demonstrating how SI prefixes apply consistently across mass, length, digital storage, and more.',
     ],
     seo: {
-      title: 'SI Prefix Converter & Table (NIST SP 330) | SwapUnits',
+      title: 'SI Prefix Converter & Table (NIST SP 330)',
       description:
         'Convert between SI prefixes such as micro, milli, kilo, and giga using exact powers of ten. Includes a quick reference table sourced from NIST SP 330.',
       keywords: [
@@ -683,7 +683,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Analysts translating on-chain volume into fiat currency for reporting.',
     ],
     seo: {
-      title: 'Bitcoin Unit Converter (BTC ⇄ sat) | SwapUnits',
+      title: 'Bitcoin Unit Converter (BTC ⇄ sat)',
       description:
         'Convert between bitcoin, satoshis, and sub-units like mBTC. Learn practical tips for pricing, reporting, and Lightning Network payments.',
       keywords: [
@@ -731,7 +731,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Engineers needing a simple FX reference without running a trading terminal.',
     ],
     seo: {
-      title: 'FX Converter (ECB/Frankfurter) | SwapUnits',
+      title: 'FX Converter (ECB/Frankfurter)',
       description:
         'Convert between USD, EUR, GBP, AUD, CAD, and more using daily ECB reference rates via the open Frankfurter API. No keys required.',
       keywords: [

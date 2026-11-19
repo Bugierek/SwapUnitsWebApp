@@ -59,7 +59,6 @@ const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;
 const LETTER_REGEX = /[a-zA-Z°µμ]/;
 const INITIAL_VISIBLE_ITEMS = 50;
 const LOAD_INCREMENT = 50;
-const CONNECTOR_TERMS = new Set(['to', 'in', 'into']);
 
 function normalizeInput(value: string): string {
   const withArrowsNormalized = value.replace(/(->|=>|→)/gi, ' to ');
@@ -163,7 +162,7 @@ export function ConversionCombobox({
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const listContainerRef = React.useRef<HTMLDivElement | null>(null);
+  const listContainerRef = React.useRef<HTMLUListElement | null>(null);
   const scrollTickingRef = React.useRef(false);
   const listId = React.useId();
   const generatedInputId = React.useId();
@@ -570,7 +569,7 @@ export function ConversionCombobox({
   }, [sortedItems.length]);
 
   const handleScroll = React.useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
+    (event: React.UIEvent<HTMLUListElement>) => {
       if (!hasMoreItems) return;
       if (scrollTickingRef.current) return;
       const target = event.currentTarget;
@@ -722,15 +721,6 @@ export function ConversionCombobox({
     setHighlightedIndex(0);
   }, [displayItems, open]);
 
-  const shouldAttemptParsing = React.useCallback(
-    (query: string) => {
-      if (!query) return false;
-      const sanitized = query.replace(CONNECTOR_TOKEN_REGEX, ' ');
-      return LETTER_REGEX.test(sanitized);
-    },
-    [],
-  );
-
   React.useEffect(() => {
     if (!open) {
       setAutoHighlightedValue(null);
@@ -745,7 +735,7 @@ export function ConversionCombobox({
 
   React.useEffect(() => {
     if (!open || highlightedIndex < 0) return;
-    const option = containerRef.current?.querySelector<HTMLButtonElement>(
+    const option = containerRef.current?.querySelector<HTMLElement>(
       `[data-option-index="${highlightedIndex}"]`,
     );
     option?.scrollIntoView({ block: 'nearest' });
@@ -834,6 +824,16 @@ export function ConversionCombobox({
         return;
       }
 
+      // Options aren't focusable (focus stays here via aria-activedescendant), so Tab leaves the
+      // finder; close the popup like Escape so it doesn't stay open over the next fields.
+      if (event.key === 'Tab') {
+        if (open) {
+          setCommittedInput(rawValue || committedInput);
+          closeDropdown();
+        }
+        return;
+      }
+
       if (event.key === 'Enter') {
         const hasHighlight =
           highlightedIndex >= 0 && highlightedIndex < displayItems.length;
@@ -891,9 +891,15 @@ export function ConversionCombobox({
   );
 
 
+  // ARIA combobox pattern (APG "list autocomplete"): focus stays in the input, the highlighted
+  // option is exposed through aria-activedescendant and marked aria-selected. The popup only
+  // counts as an expanded listbox while it actually renders options, so aria-controls never
+  // points at a missing element ("No conversion found." is announced as a status instead).
+  const optionId = (index: number) => `${listId}-option-${index}`;
+  const isListboxShown = open && displayItems.length > 0;
   const activeDescendant =
-    highlightedIndex >= 0 && highlightedIndex < displayItems.length
-      ? `conversion-option-${highlightedIndex}`
+    isListboxShown && highlightedIndex >= 0 && highlightedIndex < displayItems.length
+      ? optionId(highlightedIndex)
       : undefined;
 
   return (
@@ -932,10 +938,11 @@ export function ConversionCombobox({
             'h-11 w-full rounded-xl border border-border/60 bg-[hsl(var(--control-background))] px-3 text-sm font-medium text-foreground placeholder:text-muted-foreground focus-visible:border-primary/60 focus-visible:ring-2 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60',
             prefixIcon ? 'pl-9' : '',
           )}
+          role="combobox"
           aria-autocomplete="list"
-          aria-expanded={open}
+          aria-expanded={isListboxShown}
           aria-haspopup="listbox"
-          aria-controls={open ? listId : undefined}
+          aria-controls={isListboxShown ? listId : undefined}
           aria-activedescendant={activeDescendant}
         />
       </div>
@@ -943,82 +950,90 @@ export function ConversionCombobox({
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-xl">
           {displayItems.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted-foreground">No conversion found.</p>
+            <p role="status" className="px-4 py-6 text-sm text-muted-foreground">No conversion found.</p>
           ) : (
-            <div
+            // The listbox scrolls itself (no wrapper div). Its options aren't focusable - arrow
+            // keys move aria-activedescendant and scrollIntoView follows - which is fine for the
+            // popup a combobox controls, but a plain scrolling wrapper would have no keyboard access.
+            <ul
               ref={listContainerRef}
-              className="max-h-80 overflow-y-auto"
+              id={listId}
+              className="max-h-80 divide-y divide-border/60 overflow-y-auto"
               onScroll={handleScroll}
-              role="presentation"
+              role="listbox"
+              aria-label="Conversion results"
             >
-              <ul
-                id={listId}
-                className="divide-y divide-border/60"
-                role="listbox"
-                aria-label="Conversion results"
-              >
-                {displayItems.map((item, index) => {
-                  const isHighlighted = highlightedIndex === index;
-                  const isSelected = value === item.value;
+              {displayItems.map((item, index) => {
+                const isHighlighted = highlightedIndex === index;
+                const isSelected = value === item.value;
 
-                  return (
-                    <li key={item.value}>
-                      <button
-                        type="button"
-                        id={`conversion-option-${index}`}
-                        data-option-index={index}
-                        className={cn(
-                          'flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition focus:outline-none',
-                          isHighlighted ? 'bg-primary/10 text-foreground' : 'hover:bg-primary/10',
-                        )}
-                        onMouseEnter={() => {
-                          setAutoHighlightedValue(null);
-                          setHighlightedIndex(index);
-                        }}
-                        onClick={() => handleSelect(item.value)}
-                        role="option"
-                        aria-selected={isSelected}
+                return (
+                  // The row is a presentational wrapper so the reference link can sit next to
+                  // the option rather than inside it (options can't contain interactive content).
+                  // The link is a mouse shortcut, hidden from assistive tech and the tab order;
+                  // keyboard and screen reader users reach the same page via the converter's
+                  // "Details" link after selecting.
+                  <li
+                    key={item.value}
+                    role="presentation"
+                    data-option-index={index}
+                    className={cn(
+                      'flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm transition',
+                      isHighlighted ? 'bg-primary/10 text-foreground' : 'hover:bg-primary/10',
+                    )}
+                    onMouseEnter={() => {
+                      setAutoHighlightedValue(null);
+                      setHighlightedIndex(index);
+                    }}
+                    onClick={() => handleSelect(item.value)}
+                  >
+                    <div
+                      id={optionId(index)}
+                      role="option"
+                      aria-selected={isHighlighted}
+                      className="flex min-w-0 items-center gap-3"
+                    >
+                      {item.kind === 'si-prefix' ? (
+                        <ArrowLeftRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+                      ) : (
+                        <UnitIcon
+                          category={item.category as UnitCategory}
+                          className="h-4 w-4 flex-shrink-0 text-muted-foreground"
+                          aria-hidden="true"
+                        />
+                      )}
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium text-foreground">
+                          {item.label}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {item.fromName} → {item.toName} · {item.categoryLabel}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                      <Link
+                        href={item.pairUrl}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/70 hover:text-primary"
+                        aria-label={`Open ${item.fromName} to ${item.toName} reference`}
+                        aria-hidden="true"
+                        tabIndex={-1}
+                        onClick={() => closeDropdown()}
                       >
-                        {item.kind === 'si-prefix' ? (
-                          <ArrowLeftRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
-                        ) : (
-                          <UnitIcon
-                            category={item.category as UnitCategory}
-                            className="h-4 w-4 flex-shrink-0 text-muted-foreground"
-                            aria-hidden="true"
-                          />
+                        <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                      </Link>
+                      <Check
+                        className={cn(
+                          'h-4 w-4 text-primary transition-opacity',
+                          isSelected ? 'opacity-100' : 'opacity-0',
                         )}
-                        <div className="flex min-w-0 flex-col">
-                          <span className="truncate font-medium text-foreground">
-                            {item.label}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {item.fromName} → {item.toName} · {item.categoryLabel}
-                          </span>
-                        </div>
-                        <div className="ml-auto flex items-center gap-2">
-                          <Link
-                            href={item.pairUrl}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition hover:border-primary/70 hover:text-primary"
-                            aria-label={`Open ${item.fromName} to ${item.toName} reference`}
-                            onClick={() => closeDropdown()}
-                          >
-                            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                          </Link>
-                          <Check
-                            className={cn(
-                              'h-4 w-4 text-primary transition-opacity',
-                              isSelected ? 'opacity-100' : 'opacity-0',
-                            )}
-                            aria-hidden="true"
-                          />
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       )}

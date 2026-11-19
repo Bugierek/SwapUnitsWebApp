@@ -1,6 +1,11 @@
-import { getCategorySlug, categoryInfoList } from '@/lib/category-info';
+import {
+  getCategorySlug,
+  getCategoryInfoBySlug,
+  categoryInfoList,
+  type CategoryInfo,
+} from '@/lib/category-info';
 import { unitData } from '@/lib/unit-data';
-import type { UnitCategory } from '@/types';
+import type { Unit, UnitCategory } from '@/types';
 
 const delimiter = '-to-';
 
@@ -26,26 +31,112 @@ const denormalizeUnitFromSlug = (slugUnit: string): string => {
 };
 
 const encodeUnit = (unit: string): string => normalizeUnitForSlug(unit);
-const decodeUnit = (value: string): string => denormalizeUnitFromSlug(value);
 
 export const buildConversionPairSlug = (fromSymbol: string, toSymbol: string): string =>
   `${encodeUnit(fromSymbol)}${delimiter}${encodeUnit(toSymbol)}`;
 
-export const parseConversionPairSlug = (
-  slug: string,
-): { fromSymbol: string; toSymbol: string } | null => {
-  const parts = slug.split(delimiter);
-  if (parts.length !== 2) return null;
+const safeDecodeURIComponent = (value: string): string | null => {
   try {
-    const fromPart = decodeURIComponent(parts[0]);
-    const toPart = decodeURIComponent(parts[1]);
-    return {
-      fromSymbol: decodeUnit(fromPart),
-      toSymbol: decodeUnit(toPart),
-    };
+    return decodeURIComponent(value);
   } catch {
     return null;
   }
+};
+
+const splitPairSlug = (slug: string): [string, string] | null => {
+  const exact = slug.split(delimiter);
+  if (exact.length === 2) return [exact[0], exact[1]];
+  const loose = slug.split(/-to-/i);
+  if (loose.length === 2) return [loose[0], loose[1]];
+  return null;
+};
+
+// Matches one side of a pair slug to a unit. Exact matches are tried before any
+// case-insensitive or normalized match, so a canonical slug always resolves to the unit it
+// was built from, even if two symbols in a category ever differ only by case (SI Prefixes do,
+// e.g. m/M, but they have no pair pages).
+const matchUnitFromSlugPart = (units: Unit[], part: string): Unit | undefined => {
+  const denormalized = denormalizeUnitFromSlug(part);
+  const slugLower = part.toLowerCase();
+  const normalizedLower = normalizeUnitForSlug(denormalized).toLowerCase();
+  const matchers: Array<(unit: Unit) => boolean> = [
+    (unit) => encodeUnit(unit.symbol) === part,
+    (unit) => unit.symbol === part,
+    (unit) => unit.symbol === denormalized,
+    (unit) => encodeUnit(unit.symbol).toLowerCase() === slugLower,
+    (unit) => unit.symbol.toLowerCase() === denormalized.toLowerCase(),
+    (unit) => normalizeUnitForSlug(unit.symbol).toLowerCase() === normalizedLower,
+  ];
+  for (const matches of matchers) {
+    const found = units.find(matches);
+    if (found) return found;
+  }
+  return undefined;
+};
+
+export type ResolvedConversionPair = {
+  fromUnit: Unit;
+  toUnit: Unit;
+  /** The slug `generateStaticParams`/the sitemap use for this pair, e.g. "degC-to-degF". */
+  canonicalSlug: string;
+  /** True when the requested slug (after URL-decoding) is already the canonical one. */
+  isCanonical: boolean;
+};
+
+/**
+ * Resolves a requested pair slug (possibly lowercase, URL-encoded or using raw symbols such as
+ * "µm") to unit data and the canonical slug. Returns null when either side doesn't match a unit.
+ */
+export const resolveConversionPairSlug = (
+  category: UnitCategory,
+  pairSlug: string,
+): ResolvedConversionPair | null => {
+  const decoded = safeDecodeURIComponent(pairSlug);
+  if (decoded === null) return null;
+  const parts = splitPairSlug(decoded);
+  if (!parts) return null;
+
+  const units = unitData[category]?.units ?? [];
+  const fromUnit = matchUnitFromSlugPart(units, parts[0]);
+  const toUnit = matchUnitFromSlugPart(units, parts[1]);
+  if (!fromUnit || !toUnit) return null;
+
+  const canonicalSlug = buildConversionPairSlug(fromUnit.symbol, toUnit.symbol);
+  return {
+    fromUnit,
+    toUnit,
+    canonicalSlug,
+    isCanonical: decoded === canonicalSlug,
+  };
+};
+
+export type ResolvedConversionPairPage = ResolvedConversionPair & {
+  categoryInfo: CategoryInfo;
+  /** e.g. "/conversions/temperature-conversion/degC-to-degF" */
+  canonicalPath: string;
+};
+
+/**
+ * Resolves the two dynamic segments of a pair page URL. Returns null for unknown categories,
+ * SI Prefixes (no pair pages) and slugs that don't match two units of the category.
+ */
+export const resolveConversionPairPage = (
+  categorySlug: string,
+  pairSlug: string,
+): ResolvedConversionPairPage | null => {
+  const categoryInfo = getCategoryInfoBySlug(categorySlug);
+  if (!categoryInfo || categoryInfo.category === 'SI Prefixes') {
+    return null;
+  }
+  const pair = resolveConversionPairSlug(categoryInfo.category, pairSlug);
+  if (!pair) {
+    return null;
+  }
+  return {
+    ...pair,
+    categoryInfo,
+    canonicalPath: `/conversions/${categoryInfo.slug}/${pair.canonicalSlug}`,
+  };
 };
 
 export const buildConversionPairUrl = (

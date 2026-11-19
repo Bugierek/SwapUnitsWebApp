@@ -2,10 +2,12 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(request: Request) {
   try {
+    // Created per request, not at module scope: `new Resend()` throws without an API key, which
+    // made `next build` fail (page-data collection imports this module) on any machine without
+    // RESEND_API_KEY set. The key is still required at request time to actually send.
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const { category, fromUnit, toUnit, additionalNotes } = await request.json();
 
     // In development, use the resend.dev domain for testing

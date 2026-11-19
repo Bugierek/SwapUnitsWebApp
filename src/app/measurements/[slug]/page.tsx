@@ -33,7 +33,7 @@ type CategoryPageParams = {
 };
 
 type CategoryPageProps = {
-  params: CategoryPageParams | Promise<CategoryPageParams>;
+  params: Promise<CategoryPageParams>;
 };
 
 const ratioFriendlyCategories: UnitCategory[] = [
@@ -93,7 +93,8 @@ const convertValue = (
 };
 
 export function generateStaticParams(): Array<{ slug: string }> {
-  return categoryInfoList.map((info) => ({ slug: info.slug }));
+  // Skip full-path slugs (SI Prefixes -> "standards/nist-si-tenfold"), which have their own route.
+  return categoryInfoList.filter((info) => !info.slug.includes('/')).map((info) => ({ slug: info.slug }));
 }
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
@@ -102,16 +103,28 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   if (!info) {
     return {};
   }
+  // The root layout's title template appends "| SwapUnits" to `title`, but not to the
+  // openGraph/twitter titles, so those carry the brand explicitly.
+  const socialTitle = `${info.seo.title} | SwapUnits`;
+  const canonicalPath = `/measurements/${info.slug}`;
   return {
     title: info.seo.title,
     description: info.seo.description,
     alternates: {
-      canonical: `/measurements/${info.slug}`,
+      canonical: canonicalPath,
     },
     openGraph: {
-      title: info.seo.title,
+      title: socialTitle,
       description: info.seo.description,
       type: 'article',
+      url: canonicalPath,
+      siteName: 'SwapUnits',
+    },
+    // Without this, the layout's homepage twitter title/description apply to every category page.
+    twitter: {
+      card: 'summary_large_image',
+      title: socialTitle,
+      description: info.seo.description,
     },
   };
 }
@@ -157,7 +170,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <ol className="flex items-center gap-2">
           <li>
-            <Link href="/" className="transition hover:text-primary">
+            <Link href="/" className="transition hover:text-primary-text">
               Home
             </Link>
           </li>
@@ -170,7 +183,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
       <section className="space-y-6 rounded-3xl border border-border/60 bg-card px-6 py-8 shadow-lg">
         <div className="space-y-3">
-          <Badge variant="outline" className="rounded-full border-border/60 bg-primary/5 px-3 py-1 text-[0.7rem] font-semibold tracking-[0.25em] text-primary">
+          <Badge variant="outline" className="rounded-full border-border/60 bg-primary/5 px-3 py-1 text-[0.7rem] font-semibold tracking-[0.25em] text-primary-text">
             {info.heroTagline}
           </Badge>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
@@ -182,7 +195,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-5 py-4">
-            <p className="text-xs tracking-[0.2em] text-primary">Base unit</p>
+            <p className="text-xs tracking-[0.2em] text-primary-text">Base unit</p>
             <p className="mt-2 text-xl font-semibold text-foreground">
               {baseUnit?.name ?? '—'}{' '}
               {baseUnit?.symbol && (
@@ -191,18 +204,18 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             </p>
           </div>
           <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-5 py-4">
-            <p className="text-xs tracking-[0.2em] text-primary">Units covered</p>
+            <p className="text-xs tracking-[0.2em] text-primary-text">Units covered</p>
             <p className="mt-2 text-xl font-semibold text-foreground">{units.length}</p>
           </div>
           <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-5 py-4">
-            <p className="text-xs tracking-[0.2em] text-primary">Popular conversions</p>
+            <p className="text-xs tracking-[0.2em] text-primary-text">Popular conversions</p>
             <p className="mt-2 text-xl font-semibold text-foreground">{topPresets.length}</p>
           </div>
           <div className="rounded-2xl border border-dashed border-primary/40 bg-primary/5 px-5 py-4">
-            <p className="text-xs tracking-[0.2em] text-primary">Ready to convert</p>
+            <p className="text-xs tracking-[0.2em] text-primary-text">Ready to convert</p>
             <Link
               href="/#converter"
-              className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-primary transition hover:text-primary/80"
+              className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-primary-text transition hover:text-primary-text/80"
             >
               Open live converter
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -230,7 +243,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                 This converter is focused on {info.title.toLowerCase()} only. Pick any units in this category and get results immediately.
               </p>
             </div>
-            <Link href="/#converter" className="text-sm font-semibold text-primary transition hover:text-primary/80">
+            <Link href="/#converter" className="text-sm font-semibold text-primary-text transition hover:text-primary-text/80">
               Open full converter
             </Link>
           </div>
@@ -249,7 +262,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:text-primary"
+          className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:text-primary-text"
         >
           Back to main converter
         </Link>
@@ -281,7 +294,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                 <span className="text-xs text-muted-foreground">
                   {pair.from.name} to {pair.to.name}
                 </span>
-                <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.25em] text-primary transition group-hover:text-primary/80">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.25em] text-primary-text transition group-hover:text-primary-text/80">
                   View details
                   <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
                 </span>

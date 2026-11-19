@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Copy, Check, Info, Calculator } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 
@@ -13,6 +14,13 @@ import { convertNumericValue } from '@/lib/conversion-math';
 import { type CurrencyCode, type FxRatesResponse } from '@/lib/fx';
 import { getUnitsForCategory } from '@/lib/unit-data';
 import { getConversionSources } from '@/lib/conversion-sources';
+import { buildConversionPairUrl } from '@/lib/conversion-pairs';
+import {
+  buildConversionFormula,
+  formatFxDateLabel,
+  formatSignificant,
+  getConversionRelation,
+} from '@/lib/conversion-formula';
 import { useToast } from '@/hooks/use-toast';
 import SimpleCalculator from '@/components/simple-calculator';
 import {
@@ -31,10 +39,13 @@ interface PairConverterProps {
   category: UnitCategory;
   fromUnit: { symbol: string; name: string };
   toUnit: { symbol: string; name: string };
-  initialValue?: number;
-  initialFxDate?: Date | null;
-  initialFxMode?: 'latest' | 'historical';
-  baseMultiplier?: number | null;
+  /**
+   * Latest FX rates already fetched on the server. Used as the initial rates, so the server HTML
+   * shows the converted value. ?fxMode=historical&fxDate=... switches to that date after hydration.
+   */
+  initialFxRates?: FxRatesResponse | null;
+  /** Date.now() when the server rendered initialFxRates; older than FX_RATES_MAX_AGE_MS -> refetch. */
+  initialFxRatesRenderedAt?: number | null;
   onCopyResult?: (payload: {
     category: UnitCategory;
     fromValue: number;
@@ -43,6 +54,49 @@ interface PairConverterProps {
     toUnit: string;
     meta?: ConversionHistoryMeta;
   }) => void;
+}
+
+const toDateKey = (date: Date): string => date.toISOString().split('T')[0];
+
+// Server-rendered rates older than this are refetched after hydration. Matches the pair page's
+// ISR revalidate (fetchFxRates' next.revalidate).
+const FX_RATES_MAX_AGE_MS = 60 * 60 * 1000;
+
+// Decimals for a currency result. Rounded: 4, like other units, but at least 4 significant digits.
+// Full: 8 plus the input-precision boost (as formatConversionValue does), but at least 10 significant
+// digits. Capped at formatConversionValue's 12-decimal limit.
+const currencyFractionDigits = (
+  value: number | null,
+  mode: PrecisionMode,
+  precisionBoost: number,
+): number => {
+  const baseDigits = mode === 'full' ? 8 + Math.min(Math.max(Math.floor(precisionBoost), 0), 4) : 4;
+  if (value === null || !Number.isFinite(value) || value === 0) return baseDigits;
+  const significantDigits = mode === 'full' ? 10 : 4;
+  const magnitude = Math.floor(Math.log10(Math.abs(value)));
+  return Math.min(12, Math.max(baseDigits, significantDigits - 1 - magnitude));
+};
+
+type PairQuery = { value: string | null; fxMode: string | null; fxDate: string | null };
+
+// Hands the page's ?value=, ?fxMode= and ?fxDate= to PairConverter after hydration and again when
+// a client-side navigation changes them. The page is pre-rendered without search params, so they
+// can only be applied in the browser. Under the page's force-static, useSearchParams() doesn't
+// bail out of static rendering; the Suspense boundary around this component keeps any bailout
+// confined to it (it renders nothing) if that ever changes.
+function PairQueryParams({ onChange }: { onChange: (query: PairQuery) => void }) {
+  const searchParams = useSearchParams();
+  const value = searchParams.get('value');
+  const fxMode = searchParams.get('fxMode');
+  const fxDate = searchParams.get('fxDate');
+  const onChangeRef = React.useRef(onChange);
+  React.useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+  React.useEffect(() => {
+    onChangeRef.current({ value, fxMode, fxDate });
+  }, [value, fxMode, fxDate]);
+  return null;
 }
 
 export interface PairConverterHandle {
@@ -55,34 +109,29 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     category,
     fromUnit,
     toUnit,
-    initialValue = 1,
-    initialFxDate = null,
-    initialFxMode = 'latest',
-    baseMultiplier = null,
+    initialFxRates = null,
+    initialFxRatesRenderedAt = null,
     onCopyResult,
   }: PairConverterProps,
   ref,
 ) {
   const [isSwapped, setIsSwapped] = React.useState(false);
-  const [inputValue, setInputValue] = React.useState<string>(String(initialValue));
+  // The page is static HTML, so it always renders 1; ?value= is applied after hydration.
+  const [inputValue, setInputValue] = React.useState<string>('1');
   const [copyState, setCopyState] = React.useState<'idle' | 'success'>('idle');
   const [precisionMode, setPrecisionMode] = React.useState<PrecisionMode>('rounded');
-  const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(null);
+  const todayKey = React.useMemo(() => toDateKey(new Date()), []);
+  const hasUsableInitialFxRates = category === 'Currency' && Boolean(initialFxRates);
+  const [fxRates, setFxRates] = React.useState<FxRatesResponse | null>(
+    hasUsableInitialFxRates ? initialFxRates : null,
+  );
   const [fxError, setFxError] = React.useState<string | null>(null);
   const [isFetchingFx, setIsFetchingFx] = React.useState(false);
-  const fxLastRequestedKeyRef = React.useRef<string | null>(null);
-  const todayKey = React.useMemo(() => new Date().toISOString().split('T')[0], []);
-  const initialHistorical = React.useMemo(() => {
-    if (initialFxMode === 'historical' && initialFxDate) {
-      return initialFxDate.toISOString().split('T')[0] !== todayKey;
-    }
-    return false;
-  }, [initialFxDate, initialFxMode, todayKey]);
-  const [selectedFxDate, setSelectedFxDate] = React.useState<Date | undefined>(
-    initialHistorical && initialFxDate ? initialFxDate : undefined,
-  );
-  const [isHistoricalMode, setIsHistoricalMode] = React.useState(initialHistorical);
-  const fxDateInputRef = React.useRef<HTMLInputElement | null>(null);
+  // The FX request in flight, if any. `key` is 'latest' or a historical 'YYYY-MM-DD'.
+  const fxRequestRef = React.useRef<{ id: number; key: string } | null>(null);
+  const fxRequestCounterRef = React.useRef(0);
+  const [selectedFxDate, setSelectedFxDate] = React.useState<Date | undefined>(undefined);
+  const [isHistoricalMode, setIsHistoricalMode] = React.useState(false);
   const isFullPrecision = precisionMode === 'full';
   const [isCalculatorOpen, setIsCalculatorOpen] = React.useState(false);
   const [fromFieldFocused, setFromFieldFocused] = React.useState(false);
@@ -102,14 +151,18 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   }, [inputValue]);
 
   const formatValue = React.useCallback(
-    (value: number | null, extraOptions?: FormatConversionValueOptions): FormattedConversionValue =>
-      formatConversionValue(value, { 
-        precisionBoost, 
-        precisionMode, 
-        // Force normal (non-scientific) formatting for currency
-        forceScientific: category === 'Currency' ? false : extraOptions?.forceScientific,
-        ...extraOptions 
-      }),
+    (value: number | null, extraOptions?: FormatConversionValueOptions): FormattedConversionValue => {
+      if (category === 'Currency') {
+        // Never scientific for currency. Fixed decimals alone would round small amounts to 0
+        // (1 IDR = 0.0000513 EUR), so also keep at least 4 significant digits (10 in full precision).
+        return formatConversionValue(value, {
+          ...extraOptions,
+          forceScientific: false,
+          maxFractionDigits: currencyFractionDigits(value, precisionMode, precisionBoost),
+        });
+      }
+      return formatConversionValue(value, { precisionBoost, precisionMode, ...extraOptions });
+    },
     [precisionBoost, precisionMode, category],
   );
 
@@ -135,17 +188,19 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     );
   }, [category, activeFrom.symbol, activeTo.symbol, parsedInput, fxRates]);
 
-  const multiplier = React.useMemo(() => {
-    if (baseMultiplier === null || !Number.isFinite(baseMultiplier)) {
-      return null;
-    }
-    if (isSwapped) {
-      if (baseMultiplier === 0) return null;
-      return 1 / baseMultiplier;
-    }
-    return baseMultiplier;
-  }, [baseMultiplier, isSwapped]);
-
+  // proportional / temperature / reciprocal / currency, shared with the page's title and table hint.
+  const relation = React.useMemo(
+    () =>
+      getConversionRelation(
+        category,
+        activeFrom.symbol,
+        activeTo.symbol,
+        category === 'Currency' && fxRates
+          ? { base: fxRates.base as CurrencyCode, rates: fxRates.rates }
+          : null,
+      ),
+    [category, activeFrom.symbol, activeTo.symbol, fxRates],
+  );
 
   const handlePrecisionToggle = React.useCallback(() => {
     setPrecisionMode((prev) => (prev === 'rounded' ? 'full' : 'rounded'));
@@ -157,7 +212,9 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
   const precisionToggleDisabled = formattedResult?.usedScientificNotation ?? false;
   const precisionTooltip = isFullPrecision
     ? 'Full precision shows more decimal places using the exact unit factors from our standards-backed database (NIST Guide to SI, ASTM, IEC, etc.).'
-    : 'Rounded results show up to four digits after the decimal for readability. Switch to full precision to inspect the raw calculation.';
+    : category === 'Currency'
+      ? 'Rounded results show up to four digits after the decimal, and at least four significant digits for small amounts, for readability. Switch to full precision to inspect the raw calculation.'
+      : 'Rounded results show up to four digits after the decimal for readability. Switch to full precision to inspect the raw calculation.';
 
   const { toast } = useToast();
 
@@ -187,23 +244,23 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     }
   }, [parsedInput, result, formattedResult, activeTo.symbol, activeFrom.symbol, category, onCopyResult, toast, fxRates, isHistoricalMode]);
 
-  const fetchPairFxRates = React.useCallback((date?: Date, force = false) => {
-    if (isFetchingFx) return;
-    const targetKey = date ? date.toISOString().split('T')[0] : '';
-    const currentKey = fxRates?.date ?? '';
-
-    // Skip refetching if we already have the same date and not forced
-    if (!force && fxRates) {
-      if (!date && currentKey === todayKey) return;
-      if (date && currentKey === targetKey) return;
-    }
+  // Loads latest rates (no date) or the rates for a historical date. Callers decide when a fetch
+  // is needed. A request for the target already in flight is not repeated (the query params, the
+  // chart and the mount effect can ask for the same rates in one commit, which used to send two
+  // identical requests), and a response is dropped once a newer request has started, so the last
+  // date picked always wins.
+  const fetchPairFxRates = React.useCallback((date?: Date) => {
+    const targetKey = date ? toDateKey(date) : '';
+    const isHistoricalTarget = Boolean(date) && targetKey !== todayKey;
+    const requestKey = isHistoricalTarget ? targetKey : 'latest';
+    if (fxRequestRef.current?.key === requestKey) return;
+    const requestId = ++fxRequestCounterRef.current;
+    fxRequestRef.current = { id: requestId, key: requestKey };
+    const isCurrentRequest = () => fxRequestRef.current?.id === requestId;
 
     setIsFetchingFx(true);
     setFxError(null);
-
-    const isHistoricalTarget = Boolean(date) && targetKey !== todayKey;
-    fxLastRequestedKeyRef.current = targetKey || todayKey;
-    setSelectedFxDate(isHistoricalTarget ? date ?? undefined : undefined);
+    setSelectedFxDate(isHistoricalTarget ? date : undefined);
     setIsHistoricalMode(isHistoricalTarget);
 
     const currencyUnits = getUnitsForCategory('Currency').map((unit) => unit.symbol);
@@ -218,19 +275,25 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
       .then(async (res) => {
         if (!res.ok) throw new Error(`FX fetch failed: ${res.status}`);
         const data = (await res.json()) as FxRatesResponse;
+        if (!isCurrentRequest()) return;
         setFxRates(data);
         const responseKey = data.date ?? '';
-        const isHist = Boolean(date) && responseKey !== todayKey;
+        const isHist = isHistoricalTarget && responseKey !== todayKey;
         const responseDate = responseKey ? new Date(`${responseKey}T00:00:00Z`) : undefined;
         setSelectedFxDate(isHist ? responseDate ?? date ?? undefined : undefined);
         setIsHistoricalMode(isHist);
       })
       .catch((error) => {
+        if (!isCurrentRequest()) return;
         console.error('FX fetch error (pair page):', error);
         setFxError('Live FX rates unavailable');
       })
-      .finally(() => setIsFetchingFx(false));
-  }, [fxRates, isFetchingFx, todayKey]);
+      .finally(() => {
+        if (!isCurrentRequest()) return;
+        fxRequestRef.current = null;
+        setIsFetchingFx(false);
+      });
+  }, [todayKey]);
 
   // Ensure currency formula/result renders once rates arrive without needing a swap.
   React.useEffect(() => {
@@ -241,37 +304,10 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     setInputValue((prev) => prev); // no-op to ensure downstream memo runs with latest fxRates
   }, [category, fxRates, parsedInput]);
 
-  // Drive FX fetch based on selected date / latest
-  React.useEffect(() => {
-    if (category !== 'Currency') return;
-    if (isFetchingFx) return;
-    const targetKey = selectedFxDate ? selectedFxDate.toISOString().split('T')[0] : '';
-    const currentKey = fxRates?.date ?? '';
-    if (selectedFxDate) {
-      if (fxRates && currentKey === targetKey) return;
-      fetchPairFxRates(selectedFxDate, true);
-    } else if (!fxRates) {
-      fetchPairFxRates();
-    } else {
-      const hasFrom =
-        activeFrom.symbol === fxRates.base ||
-        fxRates.rates[activeFrom.symbol as CurrencyCode] !== undefined;
-      const hasTo =
-        activeTo.symbol === fxRates.base ||
-        fxRates.rates[activeTo.symbol as CurrencyCode] !== undefined;
-      if (!hasFrom || !hasTo) {
-        fetchPairFxRates(undefined, true);
-      }
-    }
-  }, [category, selectedFxDate, fxRates, fetchPairFxRates, isFetchingFx, activeFrom.symbol, activeTo.symbol]);
-
   const fxRateDateMessage = React.useMemo<React.ReactNode>(() => {
     if (category !== 'Currency' || !fxRates) return '';
-    const dateLabel = new Date(`${fxRates.date}T00:00:00Z`).toLocaleDateString(undefined, {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    // Fixed locale + UTC: this now renders on the server too, so it must match on hydration.
+    const dateLabel = formatFxDateLabel(fxRates.date);
     const usingHistorical = isHistoricalMode;
     return usingHistorical ? (
       <>
@@ -303,16 +339,52 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     };
   }, []);
 
-  // If arriving with an initial FX context, fetch accordingly once
+  // Latest rates rendered on the server come from the same hourly-cached source /api/fx uses, so
+  // they're kept as-is (no refetch or "Updating rates…" flash after hydration) unless the HTML is
+  // older than the revalidate window: ISR serves a stale page once before regenerating it, and a
+  // cold-started server begins with the build-time HTML. Without server rates, fetch them now.
+  // PairQueryParams sits in its own Suspense boundary, so its effect may run before or after this
+  // one. Either order works: if it already requested historical rates, nothing is fetched here,
+  // and a historical request started later makes fetchPairFxRates ignore this latest response.
   React.useEffect(() => {
-    if (category !== 'Currency') return;
-    if (initialFxMode === 'historical' && initialFxDate && initialFxDate.toISOString().split('T')[0] !== todayKey) {
-      fetchPairFxRates(initialFxDate, true);
-    } else {
+    if (category !== 'Currency' || fxRequestRef.current) return;
+    const isStale =
+      initialFxRatesRenderedAt === null || Date.now() - initialFxRatesRenderedAt > FX_RATES_MAX_AGE_MS;
+    if (!hasUsableInitialFxRates || isStale) {
       fetchPairFxRates();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category]);
+
+  // ?value= sets the amount in the page's "from" unit. ?fxMode=historical&fxDate=YYYY-MM-DD loads
+  // that date's rates; without it, a page left in historical mode by an earlier query (a
+  // client-side navigation to the same pair) goes back to latest rates.
+  const applyQueryParams = React.useCallback(
+    ({ value, fxMode, fxDate }: PairQuery) => {
+      const trimmedValue = value?.trim() ?? '';
+      const numericValue = trimmedValue === '' ? NaN : Number(trimmedValue);
+      if (Number.isFinite(numericValue)) {
+        setIsSwapped(false);
+        setInputValue(String(numericValue));
+      }
+
+      if (category !== 'Currency') return;
+      const historicalDate =
+        fxMode === 'historical' && fxDate && /^\d{4}-\d{2}-\d{2}$/.test(fxDate)
+          ? new Date(`${fxDate}T00:00:00Z`)
+          : null;
+      if (historicalDate && !Number.isNaN(historicalDate.getTime()) && toDateKey(historicalDate) !== todayKey) {
+        // Clear the latest rates so the converter shows "Loading" instead of the latest result
+        // labelled as historical while the request is in flight.
+        setFxRates(null);
+        fetchPairFxRates(historicalDate);
+      } else if (isHistoricalMode) {
+        setFxRates(null);
+        fetchPairFxRates();
+      }
+    },
+    [category, fetchPairFxRates, isHistoricalMode, todayKey],
+  );
 
   const handleCalculatorValueSent = React.useCallback((valueFromCalculator: string) => {
     const numericValue = parseFloat(valueFromCalculator);
@@ -349,154 +421,90 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
     setValueForUnit,
   }), [applyHistorySelect, setValueForUnit]);
 
-  const resolveCurrencyPairRate = React.useCallback((): number | null => {
-    if (category !== 'Currency') return null;
-    if (!fxRates) return null;
+  // 1 activeFrom = currencyRate activeTo (null until rates for both currencies are loaded).
+  const currencyRate = relation?.kind === 'currency' ? relation.rate : null;
+  // FX rates use significant digits (6 rounded, 10 full) rather than fixed decimals, so small
+  // cross rates such as IDR -> EUR don't collapse to 0.0001.
+  const formatRate = React.useCallback(
+    (rate: number) => formatSignificant(rate, isFullPrecision ? 10 : 6),
+    [isFullPrecision],
+  );
 
-    const base = fxRates.base as CurrencyCode;
-    const getRate = (symbol: string): number | null => {
-      if (symbol === base) return 1;
-      const rate = fxRates.rates[symbol as CurrencyCode];
-      return typeof rate === 'number' ? rate : null;
-    };
-
-    const from = activeFrom.symbol;
-    const to = activeTo.symbol;
-    if (from === to) return 1;
-
-    const fromRate = getRate(from);
-    const toRate = getRate(to);
-    if (!fromRate || !toRate) return null;
-    if (from === base) return toRate;
-    if (to === base) return 1 / fromRate;
-    return toRate / fromRate;
-  }, [category, fxRates, activeFrom.symbol, activeTo.symbol]);
-
+  // "lb = kg × 2.2046", "°F = °C × 9/5 + 32", "mi/kWh = 100 ÷ (kWh/100mi)" - built by the same
+  // helper the page uses for its title and table hint.
   const generalFormula = React.useMemo(() => {
     if (category === 'Currency') {
-      const derivedRate =
-        resolveCurrencyPairRate() ??
-        (parsedInput !== null && parsedInput !== 0 && result !== null ? result / parsedInput : null);
-
-      if (!fxRates && derivedRate === null) {
-        return fxError ? 'Live FX rates unavailable' : 'Loading live FX rate…';
+      if (currencyRate === null) {
+        if (fxError) return 'Live FX rates unavailable';
+        return fxRates ? 'Awaiting live FX rate…' : 'Loading live FX rate…';
       }
-      if (derivedRate === null) return fxError ? 'Live FX rates unavailable' : 'Awaiting live FX rate…';
-
       const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
-      const formattedRate = formatValue(derivedRate, { precisionBoost: 0 }).formatted;
-      return `${activeTo.symbol} = ${activeFrom.symbol} × ${formattedRate}${dateNote}`;
+      return `${buildConversionFormula(relation, activeFrom.symbol, activeTo.symbol, formatRate)}${dateNote}`;
     }
 
-    // Temperature conversions
-    if (category === 'Temperature') {
-      if (activeFrom.symbol === '°C' && activeTo.symbol === '°F') {
-        return '°F = °C × 9/5 + 32';
-      } else if (activeFrom.symbol === '°F' && activeTo.symbol === '°C') {
-        return '°C = (°F - 32) × 5/9';
-      } else if (activeFrom.symbol === '°C' && activeTo.symbol === 'K') {
-        return 'K = °C + 273.15';
-      } else if (activeFrom.symbol === 'K' && activeTo.symbol === '°C') {
-        return '°C = K - 273.15';
-      } else if (activeFrom.symbol === '°F' && activeTo.symbol === 'K') {
-        return 'K = (°F - 32) × 5/9 + 273.15';
-      } else if (activeFrom.symbol === 'K' && activeTo.symbol === '°F') {
-        return '°F = (K - 273.15) × 9/5 + 32';
-      }
-    }
-
-    // Data Storage (uses 1024 instead of 1000)
-    if (category === 'Data Storage') {
-      if (multiplier && (
-        activeFrom.symbol === 'B' || activeFrom.symbol === 'KB' || 
-        activeFrom.symbol === 'MB' || activeFrom.symbol === 'GB' || 
-        activeFrom.symbol === 'TB'
-      )) {
-        const power = Math.log(multiplier) / Math.log(1024);
-        if (Number.isInteger(power)) {
-          return `${activeTo.symbol} = ${activeFrom.symbol} × 1024${power > 1 ? '^' + power : ''}`;
-        }
-      }
-    }
-
-    // Data Transfer Rate (handle bit/byte conversions)
-    if (category === 'Data Transfer Rate' && multiplier !== null) {
-      if (
-        (activeFrom.symbol.includes('bps') && activeTo.symbol.includes('/s')) ||
-        (activeFrom.symbol.includes('/s') && activeTo.symbol.includes('bps'))
-      ) {
-        const base = multiplier / 8;
-        if (base === 1) {
-          return `${activeTo.symbol} = ${activeFrom.symbol} × 8`;
-        } else if (base < 1) {
-        return `${activeTo.symbol} = ${activeFrom.symbol} ÷ ${formatValue(1 / base, { precisionBoost: 0 }).formatted}`;
-      } else {
-          return `${activeTo.symbol} = ${activeFrom.symbol} × ${formatValue(multiplier, { precisionBoost: 0 }).formatted}`;
-        }
-      }
-    }
-
-    // Fuel Economy (handle inverse relationships)
-    if (category === 'Fuel Economy' && multiplier !== null) {
-      if (
-        (activeFrom.symbol.includes('/100') && !activeTo.symbol.includes('/100')) ||
-        (!activeFrom.symbol.includes('/100') && activeTo.symbol.includes('/100'))
-      ) {
-        // For conversions between direct and inverse units
-        return `${activeTo.symbol} = 100 ÷ (${activeFrom.symbol} × ${formatValue(multiplier, { precisionBoost: 0 }).formatted})`;
-      }
-    }
-
-    // For regular unit conversions, show the exact formula
-    if (multiplier !== null) {
-      if (multiplier === 1) {
-        return `${activeTo.symbol} = ${activeFrom.symbol}`;
-      } else if (multiplier < 1) {
-        return `${activeTo.symbol} = ${activeFrom.symbol} ÷ ${formatValue(1 / multiplier, { precisionBoost: 0 }).formatted}`;
-      }
-      return `${activeTo.symbol} = ${activeFrom.symbol} × ${formatValue(multiplier, { precisionBoost: 0 }).formatted}`;
-    }
-    
-    return null;
+    return buildConversionFormula(
+      relation,
+      activeFrom.symbol,
+      activeTo.symbol,
+      (value) => formatValue(value, { precisionBoost: 0 }).formatted,
+      category,
+    );
   }, [
     category,
-    activeTo.symbol,
-    activeFrom.symbol,
-    multiplier,
-    formatValue,
-    fxRates,
+    currencyRate,
     fxError,
-    resolveCurrencyPairRate,
-    parsedInput,
-    result,
+    fxRates,
+    relation,
+    activeFrom.symbol,
+    activeTo.symbol,
+    formatRate,
+    formatValue,
   ]);
 
   const dynamicFormula = React.useMemo(() => {
     if (parsedInput === null || result === null) {
       return null;
     }
-    
-    // Currency: show rate application only (no literal result text)
+
+    // Currency: the general formula already shows the rate being applied.
     if (category === 'Currency') {
-      return null; // avoid duplicating the general formula
+      return null;
     }
-    
-    // For simple multiplier-based conversions, show the actual calculation
-    if (multiplier !== null) {
-      const multiplierFormatted = formatValue(multiplier, { precisionBoost: 0 }).formatted;
-      const inputFormatted = formatValue(parsedInput).formatted;
-      return `${inputFormatted} ${activeFrom.symbol} × ${multiplierFormatted} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
-    }
-    
-    // For complex conversions (like temperature), show the actual values
+
+    // The entered value and its result, e.g. "1 kg = 2.2046 lb" or "2 kWh/100mi = 50 mi/kWh".
     const inputFormatted = formatValue(parsedInput).formatted;
     return `${inputFormatted} ${activeFrom.symbol} = ${formattedResult?.formatted ?? '—'} ${activeTo.symbol}`;
-  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, multiplier, formatValue, result, category]);
+  }, [parsedInput, formattedResult, activeFrom.symbol, activeTo.symbol, formatValue, result, category]);
+
+  // Shared by both FxHistoryChart instances (mobile and desktop layouts).
+  const chartHighlightDate = React.useMemo(
+    () =>
+      selectedFxDate
+        ? selectedFxDate
+        : isHistoricalMode && fxRates
+          ? new Date(`${fxRates.date}T00:00:00Z`)
+          : null,
+    [selectedFxDate, isHistoricalMode, fxRates],
+  );
+  const handleChartDateSelect = React.useCallback(
+    (date: Date) => {
+      setIsHistoricalMode(true);
+      setSelectedFxDate(date);
+      setFxRates(null);
+      fetchPairFxRates(date);
+    },
+    [fetchPairFxRates],
+  );
 
   const showCalculatorButton = fromFieldFocused || fromCalcHover || fromCalcButtonFocused;
+  // Canonical URL of the opposite pair page (relative to the page's own pair, not the swap state).
+  const reversePairUrl = buildConversionPairUrl(category, toUnit.symbol, fromUnit.symbol);
 
   return (
     <div id="converter" className="flex flex-col gap-5 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-lg scroll-mt-20">
+      <React.Suspense fallback={null}>
+        <PairQueryParams onChange={applyQueryParams} />
+      </React.Suspense>
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Convert</p>
@@ -513,19 +521,8 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
             from={activeFrom.symbol}
             to={activeTo.symbol}
             inputValue={parsedInput ?? 1}
-            highlightDate={
-              selectedFxDate
-                ? selectedFxDate
-                : isHistoricalMode && fxRates
-                  ? new Date(`${fxRates.date}T00:00:00Z`)
-                  : null
-            }
-            onDateSelect={(date) => {
-              setIsHistoricalMode(true);
-              setSelectedFxDate(date);
-              setFxRates(null);
-              fetchPairFxRates(date, true);
-            }}
+            highlightDate={chartHighlightDate}
+            onDateSelect={handleChartDateSelect}
           />
         </div>
       )}
@@ -671,7 +668,13 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <span>{isFullPrecision ? 'Full precision result' : 'Rounded result (4 decimals max)'}</span>
+            <span>
+              {isFullPrecision
+                ? 'Full precision result'
+                : category === 'Currency'
+                  ? 'Rounded result (4 decimals, at least 4 significant digits)'
+                  : 'Rounded result (4 decimals max)'}
+            </span>
           </div>
           <Button
             type="button"
@@ -693,19 +696,8 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
             from={activeFrom.symbol}
             to={activeTo.symbol}
             inputValue={parsedInput ?? 1}
-            highlightDate={
-              selectedFxDate
-                ? selectedFxDate
-                : isHistoricalMode && fxRates
-                  ? new Date(`${fxRates.date}T00:00:00Z`)
-                  : null
-            }
-            onDateSelect={(date) => {
-              setIsHistoricalMode(true);
-              setSelectedFxDate(date);
-              setFxRates(null);
-              fetchPairFxRates(date, true);
-            }}
+            highlightDate={chartHighlightDate}
+            onDateSelect={handleChartDateSelect}
           />
         </div>
       )}
@@ -725,7 +717,7 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
                     setSelectedFxDate(undefined);
                     setIsHistoricalMode(false);
                     setFxRates(null);
-                    fetchPairFxRates(undefined, true);
+                    fetchPairFxRates();
                   } else {
                     const todayKey = new Date().toISOString().split('T')[0];
                     const pickedKey = date.toISOString().split('T')[0];
@@ -733,12 +725,12 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
                       setSelectedFxDate(undefined);
                       setIsHistoricalMode(false);
                       setFxRates(null);
-                      fetchPairFxRates(undefined, true);
+                      fetchPairFxRates();
                     } else {
                       setIsHistoricalMode(true);
                       setSelectedFxDate(date);
                       setFxRates(null);
-                      fetchPairFxRates(date, true);
+                      fetchPairFxRates(date);
                     }
                   }
                 }}
@@ -757,18 +749,17 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
               </div>
             </div>
           )}
-          {category === 'Currency' && fxRates && resolveCurrencyPairRate() !== null && (
+          {category === 'Currency' && fxRates && currencyRate !== null && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span>Rate:</span>
               <span className="font-semibold text-foreground">
-                1 {activeFrom.symbol} = {formatValue(resolveCurrencyPairRate(), { precisionBoost: 0 }).formatted} {activeTo.symbol}
+                1 {activeFrom.symbol} = {formatRate(currencyRate)} {activeTo.symbol}
               </span>
               <button
                 type="button"
                 onClick={async () => {
-                  const rate = resolveCurrencyPairRate();
-                  if (rate === null) return;
-                  const rateString = `1 ${activeFrom.symbol} = ${formatValue(rate, { precisionBoost: 0 }).formatted} ${activeTo.symbol}`;
+                  if (currencyRate === null) return;
+                  const rateString = `1 ${activeFrom.symbol} = ${formatRate(currencyRate)} ${activeTo.symbol}`;
                   try {
                     await navigator.clipboard.writeText(rateString);
                     setRateCopyState('success');
@@ -844,7 +835,14 @@ export const PairConverter = React.forwardRef<PairConverterHandle, PairConverter
 
       <p className="text-xs text-muted-foreground">
         Results update as you type. Swap the direction to convert back from {activeTo.symbol} to{' '}
-        {activeFrom.symbol}.
+        {activeFrom.symbol}, or open the{' '}
+        <Link
+          href={reversePairUrl}
+          className="font-semibold text-primary underline-offset-2 hover:underline"
+        >
+          {toUnit.symbol} to {fromUnit.symbol} converter
+        </Link>
+        .
       </p>
 
       {isCalculatorOpen && (

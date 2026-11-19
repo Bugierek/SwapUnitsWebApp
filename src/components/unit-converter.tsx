@@ -28,6 +28,7 @@ import {
   Check,
   Info,
   Search,
+  X,
 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { useRouter } from 'next/navigation';
@@ -46,11 +47,17 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import SimpleCalculator from '@/components/simple-calculator';
 import { getCategorySlug } from '@/lib/category-info';
 import { convertNumericValue, convertUnitsDetailed } from '@/lib/conversion-math';
+import {
+  buildConversionFormula,
+  buildWorkedFormula,
+  formatFormulaNumber,
+  formatSignificant,
+  getConversionRelation,
+} from '@/lib/conversion-formula';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { getAliasesForUnit, parseConversionQuery } from '@/lib/conversion-query-parser';
 import type { ParsedConversionPayload } from '@/lib/conversion-query-parser';
@@ -171,6 +178,24 @@ function pickRandom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// formatConversionValue's fixed decimals (4 rounded; 8 + up to 4 boost full) turn small values
+// into 0: 1 IDR -> EUR (0.0000543) showed "0.0001" and 1 B -> MB (0.00000095) showed "0". Below 1,
+// show at least 4 (rounded) or 8 (full) significant digits instead. Returns undefined (keep the
+// default, including its input-precision boost) whenever the default already shows enough.
+const MIN_SIGNIFICANT_DIGITS: Record<PrecisionMode, number> = { rounded: 4, full: 8 };
+const significantFractionDigits = (
+  num: number,
+  precisionMode: PrecisionMode,
+  precisionBoost = 0,
+): number | undefined => {
+  const abs = Math.abs(num);
+  if (!Number.isFinite(num) || abs === 0 || abs >= 1) return undefined;
+  const defaultDigits =
+    precisionMode === 'full' ? 8 + Math.min(Math.max(Math.floor(precisionBoost), 0), 4) : 4;
+  const needed = MIN_SIGNIFICANT_DIGITS[precisionMode] - 1 - Math.floor(Math.log10(abs));
+  return needed > defaultDigits ? needed : undefined;
+};
+
 const formatNumber = (
   num: number,
   requestedFormat: NumberFormat = 'normal',
@@ -200,6 +225,7 @@ const formatNumber = (
     precisionBoost,
     scientificStyle: 'e',
     precisionMode,
+    maxFractionDigits: significantFractionDigits(num, precisionMode, precisionBoost),
   });
 
   return {
@@ -218,6 +244,7 @@ const formatFromValue = (num: number | undefined, precisionMode: PrecisionMode):
     precisionBoost: 0,
     scientificStyle: 'e',
     precisionMode,
+    maxFractionDigits: significantFractionDigits(num, precisionMode),
   }).formatted;
 };
 
@@ -569,7 +596,7 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       }
     }
     return `${baseUrl}?${params.toString()}`;
-  }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue, selectedFxDate]);
+  }, [rhfCategory, rhfFromUnit, rhfToUnit, rhfValue, selectedFxDate, isHistoricalMode]);
 
   React.useEffect(() => {
     if (!prefersTouch && ComboboxComponent && !finderAutoFocusRequestedRef.current) {
@@ -967,7 +994,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 onSelect={() => onUnitSelect(lockedCategory, unit.symbol)}
                 className={cn(
                   'flex items-center justify-between rounded-md px-2 py-1.5 text-sm',
-                  unit.symbol === selectedUnitSymbol && 'bg-primary/10 text-primary font-semibold'
+                  unit.symbol === selectedUnitSymbol && 'bg-primary/10 text-primary-text font-semibold'
                 )}
               >
                 <span className="whitespace-normal break-words leading-snug">{unit.name}</span>
@@ -1024,7 +1051,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               style={{ maxHeight: listMaxHeight, scrollbarWidth: 'thin', direction: 'rtl' }}
             >
               <div style={{ direction: 'ltr' }}>
-                <div className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80">
+                <div className="px-1 pb-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Category
                 </div>
                 {filteredCategories.map(({ option }) => {
@@ -1057,7 +1084,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                       data-current={option.value === rhfCategory || undefined}
                       className={cn(
                         'flex items-center justify-between gap-2',
-                        option.value === rhfCategory && 'font-semibold text-primary',
+                        option.value === rhfCategory && 'font-semibold text-primary-text',
                         isActiveCategory && 'bg-muted/40',
                       )}
                     >
@@ -1079,7 +1106,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 className="h-full overflow-y-auto overflow-x-hidden px-3 py-6"
                 style={{ scrollbarWidth: 'thin', direction: 'ltr' }}
               >
-                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/80 mb-2">
+                <div className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground mb-2">
                   Units
                 </div>
                 {displayUnits.length > 0 ? (
@@ -1099,7 +1126,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                       className={cn(
                         'flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm text-left transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
                         unit.symbol === selectedUnitSymbol
-                          ? 'bg-primary/10 text-primary ring-1 ring-primary/40'
+                          ? 'bg-primary/10 text-primary-text ring-1 ring-primary/40'
                           : undefined,
                       )}
                     >
@@ -1191,7 +1218,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                     }}
                     className={cn(
                       'flex items-center justify-between gap-2',
-                      isActiveCategory && 'font-semibold text-primary',
+                      isActiveCategory && 'font-semibold text-primary-text',
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -1214,7 +1241,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                           onSelect={() => onUnitSelect(option.value, unit.symbol)}
                           className={cn(
                             "pl-4 text-sm",
-                            unit.symbol === selectedUnitSymbol && "bg-primary/10 text-primary font-semibold",
+                            unit.symbol === selectedUnitSymbol && "bg-primary/10 text-primary-text font-semibold",
                           )}
                         >
                           {unit.name} ({unit.symbol})
@@ -1453,18 +1480,17 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     );
   }, [rhfCategory, rhfFromUnit, rhfToUnit]);
 
-  const multiplier = React.useMemo(() => {
-    if (!rhfCategory || !currentFromUnit || !currentToUnit) {
+  // How the two units relate (proportional / temperature / reciprocal), shared with the pair pages
+  // so the Formula tab matches convertNumericValue for every pair. Currency is handled separately
+  // below with the live rate.
+  const formulaRelation = React.useMemo(() => {
+    if (!rhfCategory || !currentFromUnit || !currentToUnit || rhfCategory === 'Currency') {
       return null;
     }
-    if (rhfCategory === 'Currency') {
-      return null;
-    }
-    return convertNumericValue(
+    return getConversionRelation(
       rhfCategory as UnitCategory,
       currentFromUnit.symbol,
       currentToUnit.symbol,
-      1,
     );
   }, [rhfCategory, currentFromUnit, currentToUnit]);
 
@@ -2539,8 +2565,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return Number.isFinite(numeric) ? numeric : null;
   }, [rhfValue]);
   const formatFormulaValue = React.useCallback(
-    (value: number | null) =>
-      formatConversionValue(value, { precisionBoost: 0, precisionMode }).formatted,
+    (value: number) => formatFormulaNumber(value, precisionMode),
+    [precisionMode],
+  );
+  // FX rates use significant digits (6 rounded, 10 full), like PairConverter, so small cross
+  // rates such as IDR -> EUR don't collapse to 0.0001.
+  const formatFxRate = React.useCallback(
+    (rate: number) => formatSignificant(rate, precisionMode === 'full' ? 10 : 6),
     [precisionMode],
   );
   React.useEffect(() => {
@@ -2612,82 +2643,26 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
   }, [fxRates, rhfCategory, rhfFromUnit, rhfToUnit]);
 
   const generalFormula = React.useMemo(() => {
-    if (rhfCategory === 'Currency') {
-      if (!currentFromUnit || !currentToUnit) return null;
-      const pairRate = resolveCurrencyPairRate();
-      if (pairRate === null) return null;
-      const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
-      return `${currentToUnit.symbol} = ${currentFromUnit.symbol} × ${formatFormulaValue(pairRate)}${dateNote}`;
-    }
-
-    if (!currentFromUnit || !currentToUnit || multiplier === null) {
+    if (!rhfCategory || !currentFromUnit || !currentToUnit) {
       return null;
     }
 
-    const fromSymbol = currentFromUnit.symbol;
-    const toSymbol = currentToUnit.symbol;
-
-    if (rhfCategory === 'Temperature') {
-      if (fromSymbol === '°C' && toSymbol === '°F') {
-        return '°F = °C × 9/5 + 32';
-      } else if (fromSymbol === '°F' && toSymbol === '°C') {
-        return '°C = (°F - 32) × 5/9';
-      } else if (fromSymbol === '°C' && toSymbol === 'K') {
-        return 'K = °C + 273.15';
-      } else if (fromSymbol === 'K' && toSymbol === '°C') {
-        return '°C = K - 273.15';
-      } else if (fromSymbol === '°F' && toSymbol === 'K') {
-        return 'K = (°F - 32) × 5/9 + 273.15';
-      } else if (fromSymbol === 'K' && toSymbol === '°F') {
-        return '°F = (K - 273.15) × 9/5 + 32';
-      }
+    if (rhfCategory === 'Currency') {
+      const pairRate = resolveCurrencyPairRate();
+      if (pairRate === null) return null;
+      const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
+      return `${currentToUnit.symbol} = ${currentFromUnit.symbol} × ${formatFxRate(pairRate)}${dateNote}`;
     }
 
-    if (rhfCategory === 'Data Storage') {
-      if (fromSymbol && toSymbol) {
-        const power = Math.log(multiplier) / Math.log(1024);
-        if (Number.isInteger(power)) {
-          return `${toSymbol} = ${fromSymbol} × 1024${power > 1 ? '^' + power : ''}`;
-        }
-      }
-    }
-
-    if (rhfCategory === 'Data Transfer Rate') {
-      if (
-        (fromSymbol.includes('bps') && toSymbol.includes('/s')) ||
-        (fromSymbol.includes('/s') && toSymbol.includes('bps'))
-      ) {
-        const base = multiplier / 8;
-        if (base === 1) {
-          return `${toSymbol} = ${fromSymbol} × 8`;
-        } else if (base < 1) {
-          return `${toSymbol} = ${fromSymbol} ÷ ${formatFormulaValue(1 / base)}`;
-        }
-        return `${toSymbol} = ${fromSymbol} × ${formatFormulaValue(multiplier)}`;
-      }
-    }
-
-    if (rhfCategory === 'Fuel Economy') {
-      if (
-        (fromSymbol.includes('/100') && !toSymbol.includes('/100')) ||
-        (!fromSymbol.includes('/100') && toSymbol.includes('/100'))
-      ) {
-        return `${toSymbol} = 100 ÷ (${fromSymbol} × ${formatFormulaValue(multiplier)})`;
-      }
-    }
-
-    if (multiplier !== null) {
-      if (multiplier === 1) {
-        return `${toSymbol} = ${fromSymbol}`;
-      } else if (multiplier < 1) {
-        const inverse = multiplier === 0 ? Infinity : 1 / multiplier;
-        return `${toSymbol} = ${fromSymbol} ÷ ${formatFormulaValue(inverse)}`;
-      }
-      return `${toSymbol} = ${fromSymbol} × ${formatFormulaValue(multiplier)}`;
-    }
-
-    return null;
-  }, [rhfCategory, currentFromUnit, currentToUnit, multiplier, formatFormulaValue, resolveCurrencyPairRate, fxRates?.date]);
+    // "g = kg × 1,000", "MB = B ÷ 1024^2", "°F = °C × 9/5 + 32", "mi/kWh = 100 ÷ (kWh/100mi)".
+    return buildConversionFormula(
+      formulaRelation,
+      currentFromUnit.symbol,
+      currentToUnit.symbol,
+      formatFormulaValue,
+      rhfCategory as UnitCategory,
+    );
+  }, [rhfCategory, currentFromUnit, currentToUnit, formulaRelation, formatFormulaValue, formatFxRate, resolveCurrencyPairRate, fxRates?.date]);
 
   const dynamicFormula = React.useMemo(() => {
     if (
@@ -2705,25 +2680,34 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
       const pairRate = resolveCurrencyPairRate();
       const dateNote = fxRates?.date ? ` (ECB/Frankfurter ${fxRates.date})` : '';
       if (pairRate !== null) {
-        return `${inputFormatted} ${currentFromUnit.symbol} × ${formatFormulaValue(pairRate)} = ${formattedResultString} ${currentToUnit.symbol}${dateNote}`;
+        return `${inputFormatted} ${currentFromUnit.symbol} × ${formatFxRate(pairRate)} = ${formattedResultString} ${currentToUnit.symbol}${dateNote}`;
       }
       return `${inputFormatted} ${currentFromUnit.symbol} = ${formattedResultString} ${currentToUnit.symbol}${dateNote}`;
     }
 
-    if (multiplier !== null) {
-      return `${inputFormatted} ${currentFromUnit.symbol} × ${formatFormulaValue(multiplier)} = ${formattedResultString} ${currentToUnit.symbol}`;
-    }
-    return `${inputFormatted} ${currentFromUnit.symbol} = ${formattedResultString} ${currentToUnit.symbol}`;
+    // "5 kg × 1,000 = 5,000 g", "(50 °F - 32) × 5/9 = 10 °C", "100 ÷ (4 kWh/100mi) = 25 mi/kWh".
+    return (
+      buildWorkedFormula(
+        formulaRelation,
+        currentFromUnit.symbol,
+        currentToUnit.symbol,
+        inputFormatted,
+        formattedResultString,
+        formatFormulaValue,
+        rhfCategory as UnitCategory,
+      ) ?? `${inputFormatted} ${currentFromUnit.symbol} = ${formattedResultString} ${currentToUnit.symbol}`
+    );
   }, [
     showPlaceholder,
     conversionResult,
     currentFromUnit,
     currentToUnit,
     inputNumericValue,
-    multiplier,
+    formulaRelation,
     precisionMode,
     formattedResultString,
     formatFormulaValue,
+    formatFxRate,
     rhfCategory,
     resolveCurrencyPairRate,
     fxRates?.date,
@@ -2837,7 +2821,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     if (rhfCategory === 'Currency' && currentFromUnit && currentToUnit) {
       const pairRate = resolveCurrencyPairRate();
       if (pairRate !== null) {
-        const rateString = `1 ${currentFromUnit.symbol} = ${formatFormulaValue(pairRate)} ${currentToUnit.symbol}`;
+        const rateString = `1 ${currentFromUnit.symbol} = ${formatFxRate(pairRate)} ${currentToUnit.symbol}`;
         rateLine = (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-foreground">
             <span className="text-muted-foreground">Rate:</span>
@@ -2892,11 +2876,12 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     currentFromUnit,
     currentToUnit,
     resolveCurrencyPairRate,
-    formatFormulaValue,
+    formatFxRate,
     rateCopyState,
     showPlaceholder,
     isFetchingFx,
     fxRates,
+    toast,
   ]);
 
   const sourcesTabContent = React.useMemo(() => {
@@ -2913,7 +2898,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                 href={source.url}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="font-semibold text-primary underline-offset-2 hover:underline"
+                className="font-semibold text-primary-text underline-offset-2 hover:underline"
               >
                 View source
               </a>
@@ -2922,7 +2907,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
                   {' '}·{' '}
                   <Link
                     href="/standards/nist-si-tenfold"
-                    className="font-semibold text-primary underline-offset-2 hover:underline"
+                    className="font-semibold text-primary-text underline-offset-2 hover:underline"
                   >
                     View SI table
                   </Link>
@@ -2959,7 +2944,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
               htmlFor="format-normal"
               className={cn(
                 'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition',
-                isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary',
+                isNormalFormatDisabled ? 'cursor-not-allowed text-muted-foreground' : 'hover:text-primary-text',
               )}
             >
               Normal (e.g., 1,234.56)
@@ -2967,7 +2952,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
           </div>
           <div className="flex items-center gap-2">
             <RadioGroupItem value="scientific" id="format-scientific" />
-            <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">Scientific (e.g., 1.23E+6)</Label>
+            <Label htmlFor="format-scientific" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary-text">Scientific (e.g., 1.23E+6)</Label>
           </div>
         </RadioGroup>
       </div>
@@ -2983,13 +2968,13 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         >
           <div className="flex items-center gap-2">
             <RadioGroupItem value="rounded" id="precision-rounded" />
-            <Label htmlFor="precision-rounded" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">
+            <Label htmlFor="precision-rounded" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary-text">
               Rounded (readable)
             </Label>
           </div>
           <div className="flex items-center gap-2">
             <RadioGroupItem value="full" id="precision-full" />
-            <Label htmlFor="precision-full" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary">
+            <Label htmlFor="precision-full" className="cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition hover:text-primary-text">
               Full precision
             </Label>
           </div>
@@ -3284,7 +3269,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         {currentConversionPairUrl && (
           <Link
             href={currentConversionPairUrl}
-            className="group/details absolute right-3 bottom-4 flex h-8 flex-row-reverse items-center gap-1.5 rounded-full px-2 text-[11px] font-medium text-primary transition-all duration-400 hover:text-primary/80"
+            className="group/details absolute right-3 bottom-4 flex h-8 flex-row-reverse items-center gap-1.5 rounded-full px-2 text-[11px] font-medium text-primary-text transition-all duration-400 hover:text-primary-text/80"
             aria-label="Open detailed conversion page"
             style={{ zIndex: 2 }}
           >
@@ -3409,6 +3394,12 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     rhfValue,
     showPlaceholder,
     textCopyState,
+    fetchFxRates,
+    fxRateDateMessage,
+    fxRates,
+    isFetchingFx,
+    onDateChange,
+    selectedFxDate,
   ]);
 
   const screenReaderText = showPlaceholder
@@ -3468,7 +3459,7 @@ return (
                           className="text-xs text-muted-foreground transition hover:text-foreground"
                           aria-label="Dismiss quick start"
                         >
-                          ✕
+                          <X className="h-3.5 w-3.5" aria-hidden="true" />
                         </button>
                       </div>
                       <div className="mt-3">
@@ -3491,7 +3482,7 @@ return (
                             <div className="mb-2 flex items-center gap-2">
                               <Label
                                 htmlFor="conversion-search"
-                                className="text-xs font-semibold uppercase tracking-[0.25em] text-primary"
+                                className="text-xs font-semibold uppercase tracking-[0.25em] text-primary-text"
                               >
                                 Conversion finder
                               </Label>
@@ -3522,7 +3513,7 @@ return (
                                           <button
                                             type="button"
                                             onClick={() => handleFinderExampleSelect(finderExamples.value)}
-                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                                             aria-label={`Use ${finderExamples.value} in the conversion finder`}
                                           >
                                             {finderExamples.value}
@@ -3530,7 +3521,7 @@ return (
                                           <button
                                             type="button"
                                             onClick={() => handleFinderExampleSelect(finderExamples.units)}
-                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                                             aria-label={`Use ${finderExamples.units} in the conversion finder`}
                                           >
                                             {finderExamples.units}
@@ -3545,7 +3536,7 @@ return (
                                           <button
                                             type="button"
                                             onClick={() => handleFinderExampleSelect(finderExamples.category)}
-                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                            className="rounded-full bg-border/70 px-2 py-0.5 text-[12px] font-medium text-foreground transition hover:bg-primary/10 hover:text-primary-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                                             aria-label={`Use ${finderExamples.category} as the category`}
                                           >
                                             {finderExamples.category}
@@ -3600,7 +3591,7 @@ return (
                       <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         OR
                       </div>
-                      <p className="text-[13px] text-muted-foreground/80">
+                      <p className="text-[13px] text-muted-foreground">
                         Enter a value, choose your units, and copy the result instantly.
                       </p>
                     </div>
@@ -3631,6 +3622,7 @@ return (
                                   <FormControl>
                                     <Input
                                       id="value-input"
+                                      aria-label="Value to convert"
                                       type="text"
                                       inputMode="decimal"
                                       enterKeyHint="done"
@@ -3736,7 +3728,7 @@ return (
                                             className={cn(
                                               'block',
                                               fromUnitHighlight &&
-                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary-text',
                                             )}
                                             title={`${currentFromUnit.name} (${currentFromUnit.symbol})`}
                                           >
@@ -3872,7 +3864,7 @@ return (
                                             className={cn(
                                               'block',
                                               toUnitHighlight &&
-                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary',
+                                                'rounded-md bg-primary/10 px-1 py-0.5 text-primary-text',
                                             )}
                                             title={`${currentToUnit.name} (${currentToUnit.symbol})`}
                                           >
@@ -3917,13 +3909,15 @@ return (
                     tabs={resultTabs}
                     defaultTabId="formula"
                     initiallyOpen
-                    className="mt-2"
+                    // Active/hovered tab labels are small primary text: use the contrast-safe
+                    // token (lighter in dark mode only; identical to --primary in light mode).
+                    className="mt-2 [&_button:hover]:text-primary-text [&_button[aria-pressed=true]]:text-primary-text"
                   />
                 )}
+                {/* Controlled dialog, opened by the "Open calculator" button next to the From value.
+                    No DialogTrigger: the old placeholder <div> trigger was invisible and unfocusable,
+                    but still carried button-only ARIA (aria-expanded/aria-haspopup) inside the form. */}
                 <Dialog open={isCalculatorOpen} onOpenChange={setIsCalculatorOpen}>
-                  <DialogTrigger asChild>
-                    <div />
-                  </DialogTrigger>
                   <DialogContent className="sm:max-w-xs overflow-hidden rounded-2xl border border-border/60 bg-card p-0 shadow-xl">
                     <DialogHeader className="sr-only">
                       <DialogTitle>Calculator</DialogTitle>
