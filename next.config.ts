@@ -3,6 +3,10 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   reactStrictMode: true, // Enable React Strict Mode
+  // Next 15.2+ "streams" metadata (<title>, meta description, canonical) into <body> for any user
+  // agent not matched here - including Googlebot. Google only honors rel=canonical inside <head>,
+  // so match every user agent: metadata is then always rendered in <head>.
+  htmlLimitedBots: /.*/,
   typescript: {
     ignoreBuildErrors: true,
   },
