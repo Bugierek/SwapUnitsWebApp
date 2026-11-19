@@ -160,10 +160,14 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
 const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
   'Wh/km': ['Wh/mi', 'mi/kWh'],
   'Wh/mi': ['Wh/km', 'km/kWh'],
+  'kWh/100mi': ['mi/kWh', 'kWh/100km'],
+  'kWh/100km': ['km/kWh', 'kWh/100mi'],
   'L/100km': ['L/100mi', 'MPG (US)', 'MPG (UK)', 'km/L'],
   'L/100mi': ['L/100km', 'MPG (US)', 'MPG (UK)', 'km/L'],
   'MPG (US)': ['L/100km', 'km/L'],
   'MPG (UK)': ['L/100km', 'km/L'],
+  // MPGe equals MPG (US) numerically, so default a bare "100 mpge" to EPA's companion EV metric.
+  'MPGe': ['kWh/100mi', 'kWh/100km', 'mi/kWh'],
 };
 
 const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
@@ -454,6 +458,11 @@ function normalizeQuery(query: string): string {
       }
       return `${letter} `;
     });
+
+  // Re-join "per 100 km/mi" units that the digit/letter spacing above splits apart
+  // ("kwh/100mi" -> "kwh/100 mi"), so L/100km, L/100mi, kWh/100km and kWh/100mi stay single
+  // tokens. Mirrors the combobox normalizer's rejoin step, narrowed to the only units of this shape.
+  result = result.replace(/\/\s*(\d+)\s+(km|mi)\b/gi, '/$1$2');
 
   for (const stopWord of STOP_WORDS) {
     const stopRegex = new RegExp(`\\b${escapeRegex(stopWord)}\\b`, 'gi');
@@ -767,15 +776,18 @@ function tryParseFuelEconomyQuery(
     return null;
   }
 
-  const toUnit =
+  const mpgUnit =
     /\bmpg\s*(uk|imperial|\(uk\))/i.test(search) ? 'MPG (UK)' : 'MPG (US)';
+  // Respect the order the user typed: "30 mpg to l/100km" converts MPG -> L/100km (this used to
+  // always return L/100km -> MPG, i.e. reversed for MPG-first queries).
+  const mpgFirst = search.search(/\bmpg\b/) < search.search(/l\/100\s*km/);
 
   return {
     ok: true,
     kind: 'unit',
     value: Number.isFinite(value) ? value : 1,
-    fromUnit: 'L/100km',
-    toUnit,
+    fromUnit: mpgFirst ? mpgUnit : 'L/100km',
+    toUnit: mpgFirst ? 'L/100km' : mpgUnit,
     category: 'Fuel Economy' as UnitCategory,
     valueStrategy,
   };
