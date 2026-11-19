@@ -207,6 +207,8 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Meter per second', symbol: 'm/s', factor: 1 },
             { name: 'Kilometer per hour', symbol: 'km/h', factor: 1 / 3.6 },
             { name: 'Mile per hour', symbol: 'mph', factor: 0.44704 },
+            // International knot: exactly 1 nautical mile (1852 m) per hour.
+            { name: 'Knot', symbol: 'kn', factor: 1852 / 3600 },
         ].sort((a,b) => a.factor - b.factor),
     },
     'Fuel Economy': { 
