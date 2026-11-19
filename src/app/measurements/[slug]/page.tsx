@@ -93,7 +93,8 @@ const convertValue = (
 };
 
 export function generateStaticParams(): Array<{ slug: string }> {
-  return categoryInfoList.map((info) => ({ slug: info.slug }));
+  // Skip full-path slugs (SI Prefixes -> "standards/nist-si-tenfold"), which have their own route.
+  return categoryInfoList.filter((info) => !info.slug.includes('/')).map((info) => ({ slug: info.slug }));
 }
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
@@ -102,16 +103,28 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   if (!info) {
     return {};
   }
+  // The root layout's title template appends "| SwapUnits" to `title`, but not to the
+  // openGraph/twitter titles, so those carry the brand explicitly.
+  const socialTitle = `${info.seo.title} | SwapUnits`;
+  const canonicalPath = `/measurements/${info.slug}`;
   return {
     title: info.seo.title,
     description: info.seo.description,
     alternates: {
-      canonical: `/measurements/${info.slug}`,
+      canonical: canonicalPath,
     },
     openGraph: {
-      title: info.seo.title,
+      title: socialTitle,
       description: info.seo.description,
       type: 'article',
+      url: canonicalPath,
+      siteName: 'SwapUnits',
+    },
+    // Without this, the layout's homepage twitter title/description apply to every category page.
+    twitter: {
+      card: 'summary_large_image',
+      title: socialTitle,
+      description: info.seo.description,
     },
   };
 }

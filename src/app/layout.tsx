@@ -8,6 +8,7 @@ import { GoogleAnalytics } from "@/components/google-analytics"; // Import Googl
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/components/theme-provider";
 import { buildWebsiteJsonLd, buildOrganizationJsonLd } from "@/lib/structured-data";
+import { unitData } from "@/lib/unit-data";
 
 // Use Inter font - known for readability
 const inter = Inter({
@@ -22,6 +23,8 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
   (typeof window !== 'undefined' && window.location.origin) || 
   'http://localhost:9002';
 
+const currencyCount = unitData.Currency.units.length;
+
 export const metadata: Metadata = {
   // Define metadataBase for resolving relative paths, especially for images
   metadataBase: new URL(siteUrl),
@@ -29,7 +32,7 @@ export const metadata: Metadata = {
     default: "SwapUnits | Free Online Unit Converter Tool",
     template: "%s | SwapUnits", // Allows pages to set their own title part
   },
-  description: "Convert units instantly with SwapUnits - a fast, free online converter for length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, and 42 currencies. Features scientific notation, conversion history, favorites, and widget builder. No signup required.",
+  description: `Convert units instantly with SwapUnits - a fast, free online converter for length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, and ${currencyCount} currencies. Features scientific notation, conversion history, favorites, and widget builder. No signup required.`,
   keywords: "unit converter, measurement converter, convert units, online converter, free converter, length, mass, temperature, time, pressure, area, volume, energy, speed, fuel economy, data storage, data transfer, metric, imperial, calculator, bitcoin, satoshi, Pa, psi, atm, kg, lb", 
   alternates: {
     canonical: '/',
