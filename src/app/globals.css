@@ -13,6 +13,9 @@
     --popover-foreground: 225 36% 14%;
     --primary: 245 75% 55%;
     --primary-foreground: 0 0% 100%;
+    /* Small text in the primary color (labels, active tabs, links). Same as --primary in light
+       mode (7.3:1 on white); lighter in dark mode, where --primary is only ~3.8:1 on the card. */
+    --primary-text: 245 75% 55%;
     --secondary: 220 30% 92%;
     --secondary-foreground: 224 35% 20%;
     --muted: 220 25% 90%;
@@ -51,6 +54,7 @@
       --popover-foreground: 220 25% 92%;
       --primary: 245 75% 65%;
       --primary-foreground: 220 35% 12%;
+      --primary-text: 245 75% 74%;
       --secondary: 225 25% 18%;
       --secondary-foreground: 220 25% 90%;
       --muted: 225 20% 20%;
@@ -88,6 +92,7 @@
     --popover-foreground: 220 25% 92%;
     --primary: 245 75% 65%;
     --primary-foreground: 220 35% 12%;
+    --primary-text: 245 75% 74%;
     --secondary: 225 25% 18%;
     --secondary-foreground: 220 25% 90%;
     --muted: 225 20% 20%;

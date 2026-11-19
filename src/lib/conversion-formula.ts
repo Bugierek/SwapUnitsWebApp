@@ -2,7 +2,7 @@ import type { UnitCategory } from '@/types';
 import { getUnitsForCategory } from '@/lib/unit-data';
 import { convertNumericValue } from '@/lib/conversion-math';
 import type { CurrencyCode, FxRatesResponse } from '@/lib/fx';
-import { formatConversionValue } from '@/lib/number-format';
+import { formatConversionValue, type PrecisionMode } from '@/lib/number-format';
 
 // Shared classification of how two units relate, plus the formula strings built from it.
 // Used by the pair page (titles, descriptions, table hints) and by PairConverter (formula line),
@@ -47,6 +47,23 @@ export const formatSignificant = (value: number, significantDigits = 6): string 
   });
   // formatScientificValue leaves all-zero fractions ("1.00000×10^-9"); trim them to "1×10^-9".
   return usedScientificNotation ? formatted.replace(/\.0+(?=×|E)/, '') : formatted;
+};
+
+/**
+ * Constants inside a formula ("× 2.2046", "235.2146 ÷ …"). Values of 1 or more keep the
+ * converter's fixed-decimal style; smaller ones use significant digits so a factor such as
+ * 0.0000538 isn't rounded to 0.
+ */
+export const formatFormulaNumber = (value: number, precisionMode: PrecisionMode = 'rounded'): string => {
+  if (!Number.isFinite(value) || value === 0 || Math.abs(value) >= 1) {
+    const { formatted, usedScientificNotation } = formatConversionValue(value, {
+      precisionBoost: 0,
+      precisionMode,
+    });
+    // "1.00000×10^12" -> "1×10^12" (same trim as formatSignificant).
+    return usedScientificNotation ? formatted.replace(/\.0+(?=×|E)/, '') : formatted;
+  }
+  return formatSignificant(value, precisionMode === 'full' ? 10 : 6);
 };
 
 /** 'YYYY-MM-DD' -> 'November 18, 2026'. Fixed locale and UTC, so server and client render the same text. */
@@ -131,6 +148,28 @@ const binaryPower = (value: number): number | null => {
 };
 
 /**
+ * "× 2.20462" / "÷ 1,000" / "÷ 1024^2" for a proportional factor (null when it is exactly 1).
+ * Factors below 1 are shown as a division so the operand is never a long run of leading zeros.
+ */
+const proportionalOperation = (
+  factor: number,
+  formatNumber: NumberFormatter,
+  category?: UnitCategory,
+): string | null => {
+  if (factor === 1) return null;
+  const isDivision = factor < 1;
+  const operand = isDivision ? 1 / factor : factor;
+  const operator = isDivision ? '÷' : '×';
+  if (category === 'Data Storage') {
+    const power = binaryPower(operand);
+    if (power !== null) {
+      return `${operator} 1024${power > 1 ? `^${power}` : ''}`;
+    }
+  }
+  return `${operator} ${formatNumber(operand)}`;
+};
+
+/**
  * Formula for converting `fromSymbol` into `toSymbol`, e.g. "lb = kg × 2.20462",
  * "°F = °C × 9/5 + 32" or "mi/kWh = 100 ÷ (kWh/100mi)". Returns null when the
  * relation can't be expressed yet (currency without a rate).
@@ -154,20 +193,54 @@ export const buildConversionFormula = (
         ? null
         : `${toSymbol} = ${fromSymbol} × ${formatNumber(relation.rate)}`;
     case 'proportional': {
-      const { factor } = relation;
-      if (factor === 1) {
-        return `${toSymbol} = ${fromSymbol}`;
-      }
-      const isDivision = factor < 1;
-      const operand = isDivision ? 1 / factor : factor;
-      const operator = isDivision ? '÷' : '×';
-      if (category === 'Data Storage') {
-        const power = binaryPower(operand);
-        if (power !== null) {
-          return `${toSymbol} = ${fromSymbol} ${operator} 1024${power > 1 ? `^${power}` : ''}`;
-        }
-      }
-      return `${toSymbol} = ${fromSymbol} ${operator} ${formatNumber(operand)}`;
+      const operation = proportionalOperation(relation.factor, formatNumber, category);
+      return operation === null
+        ? `${toSymbol} = ${fromSymbol}`
+        : `${toSymbol} = ${fromSymbol} ${operation}`;
+    }
+    default:
+      return null;
+  }
+};
+
+/**
+ * The same formula with the input value substituted, e.g. "5 kg × 1,000 = 5,000 g",
+ * "(50 °F - 32) × 5/9 = 10 °C" or "100 ÷ (4 kWh/100mi) = 25 mi/kWh".
+ * `input` and `result` are already formatted for display.
+ */
+export const buildWorkedFormula = (
+  relation: ConversionRelation | null,
+  fromSymbol: string,
+  toSymbol: string,
+  input: string,
+  result: string,
+  formatNumber: NumberFormatter,
+  category?: UnitCategory,
+): string | null => {
+  if (!relation) return null;
+  const inputWithUnit = `${input} ${fromSymbol}`;
+  const resultWithUnit = `${result} ${toSymbol}`;
+
+  switch (relation.kind) {
+    case 'temperature': {
+      const separator = relation.formula.indexOf(' = ');
+      if (separator === -1) return `${inputWithUnit} = ${resultWithUnit}`;
+      const expression = relation.formula
+        .slice(separator + 3)
+        .replace(fromSymbol, () => inputWithUnit);
+      return `${expression} = ${resultWithUnit}`;
+    }
+    case 'reciprocal':
+      return `${formatNumber(relation.constant)} ÷ (${inputWithUnit}) = ${resultWithUnit}`;
+    case 'currency':
+      return relation.rate === null
+        ? `${inputWithUnit} = ${resultWithUnit}`
+        : `${inputWithUnit} × ${formatNumber(relation.rate)} = ${resultWithUnit}`;
+    case 'proportional': {
+      const operation = proportionalOperation(relation.factor, formatNumber, category);
+      return operation === null
+        ? `${inputWithUnit} = ${resultWithUnit}`
+        : `${inputWithUnit} ${operation} = ${resultWithUnit}`;
     }
     default:
       return null;

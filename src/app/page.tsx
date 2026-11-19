@@ -6,7 +6,6 @@ import Script from 'next/script';
 import { UnitConverter, type UnitConverterHandle } from '@/components/unit-converter';
 import { Footer } from '@/components/footer';
 import { SiteTopbar } from '@/components/site-topbar';
-import { Toaster } from '@/components/ui/toaster';
 import { PresetList } from '@/components/preset-list';
 import { HistoryList } from '@/components/history-list';
 import { HomeBrowseLinks } from '@/components/home-browse-links';
@@ -205,7 +204,6 @@ export default function Home() {
 
         <main className="flex-1">
           <h1 className="sr-only">SwapUnits – free online unit converter</h1>
-          <Toaster />
           <div className="mx-auto flex w-full max-w-full flex-col gap-5 px-0.5 pb-14 pt-4 sm:px-3 sm:pt-8 lg:px-10 xl:max-w-[1480px]" id="top-nav-content">
             <div className="grid gap-7 xl:grid-cols-[minmax(0,1.85fr)_minmax(280px,0.95fr)] xl:items-start">
               <UnitConverter

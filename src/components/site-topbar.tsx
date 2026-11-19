@@ -409,7 +409,7 @@ export function SiteTopbar({
           href="/"
           onClick={handleLogoClick}
           className="group absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-3 text-sm font-semibold uppercase tracking-[0.3em] text-foreground"
-          aria-label="Reset the unit converter to its initial state"
+          aria-label="SwapUnits – reset the converter"
         >
           <RefreshCw className="h-5 w-5 text-primary transition-transform duration-300 group-hover:rotate-180" aria-hidden="true" />
           <span className="font-semibold">SwapUnits</span>
