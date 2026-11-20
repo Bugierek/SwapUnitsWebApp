@@ -18,6 +18,7 @@ import { UnitConverter } from '@/components/unit-converter';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { getEvModels } from '@/lib/ev-models';
 import { ScrollIntoViewOnMount } from '@/components/scroll-into-view-on-mount';
+import { DataStorageExplainer } from '@/components/data-storage-explainer';
 import dynamic from 'next/dynamic';
 
 const CurrencyCategoryContent = dynamic(
@@ -45,6 +46,10 @@ const ratioFriendlyCategories: UnitCategory[] = [
   'Volume',
   'Energy',
   'Speed',
+  'Power',
+  'Force',
+  'Torque',
+  'Density',
   'Data Storage',
   'Data Transfer Rate',
   'Bitcoin',
@@ -143,6 +148,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   const units = unitEntry.units ?? [];
   const baseUnit = units.find((unit) => unit.factor === 1) ?? units[0];
+  // "torque", "data storage": for headings like "Convert torque units instantly". (info.title is
+  // the page title, "Torque Converter & Reference", which reads wrong inside a sentence.)
+  const categoryName = unitEntry.name.toLowerCase();
   const defaultPair = getCategoryDefaultPair(info.category);
   const initialFromUnit = defaultPair?.fromUnit ?? units[0]?.symbol ?? '';
   const initialToUnit =
@@ -229,7 +237,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           category={info.category}
           initialFromUnit={initialFromUnit}
           initialToUnit={initialToUnit}
-          categoryTitle={info.title}
         />
       ) : (
         <section
@@ -238,9 +245,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="space-y-1">
-              <h2 className="text-xl font-semibold text-foreground">Convert {info.title.toLowerCase()} instantly</h2>
+              <h2 className="text-xl font-semibold text-foreground">Convert {categoryName} units instantly</h2>
               <p className="text-sm text-muted-foreground">
-                This converter is focused on {info.title.toLowerCase()} only. Pick any units in this category and get results immediately.
+                This converter shows {categoryName} units only. Pick any two and get results immediately.
               </p>
             </div>
             <Link href="/#converter" className="text-sm font-semibold text-primary-text transition hover:text-primary-text/80">
@@ -274,7 +281,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             <div>
               <h2 className="text-xl font-semibold text-foreground">Conversion pair tiles</h2>
               <p className="text-sm text-muted-foreground">
-                Jump directly to any available converter for {info.title.toLowerCase()} units.
+                Jump directly to any {categoryName} conversion.
               </p>
             </div>
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
@@ -355,6 +362,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           </TableBody>
         </Table>
       </section>
+
+      {info.category === 'Data Storage' && <DataStorageExplainer />}
 
       {topPresets.length > 0 && (
         <section className="space-y-4">

@@ -10,8 +10,11 @@ export const CATEGORY_KEYWORDS: Partial<Record<UnitCategory, string[]>> = {
   Pressure: ['barometric', 'compression'],
   Area: ['surface', 'square', 'space'],
   Volume: ['capacity', 'cubic', 'fluid', 'liquid', 'container'],
-  Energy: ['power', 'joules', 'calories', 'watts', 'electricity', 'electric', 'work'],
+  // "power" and "watts" now belong to the Power category.
+  Energy: ['joules', 'calories', 'electricity', 'electric', 'work'],
   Speed: ['velocity', 'pace'],
+  Power: ['wattage'],
+  Force: ['thrust'],
   'Fuel Economy': [
     'fuel',
     'efficiency',

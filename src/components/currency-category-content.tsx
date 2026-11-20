@@ -10,14 +10,12 @@ type CurrencyCategoryContentProps = {
   category: UnitCategory;
   initialFromUnit: string;
   initialToUnit: string;
-  categoryTitle: string;
 };
 
 export function CurrencyCategoryContent({
   category,
   initialFromUnit,
   initialToUnit,
-  categoryTitle,
 }: CurrencyCategoryContentProps) {
   const [selectedFrom, setSelectedFrom] = React.useState(initialFromUnit);
   const [selectedTo, setSelectedTo] = React.useState(initialToUnit);
@@ -49,9 +47,9 @@ export function CurrencyCategoryContent({
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-foreground">Convert {categoryTitle.toLowerCase()} instantly</h2>
+            <h2 className="text-xl font-semibold text-foreground">Convert currencies instantly</h2>
             <p className="text-sm text-muted-foreground">
-              This converter is focused on {categoryTitle.toLowerCase()} only. Pick any units in this category and get results immediately.
+              This converter shows currencies only. Pick any two and get results immediately.
             </p>
           </div>
           <Link href="/#converter" className="text-sm font-semibold text-primary transition hover:text-primary/80">

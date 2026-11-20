@@ -115,6 +115,11 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
         answer:
           'The conversion 1 ounce = 28.3495 grams is exact enough for gourmet baking and nutrition labels. For pharmaceutical precision, convert to milligrams and work with mass balances.',
       },
+      {
+        question: 'How many pounds are in a stone?',
+        answer:
+          'A stone is exactly 14 pounds, 6.35029 kg. It is still used for body weight in the UK and Ireland, often as stone plus pounds (11 st 4 lb = 158 lb).',
+      },
     ],
   },
   Temperature: {
@@ -215,7 +220,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
   },
   Pressure: {
     title: 'Pressure Conversion Cheat Sheet',
-    heroTagline: 'Translate kilopascals, bar, atmospheres, and psi without recalculating from scratch.',
+    heroTagline: 'Translate kilopascals, bar, psi, millibars, and inches of mercury without recalculating from scratch.',
     description:
       'Pressure units span mechanical engineering, meteorology, and scuba diving. This page highlights how they line up and when each one appears in the field.',
     intro:
@@ -231,9 +236,9 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Scuba instructors teaching students how breathing gas pressure changes with depth.',
     ],
     seo: {
-      title: 'Pressure Converter (kPa, bar, atm, psi)',
+      title: 'Pressure Converter (kPa, bar, psi, mmHg, inHg)',
       description:
-        'Compare pressure units with quick conversions, tables, and guidance on when to use kPa, bar, atm, or psi.',
+        'Compare pressure units with quick conversions, tables, and guidance on when to use kPa, bar, atm, psi, hPa, mmHg, or inHg.',
       keywords: [
         'pressure converter',
         'kpa to psi',
@@ -258,6 +263,11 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
         question: 'What is bar used for?',
         answer:
           'Bar is convenient for industrial hydraulics because it stays close to atmospheric pressure values. Many European pumps, compressors, and diving instruments quote bar alongside psi or kPa.',
+      },
+      {
+        question: 'Are hPa and mbar the same? What about mmHg and Torr?',
+        answer:
+          'One hectopascal is exactly one millibar (100 Pa); weather maps use either. The torr is exactly 1/760 of a standard atmosphere, while the conventional millimeter of mercury is 133.322387415 Pa, so the two differ by about one part in seven million. Standard sea-level pressure is 1013.25 hPa, 29.92 inHg, or 760 mmHg.',
       },
     ],
   },
@@ -311,7 +321,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
   },
   Volume: {
     title: 'Volume Converter & Liquid Reference',
-    heroTagline: 'Pour confidently across liters, gallons, milliliters, and cubic measures.',
+    heroTagline: 'Pour confidently across liters, gallons, cups, spoons, and cubic measures.',
     description:
       'Volume links everyday cooking to industrial batching. This page clarifies how volumetric units relate and provides quick context for metric and customary systems.',
     intro:
@@ -354,6 +364,11 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
         question: 'What does a cubic meter represent?',
         answer:
           'A cubic meter equals 1,000 liters. Picture a box one meter on each side. It’s a common unit for water utilities, logistics, and construction concrete pours.',
+      },
+      {
+        question: 'How many milliliters are in a cup?',
+        answer:
+          'A US customary cup is 8 US fluid ounces, 236.588 mL. US nutrition labels round it to 240 mL, and recipes from Australia, Canada, and New Zealand often use a 250 mL metric cup, so check where a recipe comes from.',
       },
     ],
   },
@@ -453,6 +468,198 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       },
     ],
   },
+  Power: {
+    title: 'Power Converter & Reference',
+    heroTagline: 'Compare watts, kilowatts, horsepower, and BTU per hour side by side.',
+    description:
+      'Power is the rate at which energy is used or delivered. This page lines up the electrical, mechanical, and heating units found on engine, motor, and HVAC spec sheets.',
+    intro:
+      'Engines are rated in horsepower or PS, electric motors and chargers in kilowatts, and heating and cooling equipment in BTU per hour. Every unit below converts through the watt, one joule per second.',
+    quickTips: [
+      '1 kW is about 1.341 mechanical horsepower (hp), and 1 hp is 745.7 W.',
+      'Metric horsepower (PS, also written CV or pk) is 735.5 W, about 1.4% less than mechanical hp, so 100 PS is about 98.6 hp.',
+      'Multiply BTU/h by 0.29307 to get watts: a 12,000 BTU/h air conditioner moves heat at about 3.52 kW.',
+    ],
+    useCases: [
+      'Car buyers comparing engine output listed in hp, PS, and kW across markets.',
+      'Homeowners comparing heat pumps and air conditioners rated in BTU/h with heaters rated in kW.',
+      'Engineers translating generator, solar inverter, and grid figures between W, kW, MW, and GW.',
+    ],
+    seo: {
+      title: 'Power Converter (W, kW, hp, PS, BTU/h)',
+      description:
+        'Convert power between watts, kilowatts, megawatts, horsepower, metric horsepower (PS), and BTU per hour, with exact factors and quick reference tables.',
+      keywords: [
+        'power converter',
+        'kw to hp',
+        'hp to kw',
+        'ps to kw',
+        'btu/h to watts',
+        'watts to horsepower',
+      ],
+    },
+    faq: [
+      {
+        question: 'What is the difference between hp and PS?',
+        answer:
+          'Mechanical horsepower (hp) is 550 foot-pounds-force per second, about 745.70 W. Metric horsepower (PS in German, CV in French, Italian, and Spanish) is 75 kilogram-force meters per second, exactly 735.49875 W. 1 PS is about 0.986 hp.',
+      },
+      {
+        question: 'How many watts are in one horsepower?',
+        answer:
+          'One mechanical horsepower is 745.7 watts (0.7457 kW). Electric motor ratings sometimes use the electrical horsepower of exactly 746 W instead; SwapUnits uses the mechanical definition.',
+      },
+      {
+        question: 'Is power the same as energy?',
+        answer:
+          'No. Power is the rate of energy use. A kilowatt (kW) is power, and a kilowatt-hour (kWh) is the energy one kilowatt delivers in one hour: a 2 kW heater running for 3 hours uses 6 kWh. Energy units are in the Energy category.',
+      },
+    ],
+  },
+  Force: {
+    title: 'Force Converter & Reference',
+    heroTagline: 'Translate newtons, kilonewtons, pounds-force, and kilograms-force in one place.',
+    description:
+      'Force is mass times acceleration. This page lines up the SI newton with the gravity-based units still used for loads, thrust, and lifting gear.',
+    intro:
+      'Structural loads are given in kN or kips, lifting gear and older specifications in kilograms-force, and US thrust and tension figures in pounds-force. All units below convert through the newton (1 kg·m/s²).',
+    quickTips: [
+      '1 kilogram-force (kgf) is exactly 9.80665 N, the weight of 1 kg under standard gravity.',
+      '1 pound-force (lbf) is 4.44822 N, so 1 kN is about 224.81 lbf.',
+      'A kip is 1,000 lbf (4.44822 kN), a common unit in US structural engineering.',
+    ],
+    useCases: [
+      'Structural engineers converting design loads between kN and kips.',
+      'Climbers and riggers comparing kN strength ratings with kgf or lbf.',
+      'Students checking physics problems that mix dynes, newtons, and pounds-force.',
+    ],
+    seo: {
+      title: 'Force Converter (N, kN, lbf, kgf, kip)',
+      description:
+        'Convert force between newtons, kilonewtons, pounds-force, kilograms-force, kips, and dynes, with exact definitions and quick reference tables.',
+      keywords: [
+        'force converter',
+        'newtons to pounds',
+        'kn to lbf',
+        'kgf to n',
+        'kip to kn',
+        'force unit conversion',
+      ],
+    },
+    faq: [
+      {
+        question: 'Is a kilogram a unit of force?',
+        answer:
+          'No, the kilogram measures mass. The kilogram-force (kgf) is the force gravity exerts on 1 kg at standard gravity (9.80665 m/s²), so 1 kgf = 9.80665 N. Bathroom scales show kilograms because they assume standard gravity.',
+      },
+      {
+        question: 'What does a 22 kN rating on a carabiner mean?',
+        answer:
+          'It is the breaking strength measured in a lab: 22 kN is about 2,243 kgf or 4,946 lbf. It is not the load the gear should hold in normal use.',
+      },
+      {
+        question: 'What is a dyne?',
+        answer:
+          'The dyne is the CGS unit of force: 1 dyn = 1 g·cm/s² = 0.00001 N. It still appears in surface tension figures given in dyn/cm.',
+      },
+    ],
+  },
+  Torque: {
+    title: 'Torque Converter & Reference',
+    heroTagline: 'Switch between newton meters, pound-feet, and kilogram-force meters for any spec sheet.',
+    description:
+      'Torque is a turning force: a force applied at a distance from a pivot. This page lines up the metric and imperial torque units used for engines, bolts, and motors.',
+    intro:
+      'Car brochures quote torque in N·m or lb-ft, older Japanese and Korean specifications use kgf·m, and small motors and servos use N·cm, kgf·cm, or oz-in. All units below convert through the newton meter (N·m).',
+    quickTips: [
+      '1 lbf·ft (pound-foot) is 1.35582 N·m, and 1 N·m is 0.737562 lbf·ft.',
+      'Inch-pounds are 12 times smaller than foot-pounds: 120 lbf·in = 10 lbf·ft.',
+      'Multiply kgf·m by 9.80665 for N·m, so 25 kgf·m is about 245 N·m.',
+    ],
+    useCases: [
+      'Mechanics setting a torque wrench to a spec printed in the other unit system.',
+      'Car and EV buyers comparing engine and motor torque across US, European, and Asian brochures.',
+      'Robotics hobbyists matching servo ratings in kgf·cm or oz-in with N·m calculations.',
+    ],
+    seo: {
+      title: 'Torque Converter (N·m, lb-ft, kgf·m, in-lb)',
+      description:
+        'Convert torque between newton meters, pound-feet, pound-inches, kilogram-force meters, and ounce-inches, with exact factors and torque wrench tips.',
+      keywords: [
+        'torque converter',
+        'nm to lb ft',
+        'ft lbs to nm',
+        'in lbs to nm',
+        'kgf m to nm',
+        'torque conversion chart',
+      ],
+    },
+    faq: [
+      {
+        question: 'Is lb-ft the same as ft-lb?',
+        answer:
+          'For torque, yes: both mean one pound-force acting one foot from the pivot, 1.35582 N·m. Engineers often write lbf·ft for torque and ft·lbf for work or energy, but the number is the same.',
+      },
+      {
+        question: 'Why is torque not measured in joules?',
+        answer:
+          'Torque and energy share the dimension newton times meter, but torque is a turning effect, not work done. The SI Brochure gives the newton meter as the unit of torque and notes that the joule is not used for it.',
+      },
+      {
+        question: 'What is kgf·m?',
+        answer:
+          'A kilogram-force meter is the torque of one kilogram-force (9.80665 N) acting one meter from the pivot, so 1 kgf·m = 9.80665 N·m. It appears in older Japanese and Korean car specifications, often written "kgm".',
+      },
+    ],
+  },
+  Density: {
+    title: 'Density Converter & Reference',
+    heroTagline: 'Compare kg/m³, g/cm³, and lb/ft³ for liquids, metals, and building materials.',
+    description:
+      'Density is mass per unit of volume. This page relates the SI, laboratory, and US customary units found on material data sheets.',
+    intro:
+      'Laboratory data usually uses g/cm³ or g/mL, engineering tables use kg/m³, and US references use lb/ft³ or lb/gal. All units below convert through kilograms per cubic meter (kg/m³).',
+    quickTips: [
+      '1 g/cm³ = 1 g/mL = 1 kg/L = 1,000 kg/m³: the same density written four ways.',
+      'Water is about 1,000 kg/m³ (62.4 lb/ft³, 8.34 lb/gal) near 4 °C. Density changes with temperature, so data sheets state one.',
+      '1 kg/m³ equals 1 g/L, the form often used for gases: air at sea level is about 1.2 kg/m³.',
+    ],
+    useCases: [
+      'Engineers checking material weights from data sheets in kg/m³ against US tables in lb/ft³.',
+      'Lab staff converting g/mL readings into the units a process specification asks for.',
+      'Fuel and chemical handlers estimating tank weights from densities in lb/gal.',
+    ],
+    seo: {
+      title: 'Density Converter (kg/m³, g/cm³, lb/ft³)',
+      description:
+        'Convert density between kg/m³, g/cm³, g/mL, kg/L, g/L, lb/ft³, lb/in³, and lb/gal, with exact factors and reference tables.',
+      keywords: [
+        'density converter',
+        'g/cm3 to kg/m3',
+        'kg/m3 to lb/ft3',
+        'lb/ft3 to kg/m3',
+        'g/ml to lb/gal',
+        'density unit conversion',
+      ],
+    },
+    faq: [
+      {
+        question: 'Are g/cm³ and g/mL the same?',
+        answer:
+          'Yes. A milliliter is exactly one cubic centimeter, so 1 g/cm³ = 1 g/mL. Both also equal 1 kg/L and 1,000 kg/m³.',
+      },
+      {
+        question: 'What is the density of water?',
+        answer:
+          'Pure water is about 1,000 kg/m³ (1 g/cm³) near 4 °C and about 997 kg/m³ at 25 °C. In US units that is roughly 62.4 lb/ft³ or 8.34 lb/gal.',
+      },
+      {
+        question: 'Which gallon does lb/gal use?',
+        answer:
+          'The US gallon of 3.785411784 liters, the same gallon as in the Volume category. 1 lb/gal is about 119.83 kg/m³.',
+      },
+    ],
+  },
   'Fuel Economy': {
     title: 'Fuel Economy & Efficiency Reference',
     heroTagline: 'Compare MPG, L/100 km, and EV efficiency without breaking formulas.',
@@ -539,7 +746,7 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Consumers comparing cloud storage plans that mix terabytes and gibibytes.',
     ],
     seo: {
-      title: 'Data Storage Converter (Bytes ⇄ KB ⇄ MB ⇄ GB)',
+      title: 'Data Storage Converter (KB, MB, GB, TB, GiB)',
       description:
         'Convert digital storage sizes with confidence. Understand the difference between decimal and binary units and use the right factor every time.',
       keywords: [

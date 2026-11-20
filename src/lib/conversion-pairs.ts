@@ -15,6 +15,8 @@ export const normalizeUnitForSlug = (unit: string): string =>
     .replace(/°/g, 'deg')
     .replace(/\+/g, 'plus')
     .replace(/\//g, '-per-')
+    // "N·m" -> "N-m", "lbf·ft" -> "lbf-ft" (a raw "·" would be percent-encoded in the URL).
+    .replace(/·/g, '-')
     .replace(/\s+/g, '-')
     .replace(/\^2|²/g, '2')
     .replace(/\^3|³/g, '3');

@@ -7,7 +7,15 @@ import { cn } from '@/lib/utils';
 import type { UnitCategory } from '@/types';
 import { Input } from '@/components/ui/input';
 import { UnitIcon } from './unit-icon';
-import { parseConversionQuery, isCompoundQuantityQuery, type ParsedConversionPayload } from '@/lib/conversion-query-parser';
+import {
+  parseConversionQuery,
+  isCompoundQuantityQuery,
+  findConnectorMatches,
+  stripConnectorWords,
+  spaceConnectorWords,
+  getCaseExactUnitMatch,
+  type ParsedConversionPayload,
+} from '@/lib/conversion-query-parser';
 import { categoryDisplayOrder } from '@/lib/unit-data';
 
 // Scientific notation: 1e5, 2.5e-3, etc.
@@ -18,6 +26,25 @@ import { categoryDisplayOrder } from '@/lib/unit-data';
 const NUMBER_TOKEN_RE = /[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g;
 const keepPer100Digits = (match: string, offset: number, whole: string) =>
   offset > 0 && whole[offset - 1] === '/' ? match : '';
+
+// Prefix match on a unit symbol, also with the "·" of compound symbols left out, so "nm" finds
+// N·m as well as nm and "kgfm" finds kgf·m. `text` is already lowercase.
+const symbolStartsWith = (symbol: string, text: string): boolean => {
+  const lower = symbol.toLowerCase();
+  return lower.startsWith(text) || (lower.includes('·') && lower.replace(/·/g, '').startsWith(text));
+};
+
+// The first connector word with unit text before it: "kg to g" splits, "to kg" doesn't, and
+// neither does "5 in lb" (5 inch-pounds). Uses the parser's rule, so the "in" of "lbf·in" or
+// "in²" is never a connector.
+const splitAtConnector = (text: string): { before: string; after: string } | null => {
+  for (const { index, word } of findConnectorMatches(text)) {
+    const before = text.slice(0, index);
+    if (!before.replace(NUMBER_TOKEN_RE, '').trim()) continue;
+    return { before, after: text.slice(index + word.length) };
+  }
+  return null;
+};
 
 const LEXER_NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
 const findLeadingNumericValue = (value: string): number => {
@@ -62,7 +89,6 @@ export interface ConversionComboboxProps {
   prefixIcon?: React.ReactNode;
 }
 
-const CONNECTOR_TOKEN_REGEX = /\b(to|into|in)\b/gi;
 const LETTER_REGEX = /[a-zA-Z°µμ]/;
 const INITIAL_VISIBLE_ITEMS = 50;
 const LOAD_INCREMENT = 50;
@@ -105,10 +131,7 @@ function normalizeInput(value: string): string {
   // Handles: "m3", "m^3", "100m3", "50 ft3", "cm^3"
   withSquaredConverted = withSquaredConverted.replace(/([a-z]+)\^?3(?=\s|$|[^0-9])/gi, '$1³');
   
-  const withConnectorsSpaced = withSquaredConverted.replace(
-    /(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi,
-    '$1 $2 ',
-  );
+  const withConnectorsSpaced = spaceConnectorWords(withSquaredConverted);
 
   const withSpacing = withConnectorsSpaced
     .replace(/(\d)(?=[A-Za-z°µµ])/g, (match, digit: string, offset: number, original: string) => {
@@ -138,7 +161,7 @@ function isPureNumericQuery(query: string): boolean {
     return false;
   }
 
-  if (LETTER_REGEX.test(withoutCommas.replace(CONNECTOR_TOKEN_REGEX, ' '))) {
+  if (LETTER_REGEX.test(stripConnectorWords(withoutCommas))) {
     return false;
   }
 
@@ -240,7 +263,7 @@ export function ConversionCombobox({
 
   const trimmedSearch = search.trim();
   const normalizedSearch = React.useMemo(() => normalizeInput(trimmedSearch), [trimmedSearch]);
-  const sanitizedForLetters = normalizedSearch.replace(CONNECTOR_TOKEN_REGEX, ' ');
+  const sanitizedForLetters = stripConnectorWords(normalizedSearch);
   const hasUnitCharacters = LETTER_REGEX.test(sanitizedForLetters);
 
   const baseItems = React.useMemo(() => {
@@ -254,9 +277,10 @@ export function ConversionCombobox({
     // Examples: "20", "1.5", "2e5", "3.14e-2"
     const hasNumbers = /\d/.test(lowerSearch);
     
-    // Check for connector words (to, in, into)
-    const hasConnector = /\b(to|in|into)\b/.test(lowerSearch);
-    
+    // Connector word (to, in, into) with unit text before it; "in" inside a symbol doesn't count
+    const connectorSplit = splitAtConnector(lowerSearch);
+    const hasConnector = connectorSplit !== null;
+
     // Check if negative number - only valid for Temperature category
     const hasNegativeNumber = /^-\d/.test(lowerSearch.trim());
 
@@ -264,30 +288,17 @@ export function ConversionCombobox({
     if (!hasNumbers) {
       // A connector word is only a connector if there's text BEFORE it
       // "kg to g" = connector, "to" or "t" = just searching for units starting with "to"/"t"
-      let hasRealConnector = false;
-      let beforeConnector = '';
-      let afterConnector = '';
-      
-      if (hasConnector) {
-        const parts = lowerSearch.split(/\b(to|in|into)\b/);
-        beforeConnector = parts[0]?.trim() || '';
-        afterConnector = parts.slice(2).join('').trim() || '';
-        
-        // Only treat as connector if there's text BEFORE the connector word
-        hasRealConnector = beforeConnector.length > 0;
-      }
-      
       // Sub-case 1a: Has real connector with text before it (e.g., "kg to g", "ton in lb")
-      if (hasRealConnector) {
+      if (connectorSplit) {
+        const beforeConnector = connectorSplit.before.trim();
+        const afterConnector = connectorSplit.after.trim();
         return items.filter((item) => {
-          const fromSymbolLower = item.fromSymbol.toLowerCase();
           const fromNameLower = item.fromName.toLowerCase();
-          const toSymbolLower = item.toSymbol.toLowerCase();
           const toNameLower = item.toName.toLowerCase();
 
           // Must match from unit
-          const matchesFrom = 
-            fromSymbolLower.startsWith(beforeConnector) ||
+          const matchesFrom =
+            symbolStartsWith(item.fromSymbol, beforeConnector) ||
             fromNameLower.startsWith(beforeConnector);
 
           if (!matchesFrom) return false;
@@ -297,7 +308,7 @@ export function ConversionCombobox({
 
           // Must match to unit
           return (
-            toSymbolLower.startsWith(afterConnector) ||
+            symbolStartsWith(item.toSymbol, afterConnector) ||
             toNameLower.startsWith(afterConnector)
           );
         });
@@ -312,7 +323,6 @@ export function ConversionCombobox({
 
       return items.filter((item) => {
         const categoryLower = item.category.toLowerCase();
-        const fromSymbolLower = item.fromSymbol.toLowerCase();
         const fromNameLower = item.fromName.toLowerCase();
 
         // Simple startsWith matching on:
@@ -322,7 +332,7 @@ export function ConversionCombobox({
         // 4. Category keywords (synonyms like "weight", "distance", "money")
         return (
           categoryLower.startsWith(searchText) ||
-          fromSymbolLower.startsWith(searchText) ||
+          symbolStartsWith(item.fromSymbol, searchText) ||
           fromNameLower.startsWith(searchText) ||
           item.keywordsLower.some((keyword) => keyword.startsWith(searchText))
         );
@@ -347,9 +357,8 @@ export function ConversionCombobox({
       // CASE 2a: Single unit token - match from unit only
       if (unitTokens.length === 1) {
         return items.filter((item) => {
-          const fromSymbolLower = item.fromSymbol.toLowerCase();
           const fromNameLower = item.fromName.toLowerCase();
-          
+
           // If negative number, only show Temperature category
           if (hasNegativeNumber && item.category !== 'Temperature') {
             return false;
@@ -357,7 +366,7 @@ export function ConversionCombobox({
 
           // Match from unit only
           return (
-            fromSymbolLower.startsWith(textPart) ||
+            symbolStartsWith(item.fromSymbol, textPart) ||
             fromNameLower.startsWith(textPart)
           );
         });
@@ -370,26 +379,24 @@ export function ConversionCombobox({
         const toUnitToken = unitTokens.slice(1).join(' '); // Rest could be multi-word
         
         return items.filter((item) => {
-          const fromSymbolLower = item.fromSymbol.toLowerCase();
           const fromNameLower = item.fromName.toLowerCase();
-          const toSymbolLower = item.toSymbol.toLowerCase();
           const toNameLower = item.toName.toLowerCase();
-          
+
           // If negative number, only show Temperature category
           if (hasNegativeNumber && item.category !== 'Temperature') {
             return false;
           }
 
           // Must match from unit
-          const matchesFrom = 
-            fromSymbolLower.startsWith(fromUnitToken) ||
+          const matchesFrom =
+            symbolStartsWith(item.fromSymbol, fromUnitToken) ||
             fromNameLower.startsWith(fromUnitToken);
 
           if (!matchesFrom) return false;
 
           // Must match to unit
           return (
-            toSymbolLower.startsWith(toUnitToken) ||
+            symbolStartsWith(item.toSymbol, toUnitToken) ||
             toNameLower.startsWith(toUnitToken)
           );
         });
@@ -397,16 +404,15 @@ export function ConversionCombobox({
 
       // Fallback: match from unit only
       return items.filter((item) => {
-        const fromSymbolLower = item.fromSymbol.toLowerCase();
         const fromNameLower = item.fromName.toLowerCase();
-        
+
         // If negative number, only show Temperature category
         if (hasNegativeNumber && item.category !== 'Temperature') {
           return false;
         }
 
         return (
-          fromSymbolLower.startsWith(textPart) ||
+          symbolStartsWith(item.fromSymbol, textPart) ||
           fromNameLower.startsWith(textPart)
         );
       });
@@ -414,11 +420,10 @@ export function ConversionCombobox({
 
     // CASE 3: HAS NUMBERS AND CONNECTOR
     // User typing: "20 kg to", "20 kg to g", "20 kg to gra", "1e5 m to km", "-20 celsius to f"
-    if (hasNumbers && hasConnector) {
+    if (hasNumbers && connectorSplit) {
       // Split by connector word
-      const parts = lowerSearch.split(/\b(to|in|into)\b/);
-      const beforeConnector = parts[0] || '';
-      const afterConnector = parts.slice(2).join('').trim() || '';
+      const beforeConnector = connectorSplit.before;
+      const afterConnector = connectorSplit.after.trim();
 
       // Extract from unit (text after number, before connector)
       // Remove numbers, scientific notation, extra spaces
@@ -428,9 +433,7 @@ export function ConversionCombobox({
       const toUnitText = afterConnector.replace(NUMBER_TOKEN_RE, keepPer100Digits).replace(/\s+/g, ' ').trim();
 
       return items.filter((item) => {
-        const fromSymbolLower = item.fromSymbol.toLowerCase();
         const fromNameLower = item.fromName.toLowerCase();
-        const toSymbolLower = item.toSymbol.toLowerCase();
         const toNameLower = item.toName.toLowerCase();
 
         // If negative number, only show Temperature category
@@ -439,8 +442,8 @@ export function ConversionCombobox({
         }
 
         // Must match from unit
-        const matchesFrom = 
-          fromSymbolLower.startsWith(fromUnitText) ||
+        const matchesFrom =
+          symbolStartsWith(item.fromSymbol, fromUnitText) ||
           fromNameLower.startsWith(fromUnitText);
 
         if (!matchesFrom) return false;
@@ -450,7 +453,7 @@ export function ConversionCombobox({
 
         // Must match to unit
         return (
-          toSymbolLower.startsWith(toUnitText) ||
+          symbolStartsWith(item.toSymbol, toUnitText) ||
           toNameLower.startsWith(toUnitText)
         );
       });
@@ -498,7 +501,27 @@ export function ConversionCombobox({
     const searchQuery = normalizedSearch.toLowerCase().trim();
     const searchText = searchQuery.replace(/[\d.,\s-]+/g, '').replace(/\b(to|in|into)\b/g, '').trim();
 
+    // A from-unit typed with its exact symbol case where that symbol clashes with another unit
+    // once lowercased ("kN" vs knot "kn", "PS" vs picosecond "ps", "Nm" vs nanometer "nm") puts
+    // that unit's pairs first; typed the other way ("kn", "ps", "nm") the older unit stays first.
+    const connectorSplit = splitAtConnector(normalizedSearch);
+    const fromText = (connectorSplit ? connectorSplit.before : normalizedSearch)
+      .replace(NUMBER_TOKEN_RE, keepPer100Digits)
+      .replace(/\s+/g, ' ')
+      .trim();
+    const firstToken = fromText.split(' ')[0] ?? '';
+    const exactUnit =
+      getCaseExactUnitMatch(fromText) ?? (firstToken !== fromText ? getCaseExactUnitMatch(firstToken) : null);
+    const isExactUnit = (item: ConversionComboboxItem) =>
+      exactUnit !== null && item.category === exactUnit.category && item.fromSymbol === exactUnit.symbol;
+
     return normalizedItems.sort((a, b) => {
+      // 0. Exact-case symbol match (see above)
+      if (exactUnit) {
+        const aExact = isExactUnit(a);
+        if (aExact !== isExactUnit(b)) return aExact ? -1 : 1;
+      }
+
       // 1. Sort by category rank first
       const rankDiff = rankOf(a.category) - rankOf(b.category);
       if (rankDiff !== 0) return rankDiff;
@@ -510,8 +533,27 @@ export function ConversionCombobox({
         const aFromNameLower = a.fromName.toLowerCase();
         const bFromNameLower = b.fromName.toLowerCase();
         
-        const aFromMatches = aFromLower.startsWith(searchText) || aFromNameLower.startsWith(searchText);
-        const bFromMatches = bFromLower.startsWith(searchText) || bFromNameLower.startsWith(searchText);
+        // searchText has its spaces, digits and hyphens removed, so compare against the symbol and
+        // name with the same characters removed too ("fl oz" -> "floz", "N·m" -> "nm"); without
+        // this a multi-word unit could never count as matching its own from-unit.
+        const squash = (value: string) => value.replace(/[\d.,\s\-·]+/g, '');
+
+        // A from-symbol equal to the search beats one that only starts with it, so "fl oz",
+        // "pt" and "gal" list the US unit before "fl oz (UK)", "pt (UK)", "gal (UK)".
+        const aExactSymbol = squash(aFromLower) === searchText;
+        const bExactSymbol = squash(bFromLower) === searchText;
+        if (aExactSymbol !== bExactSymbol) return aExactSymbol ? -1 : 1;
+
+        const aFromMatches =
+          aFromLower.startsWith(searchText) ||
+          aFromNameLower.startsWith(searchText) ||
+          squash(aFromLower).startsWith(searchText) ||
+          squash(aFromNameLower).startsWith(searchText);
+        const bFromMatches =
+          bFromLower.startsWith(searchText) ||
+          bFromNameLower.startsWith(searchText) ||
+          squash(bFromLower).startsWith(searchText) ||
+          squash(bFromNameLower).startsWith(searchText);
         
         if (aFromMatches && !bFromMatches) return -1;
         if (!aFromMatches && bFromMatches) return 1;
@@ -779,7 +821,7 @@ export function ConversionCombobox({
       // Prime-notation compound quantities (6' 2") are letter-free, so they'd otherwise be
       // rejected by the letter check meant to filter out bare numbers.
       if (
-        !LETTER_REGEX.test(normalized.replace(CONNECTOR_TOKEN_REGEX, ' ')) &&
+        !LETTER_REGEX.test(stripConnectorWords(normalized)) &&
         !isCompoundQuantityQuery(normalized)
       ) {
         return false;
