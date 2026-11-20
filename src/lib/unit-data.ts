@@ -10,14 +10,28 @@ import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types
 // Volume: Liter (L) 
 // Energy: Joule (J)
 // Speed: Meter per second (m/s)
+// Power: Watt (W)
+// Force: Newton (N)
+// Torque: Newton meter (N·m)
+// Density: Kilogram per cubic meter (kg/m³)
 // Fuel Economy: Kilometer per Liter (km/L)
-// Data Storage: Byte (B)
+// Data Storage: Byte (B). KB/MB/GB/TB are decimal (10³ steps, the SI meaning and what drive
+//   makers use); KiB/MiB/GiB/TiB are the IEC binary units (2¹⁰ steps).
 // Data Transfer Rate: Bits per second (bps)
 // Bitcoin: Bitcoin (BTC)
 // Currency: Currency (dynamic rates)
+//
+// Factors for the US customary, imperial and gravitational units follow NIST SP 811 Appendix B
+// and are computed from the exact definitions below rather than from its rounded table values.
 
 const EPA_MPGE_WH_PER_GALLON = 33705; // EPA consumer-label MPGe constant (fueleconomy.gov / 40 CFR 600.116)
-const US_GALLON_TO_LITER = 3.785411784; // matches the Volume category's 'gal' factor below
+const US_GALLON_TO_LITER = 3.785411784; // 231 in³, exact; matches the Volume category's 'gal' factor below
+const IMPERIAL_GALLON_TO_LITER = 4.54609; // exact (UK Weights and Measures Act 1985)
+const POUND_TO_KG = 0.45359237; // exact (international avoirdupois pound)
+const STANDARD_GRAVITY = 9.80665; // m/s², exact; defines the kilogram-force and pound-force
+const POUND_FORCE_TO_NEWTON = POUND_TO_KG * STANDARD_GRAVITY; // 4.4482216152605 N
+const BTU_IT_TO_JOULE = 1055.05585262; // International Table BTU, exact; same BTU as the Energy category
+const MMHG_TO_PASCAL = 133.322387415; // conventional mmHg: 13.5951 g/cm³ × 1 mm × standard gravity
 const LITER_GASOLINE_KWH_EQUIVALENCE = (EPA_MPGE_WH_PER_GALLON / 1000) / US_GALLON_TO_LITER; // ≈ 8.9039 kWh/L
 const WH_PER_KM_FACTOR = LITER_GASOLINE_KWH_EQUIVALENCE * 1000; // converts Wh/km to km/L via inverse relationship
 const MILES_TO_KILOMETERS = 1.609344;
@@ -136,6 +150,9 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Metric Ton', symbol: 't', factor: 1000 },
       { name: 'Pound', symbol: 'lb', factor: 0.45359237 },
       { name: 'Ounce', symbol: 'oz', factor: 0.028349523125 },
+      { name: 'Stone', symbol: 'st', factor: 6.35029318 }, // 14 lb
+      { name: 'Short Ton (US)', symbol: 'ton (US)', factor: 907.18474 }, // 2000 lb
+      { name: 'Long Ton (UK)', symbol: 'ton (UK)', factor: 1016.0469088 }, // 2240 lb
     ].sort((a,b) => a.factor - b.factor),
   },
   Temperature: {
@@ -169,6 +186,14 @@ export const unitData: Record<UnitCategory, UnitData> = {
       { name: 'Bar', symbol: 'bar', factor: 100000 },
       { name: 'Atmosphere', symbol: 'atm', factor: 101325 },
       { name: 'Pound per square inch', symbol: 'psi', factor: 6894.757293168 },
+      { name: 'Hectopascal', symbol: 'hPa', factor: 100 },
+      // Same size as the hectopascal; weather reports use both.
+      { name: 'Millibar', symbol: 'mbar', factor: 100 },
+      { name: 'Megapascal', symbol: 'MPa', factor: 1e6 },
+      { name: 'Millimeter of mercury', symbol: 'mmHg', factor: MMHG_TO_PASCAL },
+      { name: 'Inch of mercury', symbol: 'inHg', factor: 25.4 * MMHG_TO_PASCAL },
+      // Exactly 1/760 atm; differs from the conventional mmHg by about 1 part in 7 million.
+      { name: 'Torr', symbol: 'Torr', factor: 101325 / 760 },
     ].sort((a,b) => a.factor - b.factor),
   },
   Area: {
@@ -196,6 +221,20 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Cubic Millimeter', symbol: 'mm³', factor: 0.000001 },
             { name: 'Gallon (US)', symbol: 'gal', factor: 3.785411784 }, // US Gallon to L
             { name: 'Cubic Foot', symbol: 'ft³', factor: 28.316846592 }, // Cubic Foot to L
+            { name: 'Cubic Inch', symbol: 'in³', factor: 0.016387064 }, // 2.54³ cm³, exact
+            { name: 'Cubic Yard', symbol: 'yd³', factor: 764.554857984 }, // 0.9144³ m³, exact
+            // US customary kitchen and liquid measures, all fractions of the 231 in³ US gallon.
+            { name: 'Teaspoon (US)', symbol: 'tsp', factor: US_GALLON_TO_LITER / 768 },
+            { name: 'Tablespoon (US)', symbol: 'tbsp', factor: US_GALLON_TO_LITER / 256 },
+            { name: 'Fluid Ounce (US)', symbol: 'fl oz', factor: US_GALLON_TO_LITER / 128 },
+            { name: 'Cup (US)', symbol: 'cup', factor: US_GALLON_TO_LITER / 16 },
+            { name: 'Pint (US)', symbol: 'pt', factor: US_GALLON_TO_LITER / 8 },
+            { name: 'Quart (US)', symbol: 'qt', factor: US_GALLON_TO_LITER / 4 },
+            // Imperial measures. Named "Imperial ..." rather than "... (UK)" so the finder's
+            // plain "fluid ounce" / "pint" / "gallon" keep meaning the US units, as "gallon" does now.
+            { name: 'Imperial Fluid Ounce', symbol: 'fl oz (UK)', factor: IMPERIAL_GALLON_TO_LITER / 160 },
+            { name: 'Imperial Pint', symbol: 'pt (UK)', factor: IMPERIAL_GALLON_TO_LITER / 8 },
+            { name: 'Imperial Gallon', symbol: 'gal (UK)', factor: IMPERIAL_GALLON_TO_LITER },
         ].sort((a,b) => a.factor - b.factor),
     },
     Energy: {
@@ -206,7 +245,13 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Calorie', symbol: 'cal', factor: 4.184 },
             { name: 'Kilocalorie (food)', symbol: 'kcal', factor: 4184 },
             { name: 'Kilowatt Hour', symbol: 'kWh', factor: 3.6e6 },
-            { name: 'British Thermal Unit', symbol: 'BTU', factor: 1055.05585262 },
+            { name: 'British Thermal Unit', symbol: 'BTU', factor: BTU_IT_TO_JOULE },
+            { name: 'Watt Hour', symbol: 'Wh', factor: 3600 },
+            { name: 'Megajoule', symbol: 'MJ', factor: 1e6 },
+            // Exact since the 2019 SI redefinition fixed the elementary charge.
+            { name: 'Electronvolt', symbol: 'eV', factor: 1.602176634e-19 },
+            // 100,000 BTU (IT), the "therm (EC)" in NIST SP 811; the U.S. therm there is 0.02% smaller.
+            { name: 'Therm', symbol: 'thm', factor: 100000 * BTU_IT_TO_JOULE },
         ].sort((a,b) => a.factor - b.factor),
     },
     Speed: {
@@ -217,6 +262,7 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Mile per hour', symbol: 'mph', factor: 0.44704 },
             // International knot: exactly 1 nautical mile (1852 m) per hour.
             { name: 'Knot', symbol: 'kn', factor: 1852 / 3600 },
+            { name: 'Foot per second', symbol: 'ft/s', factor: 0.3048 },
         ].sort((a,b) => a.factor - b.factor),
     },
     'Fuel Economy': { 
@@ -227,10 +273,17 @@ export const unitData: Record<UnitCategory, UnitData> = {
         name: 'Data Storage',
         units: [
             { name: 'Byte', symbol: 'B', factor: 1 },
-            { name: 'Kilobyte', symbol: 'KB', factor: 1024 },
-            { name: 'Megabyte', symbol: 'MB', factor: 1024 ** 2 },
-            { name: 'Gigabyte', symbol: 'GB', factor: 1024 ** 3 },
-            { name: 'Terabyte', symbol: 'TB', factor: 1024 ** 4 },
+            // Decimal (SI) units, as NIST, IEC 80000-13 and drive makers define them. The symbol
+            // stays "KB" rather than SI "kB": pair URLs are built from symbols.
+            { name: 'Kilobyte', symbol: 'KB', factor: 1e3 },
+            { name: 'Megabyte', symbol: 'MB', factor: 1e6 },
+            { name: 'Gigabyte', symbol: 'GB', factor: 1e9 },
+            { name: 'Terabyte', symbol: 'TB', factor: 1e12 },
+            // IEC binary units: what Windows and RAM sizes report while labelling them "GB".
+            { name: 'Kibibyte', symbol: 'KiB', factor: 1024 },
+            { name: 'Mebibyte', symbol: 'MiB', factor: 1024 ** 2 },
+            { name: 'Gibibyte', symbol: 'GiB', factor: 1024 ** 3 },
+            { name: 'Tebibyte', symbol: 'TiB', factor: 1024 ** 4 },
         ].sort((a,b) => a.factor - b.factor),
     },
     'Data Transfer Rate': {
@@ -277,6 +330,60 @@ export const unitData: Record<UnitCategory, UnitData> = {
             { name: 'Satoshi', symbol: 'sat', factor: 1e-8 },
         ].sort((a,b) => a.factor - b.factor),
     },
+  // The categories below come last on purpose: the finder's alias index follows this object's
+  // order, so where a symbol here matches an older one case-insensitively (kN/kn, PS/ps, Nm/nm)
+  // the older unit stays the default and the parser picks the new one from context or exact case.
+  Power: {
+    name: 'Power',
+    units: [
+      { name: 'Watt', symbol: 'W', factor: 1 },
+      { name: 'Kilowatt', symbol: 'kW', factor: 1e3 },
+      { name: 'Megawatt', symbol: 'MW', factor: 1e6 },
+      { name: 'Gigawatt', symbol: 'GW', factor: 1e9 },
+      // 550 ft·lbf/s ≈ 745.70 W.
+      { name: 'Horsepower (mechanical)', symbol: 'hp', factor: 550 * 0.3048 * POUND_FORCE_TO_NEWTON },
+      // 75 kgf·m/s = 735.49875 W (PS / CV / pk).
+      { name: 'Metric Horsepower (PS)', symbol: 'PS', factor: 75 * STANDARD_GRAVITY },
+      { name: 'BTU per hour', symbol: 'BTU/h', factor: BTU_IT_TO_JOULE / 3600 },
+    ].sort((a, b) => a.factor - b.factor),
+  },
+  Force: {
+    name: 'Force',
+    units: [
+      { name: 'Newton', symbol: 'N', factor: 1 },
+      { name: 'Kilonewton', symbol: 'kN', factor: 1e3 },
+      { name: 'Dyne', symbol: 'dyn', factor: 1e-5 },
+      { name: 'Kilogram-force', symbol: 'kgf', factor: STANDARD_GRAVITY },
+      { name: 'Pound-force', symbol: 'lbf', factor: POUND_FORCE_TO_NEWTON },
+      { name: 'Kip', symbol: 'kip', factor: 1000 * POUND_FORCE_TO_NEWTON }, // 1,000 lbf
+    ].sort((a, b) => a.factor - b.factor),
+  },
+  Torque: {
+    name: 'Torque',
+    units: [
+      { name: 'Newton Meter', symbol: 'N·m', factor: 1 },
+      { name: 'Newton Centimeter', symbol: 'N·cm', factor: 0.01 },
+      { name: 'Kilogram-force Meter', symbol: 'kgf·m', factor: STANDARD_GRAVITY },
+      { name: 'Kilogram-force Centimeter', symbol: 'kgf·cm', factor: STANDARD_GRAVITY / 100 },
+      { name: 'Pound-force Foot', symbol: 'lbf·ft', factor: POUND_FORCE_TO_NEWTON * 0.3048 },
+      { name: 'Pound-force Inch', symbol: 'lbf·in', factor: POUND_FORCE_TO_NEWTON * 0.0254 },
+      { name: 'Ounce-force Inch', symbol: 'ozf·in', factor: (POUND_FORCE_TO_NEWTON / 16) * 0.0254 },
+    ].sort((a, b) => a.factor - b.factor),
+  },
+  Density: {
+    name: 'Density',
+    units: [
+      { name: 'Kilogram per cubic meter', symbol: 'kg/m³', factor: 1 },
+      { name: 'Gram per cubic centimeter', symbol: 'g/cm³', factor: 1000 },
+      // g/mL and kg/L are the same density as g/cm³; g/L is the same as kg/m³.
+      { name: 'Gram per milliliter', symbol: 'g/mL', factor: 1000 },
+      { name: 'Kilogram per liter', symbol: 'kg/L', factor: 1000 },
+      { name: 'Gram per liter', symbol: 'g/L', factor: 1 },
+      { name: 'Pound per cubic foot', symbol: 'lb/ft³', factor: POUND_TO_KG / 0.028316846592 },
+      { name: 'Pound per cubic inch', symbol: 'lb/in³', factor: POUND_TO_KG / 0.000016387064 },
+      { name: 'Pound per gallon (US)', symbol: 'lb/gal', factor: POUND_TO_KG / (US_GALLON_TO_LITER / 1000) },
+    ].sort((a, b) => a.factor - b.factor),
+  },
 };
 
 export const allPresets: Preset[] = [
@@ -285,20 +392,32 @@ export const allPresets: Preset[] = [
   { category: 'Length', fromUnit: 'km', toUnit: 'mi', name: 'Kilometer to Miles' },
   { category: 'Mass', fromUnit: 'kg', toUnit: 'lb', name: 'Kilograms to Pounds' },
   { category: 'Mass', fromUnit: 'g', toUnit: 'oz', name: 'Grams to Ounces' },
+  { category: 'Mass', fromUnit: 'st', toUnit: 'kg', name: 'Stone to Kilograms' },
   { category: 'Temperature', fromUnit: '°C', toUnit: '°F', name: 'Celsius to Fahrenheit' },
   { category: 'Temperature', fromUnit: '°F', toUnit: '°C', name: 'Fahrenheit to Celsius' },
   { category: 'Time', fromUnit: 'h', toUnit: 'min', name: 'Hours to Minutes' },
   { category: 'Time', fromUnit: 's', toUnit: 'ms', name: 'Seconds to Milliseconds' },
   { category: 'Pressure', fromUnit: 'psi', toUnit: 'kPa', name: 'PSI to Kilopascals' },
   { category: 'Pressure', fromUnit: 'Pa', toUnit: 'atm', name: 'Pascals to Atmospheres' },
+  { category: 'Pressure', fromUnit: 'hPa', toUnit: 'inHg', name: 'Hectopascals to Inches of Mercury' },
   { category: 'Area', fromUnit: 'm²', toUnit: 'ft²', name: 'Square Meters to Square Feet' },
   { category: 'Area', fromUnit: 'acre', toUnit: 'm²', name: 'Acres to Square Meters' },
   { category: 'Volume', fromUnit: 'L', toUnit: 'gal', name: 'Liters to Gallons (US)' },
   { category: 'Volume', fromUnit: 'mL', toUnit: 'L', name: 'Milliliters to Liters' },
+  { category: 'Volume', fromUnit: 'cup', toUnit: 'mL', name: 'Cups to Milliliters' },
+  { category: 'Volume', fromUnit: 'fl oz', toUnit: 'mL', name: 'Fluid Ounces to Milliliters' },
   { category: 'Energy', fromUnit: 'kWh', toUnit: 'BTU', name: 'Kilowatt Hours to BTU' },
   { category: 'Energy', fromUnit: 'J', toUnit: 'cal', name: 'Joules to Calories' },
   { category: 'Speed', fromUnit: 'km/h', toUnit: 'mph', name: 'km/h to mph' },
   { category: 'Speed', fromUnit: 'm/s', toUnit: 'km/h', name: 'm/s to km/h' },
+  { category: 'Power', fromUnit: 'kW', toUnit: 'hp', name: 'Kilowatts to Horsepower' },
+  { category: 'Power', fromUnit: 'BTU/h', toUnit: 'W', name: 'BTU per Hour to Watts' },
+  { category: 'Force', fromUnit: 'N', toUnit: 'lbf', name: 'Newtons to Pounds-force' },
+  { category: 'Force', fromUnit: 'kgf', toUnit: 'N', name: 'Kilograms-force to Newtons' },
+  { category: 'Torque', fromUnit: 'N·m', toUnit: 'lbf·ft', name: 'Newton Meters to Pound-feet' },
+  { category: 'Torque', fromUnit: 'lbf·ft', toUnit: 'N·m', name: 'Pound-feet to Newton Meters' },
+  { category: 'Density', fromUnit: 'g/cm³', toUnit: 'kg/m³', name: 'g/cm³ to kg/m³' },
+  { category: 'Density', fromUnit: 'kg/m³', toUnit: 'lb/ft³', name: 'kg/m³ to lb/ft³' },
   { category: 'Fuel Economy', fromUnit: 'MPG (US)', toUnit: 'km/L', name: 'MPG (US) to km/L' },
   { category: 'Fuel Economy', fromUnit: 'km/L', toUnit: 'MPG (UK)', name: 'km/L to MPG (UK)'},
   { category: 'Fuel Economy', fromUnit: 'L/100km', toUnit: 'L/100mi', name: 'L/100km to L/100mi' },
@@ -309,6 +428,7 @@ export const allPresets: Preset[] = [
   { category: 'Fuel Economy', fromUnit: 'Wh/mi', toUnit: 'Wh/km', name: 'Wh/mi to Wh/km (EV)' },
   { category: 'Data Storage', fromUnit: 'GB', toUnit: 'MB', name: 'Gigabytes to Megabytes' },
   { category: 'Data Storage', fromUnit: 'TB', toUnit: 'GB', name: 'Terabytes to Gigabytes' },
+  { category: 'Data Storage', fromUnit: 'TB', toUnit: 'GiB', name: 'Terabytes to Gibibytes' },
   { category: 'Data Transfer Rate', fromUnit: 'Mbps', toUnit: 'MB/s', name: 'Mbps to MB/s' },
   { category: 'Data Transfer Rate', fromUnit: 'Gbps', toUnit: 'Mbps', name: 'Gbps to Mbps' },
   { category: 'Bitcoin', fromUnit: 'BTC', toUnit: 'sat', name: 'Bitcoin to Satoshi' },
@@ -323,7 +443,7 @@ export const allPresets: Preset[] = [
 
 export const categoryDisplayOrder: UnitCategory[] = [
   'Length', 'Mass', 'Temperature', 'Time', 'Pressure',
-  'Area', 'Volume', 'Energy', 'Speed', 'Fuel Economy',
+  'Area', 'Volume', 'Energy', 'Speed', 'Power', 'Force', 'Torque', 'Density', 'Fuel Economy',
   'Data Storage', 'Data Transfer Rate', 'Bitcoin', 'Currency', 'SI Prefixes',
   // Removed: 'Ethereum', 'EM Frequency', 'Sound Frequency',
 ];

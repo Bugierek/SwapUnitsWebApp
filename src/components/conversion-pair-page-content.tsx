@@ -27,9 +27,10 @@ import { copyTextToClipboard } from '@/lib/copy-to-clipboard';
 import { useToast } from '@/hooks/use-toast';
 import { formatSignificant } from '@/lib/conversion-formula';
 import type { FxRatesResponse } from '@/lib/fx';
-import { isEvInvolvingFuelEconomyPair, isEvFuelEconomyUnit } from '@/lib/unit-data';
+import { isEvInvolvingFuelEconomyPair, isEvFuelEconomyUnit, unitData } from '@/lib/unit-data';
 import { VehiclePresetChips } from '@/components/vehicle-preset-chips';
 import { EvRangeCostEstimator } from '@/components/ev-range-cost-estimator';
+import { DataStorageExplainer } from '@/components/data-storage-explainer';
 
 type ExampleRow = {
   input: number;
@@ -124,6 +125,10 @@ export function ConversionPairPageContent({
 
   const isEvPair =
     categoryInfo.category === 'Fuel Economy' && isEvInvolvingFuelEconomyPair(fromSymbol, toSymbol);
+  // "torque units", "currencies": for headings such as "More torque conversions". categoryInfo.title
+  // is the category page's title ("Torque Converter & Reference") and reads wrong inside a sentence.
+  const categoryName = (unitData[categoryInfo.category]?.name ?? categoryInfo.category).toLowerCase();
+  const categoryUnitsNoun = categoryInfo.category === 'Currency' ? 'currencies' : `${categoryName} units`;
   const evUnitSymbol = isEvFuelEconomyUnit(fromSymbol) ? fromSymbol : toSymbol;
 
   const handleVehicleSelect = React.useCallback((preset: VehiclePreset, value: number) => {
@@ -293,6 +298,10 @@ export function ConversionPairPageContent({
 
           {isEvPair && <EvRangeCostEstimator initialVehicle={selectedVehicle} />}
 
+          {categoryInfo.category === 'Data Storage' && (
+            <DataStorageExplainer fromSymbol={fromSymbol} toSymbol={toSymbol} />
+          )}
+
           {exampleRows.length > 0 && (
             <section className="space-y-4">
               <div className="flex flex-col gap-2">
@@ -364,7 +373,7 @@ export function ConversionPairPageContent({
 
           {otherUnits.length > 0 && (
             <section className="space-y-4 rounded-3xl border border-border/60 bg-card px-6 py-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-foreground">Explore more {categoryInfo.title.toLowerCase()}</h2>
+              <h2 className="text-xl font-semibold text-foreground">More {categoryName} conversions</h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {otherUnits.slice(0, 6).map((unit) => (
                   <Link
@@ -391,10 +400,11 @@ export function ConversionPairPageContent({
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="space-y-1">
                 <h2 className="text-lg font-semibold text-foreground">
-                  Compare all {categoryInfo.title.toLowerCase()}
+                  Compare all {categoryUnitsNoun}
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  View the full unit roster, charts, and tips for {categoryInfo.title} conversions.
+                  See every {categoryInfo.category === 'Currency' ? 'currency' : `${categoryName} unit`} side by side, with
+                  reference tables, tips and answers to common questions.
                 </p>
               </div>
               <Button asChild variant="outline">

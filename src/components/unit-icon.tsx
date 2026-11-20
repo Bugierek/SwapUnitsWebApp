@@ -16,6 +16,10 @@ import {
   Bitcoin,
   ArrowLeftRight,
   DollarSign,
+  Zap,
+  ArrowBigRightDash,
+  Wrench,
+  FlaskConical,
   // Signal, // For EM Frequency - Removed
   // Volume2, // For Sound Frequency - Removed
 } from 'lucide-react';
@@ -47,6 +51,14 @@ export const UnitIcon = React.memo(function UnitIconComponent({ category, ...pro
         return <CloudLightning {...props} />;
     case 'Speed':
         return <GaugeCircle {...props} />;
+    case 'Power':
+        return <Zap {...props} />;
+    case 'Force':
+        return <ArrowBigRightDash {...props} />;
+    case 'Torque':
+        return <Wrench {...props} />;
+    case 'Density':
+        return <FlaskConical {...props} />;
     case 'Fuel Economy':
         return <Fuel {...props} />;
     case 'Data Storage':

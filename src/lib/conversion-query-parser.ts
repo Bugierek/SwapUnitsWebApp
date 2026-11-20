@@ -53,6 +53,47 @@ type ParseFailure = {
 
 const CONNECTOR_GLOBAL_REGEX = /\b(to|into|in)\b/gi;
 const CONNECTOR_WORDS = new Set(['to', 'into', 'in']);
+
+// A "to" / "in" written against one of these characters is part of a unit symbol, not the
+// connector: "lbf·in", "lb-in", "in-lb", "lb/in³", "in²", "in³". (\b alone treats all of them as
+// word boundaries, which is what used to turn "5 in² to cm²" into "5 in | ² to cm²".)
+// The combobox uses findConnectorMatches / stripConnectorWords too, so both finders agree.
+const CONNECTOR_GLUE_BEFORE = new Set(['·', '-', '/']);
+const CONNECTOR_GLUE_AFTER = new Set(['·', '-', '²', '³']);
+
+const isGluedConnector = (text: string, index: number, length: number): boolean =>
+  CONNECTOR_GLUE_BEFORE.has(text[index - 1] ?? '') ||
+  CONNECTOR_GLUE_AFTER.has(text[index + length] ?? '');
+
+/** The "to" / "into" / "in" connector words in `text`, skipping ones that belong to a unit symbol. */
+export function findConnectorMatches(text: string): Array<{ index: number; word: string }> {
+  const matches: Array<{ index: number; word: string }> = [];
+  for (const match of text.matchAll(CONNECTOR_GLOBAL_REGEX)) {
+    const index = match.index ?? -1;
+    if (index < 0 || isGluedConnector(text, index, match[0].length)) continue;
+    matches.push({ index, word: match[0] });
+  }
+  return matches;
+}
+
+/** `text` with its connector words replaced by spaces; "in" inside a symbol ("lbf·in", "in²") is kept. */
+export function stripConnectorWords(text: string): string {
+  return text.replace(CONNECTOR_GLOBAL_REGEX, (word: string, _connector: string, offset: number, whole: string) =>
+    isGluedConnector(whole, offset, word.length) ? word : ' ',
+  );
+}
+
+/**
+ * Spaces out connector words glued to numbers or symbols ("5mto ft" -> "5m to ft") without
+ * splitting a unit symbol that contains "in" ("lbf·in", "in-lb", "in²", "lb/in³"). Shared by the
+ * parser's normalizeQuery and the combobox's normalizeInput.
+ */
+export function spaceConnectorWords(text: string): string {
+  return text.replace(
+    /(^|[^a-zA-Z°µμ·\-/])(to|into|in)(?=$|[^a-zA-Z°µμ·\-²³])/gi,
+    '$1 $2 ',
+  );
+}
 const STOP_WORDS = [
   'convert',
   'please',
@@ -104,7 +145,7 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
   kg: ['kilogram', 'kilograms', 'kilo', 'kilos'],
   g: ['gram', 'grams'],
   mg: ['milligram', 'milligrams'],
-  lb: ['pound', 'pounds'],
+  lb: ['pound', 'pounds', 'lbs'],
   oz: ['ounce', 'ounces'],
   mi: ['mile', 'miles'],
   ft: ['foot', 'feet'],
@@ -155,6 +196,65 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
     'watt-hour per mile',
     'watt-hours per mile',
   ],
+  // Mass. No "us ..." aliases: a standalone "us" is read as microseconds (µs).
+  'ton (UK)': ['uk ton', 'uk tons', 'imperial ton', 'imperial tons'],
+  // Volume. Plain "fluid ounce" / "pint" / "gallon" mean the US units; the imperial ones are
+  // named "Imperial ..." (see unit-data.ts) so they don't share those aliases.
+  'in³': ['cubic inch', 'cubic inches', 'in3', 'cu in'],
+  'yd³': ['cubic yard', 'cubic yards', 'yd3', 'cu yd'],
+  tsp: ['teaspoon', 'teaspoons'],
+  tbsp: ['tablespoon', 'tablespoons', 'tbs'],
+  'fl oz': ['floz', 'fl. oz', 'fluid ounce', 'fluid ounces'],
+  cup: ['cup', 'cups'],
+  pt: ['pint', 'pints'],
+  qt: ['quart', 'quarts'],
+  'fl oz (UK)': ['uk fl oz', 'fl oz uk', 'imperial fl oz', 'uk fluid ounce', 'uk fluid ounces'],
+  'pt (UK)': ['uk pint', 'uk pints', 'pint uk', 'pt uk'],
+  'gal (UK)': ['uk gallon', 'uk gallons', 'gallon uk', 'gal uk'],
+  // Pressure
+  mmHg: ['mm hg', 'millimeters of mercury', 'millimetres of mercury', 'millimetre of mercury'],
+  inHg: ['in hg', 'inches of mercury'],
+  hPa: ['hectopascals'],
+  mbar: ['millibars'],
+  // Energy
+  Wh: ['watt hour', 'watt hours', 'watt-hour', 'watt-hours'],
+  eV: ['electron volt', 'electron volts', 'electron-volt', 'electron-volts'],
+  thm: ['therm', 'therms'],
+  // Speed
+  'ft/s': ['foot per second', 'feet per second'],
+  // Power
+  hp: ['horsepower', 'bhp', 'mechanical horsepower'],
+  PS: ['metric horsepower', 'metric hp', 'cv'],
+  'BTU/h': ['btu per hour', 'btu/hr', 'btuh', 'btu/hour'],
+  // Force
+  kgf: ['kilogram force', 'kilograms-force', 'kilopond', 'kp'],
+  lbf: ['pound force', 'pounds force', 'pounds-force', 'lb force'],
+  // Torque. Written forms people actually use for the same unit ("Nm", "lb-ft", "ft-lbs",
+  // "in-lb", "kgm"); hyphen forms also get a spaced variant automatically.
+  'N·m': ['nm', 'n m', 'n-m', 'n.m', 'newton meter', 'newton meters', 'newton metre', 'newton metres', 'newton-meter', 'newton-meters', 'newton-metre', 'newton-metres'],
+  'N·cm': ['ncm', 'n cm', 'n-cm', 'newton centimeter', 'newton centimeters', 'newton centimetre', 'newton centimetres'],
+  'kgf·m': ['kgm', 'kg m', 'kg-m', 'kgf m', 'kgf-m'],
+  'kgf·cm': ['kgcm', 'kg cm', 'kg-cm', 'kgf cm', 'kgf-cm'],
+  'lbf·ft': [
+    'lb ft', 'lb-ft', 'lbft', 'lbs ft', 'lb·ft', 'lbf ft', 'lbf-ft',
+    'ft lb', 'ft-lb', 'ftlb', 'ft lbs', 'ft-lbs', 'ft·lb', 'ft lbf', 'ft-lbf', 'ft·lbf',
+    'foot pound', 'foot pounds', 'foot-pound', 'foot-pounds', 'pound foot', 'pound feet', 'pound-foot', 'pound-feet', 'pound-force feet',
+  ],
+  'lbf·in': [
+    'lb in', 'lb-in', 'lbin', 'lbs in', 'lb·in', 'lbf in', 'lbf-in',
+    'in lb', 'in-lb', 'inlb', 'in lbs', 'in-lbs', 'in·lb', 'in lbf', 'in-lbf', 'in·lbf',
+    'inch pound', 'inch pounds', 'inch-pound', 'inch-pounds', 'pound inch', 'pound inches', 'pound-inch', 'pound-inches', 'pound-force inches',
+  ],
+  'ozf·in': ['oz in', 'oz-in', 'ozin', 'oz·in', 'ozf in', 'ozf-in', 'in oz', 'in-oz', 'inch ounce', 'inch ounces', 'ounce inch', 'ounce inches', 'ounce-inch', 'ounce-inches'],
+  // Density
+  'kg/m³': ['kg per m³', 'kilograms per cubic meter', 'kilograms per cubic metre', 'kilogram per cubic metre'],
+  'g/cm³': ['g/cc', 'g per cm³', 'grams per cubic centimeter', 'grams per cubic centimetre', 'gram per cubic centimetre'],
+  'g/mL': ['g per ml', 'grams per milliliter', 'grams per millilitre', 'gram per millilitre'],
+  'kg/L': ['kg per l', 'kilograms per liter', 'kilograms per litre', 'kilogram per litre'],
+  'g/L': ['g per l', 'grams per liter', 'grams per litre', 'gram per litre'],
+  'lb/ft³': ['lb per ft³', 'lbs/ft³', 'lb/cu ft', 'pcf', 'pounds per cubic foot'],
+  'lb/in³': ['lb per in³', 'lbs/in³', 'pounds per cubic inch'],
+  'lb/gal': ['lb per gal', 'lbs/gal', 'pounds per gallon'],
 };
 
 const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
@@ -168,6 +268,58 @@ const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
   'MPG (UK)': ['L/100km', 'km/L'],
   // MPGe equals MPG (US) numerically, so default a bare "100 mpge" to EPA's companion EV metric.
   'MPGe': ['kWh/100mi', 'kWh/100km', 'mi/kWh'],
+  // Units added in the missing-units step: a bare "3 cups" or "150 hp" goes to the unit people
+  // usually want it in.
+  st: ['kg'],
+  'ton (US)': ['t'],
+  'ton (UK)': ['t'],
+  'in³': ['cm³'],
+  'yd³': ['m³'],
+  tsp: ['mL'],
+  tbsp: ['mL'],
+  'fl oz': ['mL'],
+  cup: ['mL'],
+  pt: ['mL'],
+  qt: ['L'],
+  'fl oz (UK)': ['mL'],
+  'pt (UK)': ['mL'],
+  'gal (UK)': ['L'],
+  hPa: ['inHg'],
+  mbar: ['inHg'],
+  inHg: ['hPa'],
+  mmHg: ['kPa'],
+  Torr: ['Pa'],
+  MPa: ['psi'],
+  Wh: ['J'],
+  MJ: ['kWh'],
+  eV: ['J'],
+  thm: ['kWh'],
+  'ft/s': ['m/s'],
+  KiB: ['KB'],
+  MiB: ['MB'],
+  GiB: ['GB'],
+  TiB: ['TB'],
+  hp: ['kW'],
+  PS: ['kW', 'hp'],
+  'BTU/h': ['W'],
+  N: ['lbf'],
+  kN: ['lbf'],
+  lbf: ['N'],
+  kgf: ['N'],
+  kip: ['kN'],
+  dyn: ['N'],
+  'N·m': ['lbf·ft'],
+  'N·cm': ['lbf·in'],
+  'lbf·ft': ['N·m'],
+  'lbf·in': ['N·m'],
+  'kgf·m': ['N·m'],
+  'kgf·cm': ['N·m'],
+  'ozf·in': ['N·cm'],
+  'kg/m³': ['g/cm³'],
+  'lb/ft³': ['kg/m³'],
+  'lb/in³': ['g/cm³'],
+  'lb/gal': ['kg/L'],
+  'kg/L': ['lb/gal'],
 };
 
 const TEMPERATURE_DEGREE_SYNONYMS: Record<string, string[]> = {
@@ -321,18 +473,17 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
     return fuelFallback;
   }
 
-  const connectorMatches = Array.from(normalized.matchAll(CONNECTOR_GLOBAL_REGEX));
+  const connectorMatches = findConnectorMatches(normalized);
 
   const index = getAliasIndex();
 
   if (connectorMatches.length > 0) {
     for (const connectorMatch of connectorMatches) {
-      const matchIndex = connectorMatch.index ?? -1;
-      if (matchIndex < 0) continue;
+      const matchIndex = connectorMatch.index;
 
       const fromPart = normalized.slice(0, matchIndex).trim();
       const toPart = normalized
-        .slice(matchIndex + connectorMatch[0].length)
+        .slice(matchIndex + connectorMatch.word.length)
         .trim();
 
       if (!fromPart || !toPart) {
@@ -374,6 +525,36 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
         }
       }
     }
+
+    // Second pass: a side whose text fits several units ("pounds" = GBP or lb, "kn" = knot or
+    // kN, "nm" = nanometer or N·m) takes the reading that shares a category with the other side,
+    // so "10 pounds to kg" and "100 kn to lbf" work. Only reached when no split worked with each
+    // side's default reading, so anything the first pass parses is unchanged.
+    if (!hasSiDirective) {
+      for (const connectorMatch of connectorMatches) {
+        const fromPart = normalized.slice(0, connectorMatch.index).trim();
+        const toPart = normalized.slice(connectorMatch.index + connectorMatch.word.length).trim();
+        if (!fromPart || !toPart) continue;
+
+        const fromCandidates = resolveAliasCandidatesWithShorthand(index, fromPart);
+        const toCandidates = resolveAliasCandidatesWithShorthand(index, toPart);
+        for (const fromCandidate of fromCandidates) {
+          if (fromCandidate.category === 'SI Prefixes') continue;
+          const toCandidate = toCandidates.find((candidate) => candidate.category === fromCandidate.category);
+          if (toCandidate) {
+            return {
+              ok: true,
+              kind: 'unit',
+              value,
+              fromUnit: fromCandidate.symbol,
+              toUnit: toCandidate.symbol,
+              category: fromCandidate.category,
+              valueStrategy: defaultValueStrategy,
+            };
+          }
+        }
+      }
+    }
   }
 
   if (hasSiDirective) {
@@ -410,8 +591,10 @@ function normalizeQuery(query: string): string {
   // Convert ASCII "u" prefix to proper micro symbol "µ" for common micro- units
   // Only convert when "u" is followed by a single letter AND that's the end of the unit token
   // This handles: "100um", "50 us", "um" but NOT "usd", "user", etc.
-  result = result.replace(/(^|\s)u([a-z])(?=\s|$)/gi, '$1µ$2'); // standalone "um", "us"
-  result = result.replace(/([0-9.,]+\s*)u([a-z])(?=\s|$)/gi, '$1µ$2'); // "100um", "5 us"
+  // Same letter set as the combobox's normalizeInput (micro units: um, us, ug, ul, ua), so a word
+  // like "uk" in "uk pint" or "fl oz uk" isn't turned into "µk".
+  result = result.replace(/(^|\s)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // standalone "um", "us"
+  result = result.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // "100um", "5 us"
 
   // Convert common squared abbreviations: sqm, sqft, sqkm, etc. → m², ft², km²
   // Handles: "sqm", "100sqm", "100 sqm", "sqft", "sq ft", "sq km"
@@ -441,7 +624,7 @@ function normalizeQuery(query: string): string {
   // Handles: "m3", "m^3", "100m3", "50 ft3", "cm^3"
   result = result.replace(/([a-z]+)\^?3(?=\s|$|[^0-9])/gi, '$1³');
 
-  result = result.replace(/(^|[^a-zA-Z°µμ])(to|into|in)(?=$|[^a-zA-Z°µμ])/gi, '$1 $2 ');
+  result = spaceConnectorWords(result);
 
   result = result
     .replace(/(\d)(?=[a-zA-Z°µμ])/g, (match, digit: string, offset: number, original: string) => {
@@ -503,19 +686,88 @@ function resolveFuelEconomyShorthand(raw: string): AliasEntry | null {
   return null;
 }
 
-function resolveAlias(index: AliasIndex, raw: string): AliasEntry | null {
-  const cleaned = normalizeAlias(raw);
-  const direct = index.get(cleaned);
-  if (!direct) return null;
-  if (direct.length === 1) return direct[0];
+type CaseExactForm = AliasEntry & {
+  /** True when the clash is with another unit, not only with an SI prefix (N vs the prefix n). */
+  clashesWithUnit: boolean;
+};
 
-  const firstSymbol = direct[0].symbol;
-  if (direct.every((entry) => entry.symbol === firstSymbol)) {
-    return direct[0];
+let cachedCaseExactForms: Map<string, CaseExactForm> | null = null;
+
+// The alias index is lowercase, so a few symbols collide with another unit's alias: kN vs knot
+// (kn), PS vs picosecond (ps), Nm (N·m without the dot) vs nanometer (nm), N vs the nano prefix
+// (n). Typed with exactly the symbol's case, each of these means its own unit. Built from the
+// data, so a future clash is covered without editing this list.
+function getCaseExactForms(): Map<string, CaseExactForm> {
+  if (cachedCaseExactForms) {
+    return cachedCaseExactForms;
   }
 
-  // ambiguous, pick the first but caller can handle if needed
-  return direct[0];
+  const index = getAliasIndex();
+  const map = new Map<string, CaseExactForm>();
+  (Object.entries(unitData) as [UnitCategory, UnitData][]).forEach(([category, data]) => {
+    if (category === 'SI Prefixes') return;
+    ((data.units ?? []) as Unit[]).forEach((unit) => {
+      new Set([unit.symbol, unit.symbol.replace(/·/g, '')]).forEach((form) => {
+        const others = (index.get(form.toLowerCase()) ?? []).filter(
+          (entry) => entry.symbol !== unit.symbol || entry.category !== category,
+        );
+        if (others.length === 0 || map.has(form)) return;
+        map.set(form, {
+          symbol: unit.symbol,
+          category,
+          clashesWithUnit: others.some((entry) => entry.category !== 'SI Prefixes'),
+        });
+      });
+    });
+  });
+
+  cachedCaseExactForms = map;
+  return map;
+}
+
+/**
+ * The unit whose symbol is exactly `token`, case included, when that symbol clashes with another
+ * unit's alias once lowercased ("kN" -> kilonewton, "kn" -> knot, "PS", "Nm"). Null for anything
+ * else. The finder list uses it to put the exact-case unit's pairs first.
+ */
+export function getCaseExactUnitMatch(token: string): AliasEntry | null {
+  const form = getCaseExactForms().get(token.trim());
+  return form && form.clashesWithUnit ? { symbol: form.symbol, category: form.category } : null;
+}
+
+/** Every unit `raw` can mean, the default first; an exact-case symbol ("kN") moves to the front. */
+function resolveAliasCandidates(index: AliasIndex, raw: string): AliasEntry[] {
+  const direct = index.get(normalizeAlias(raw)) ?? [];
+  const candidates: AliasEntry[] = [];
+  direct.forEach((entry) => {
+    if (!candidates.some((c) => c.symbol === entry.symbol && c.category === entry.category)) {
+      candidates.push(entry);
+    }
+  });
+
+  const exact = getCaseExactForms().get(raw.trim().replace(/^(from|of)\s+/i, ''));
+  if (exact) {
+    const position = candidates.findIndex(
+      (c) => c.symbol === exact.symbol && c.category === exact.category,
+    );
+    if (position > 0) {
+      candidates.unshift(...candidates.splice(position, 1));
+    }
+  }
+  return candidates;
+}
+
+function resolveAliasCandidatesWithShorthand(index: AliasIndex, raw: string): AliasEntry[] {
+  const candidates = resolveAliasCandidates(index, raw);
+  const shorthand = resolveFuelEconomyShorthand(raw);
+  if (shorthand && !candidates.some((c) => c.symbol === shorthand.symbol && c.category === shorthand.category)) {
+    candidates.push(shorthand);
+  }
+  return candidates;
+}
+
+function resolveAlias(index: AliasIndex, raw: string): AliasEntry | null {
+  return resolveAliasCandidates(index, raw)[0] ?? null;
 }
 
 function normalizeAlias(raw: string): string {
@@ -803,13 +1055,16 @@ function tryParseSingleUnitQuery(
     return null;
   }
 
-  const sanitized = normalized.replace(CONNECTOR_GLOBAL_REGEX, ' ').trim();
+  const sanitized = stripConnectorWords(normalized).trim();
   if (!sanitized) {
     return null;
   }
 
+  // The unstripped text first, for aliases that contain a connector word ("in lb" = lbf·in).
   const alias =
-    resolveAlias(index, sanitized) ?? resolveFuelEconomyShorthand(sanitized);
+    resolveAlias(index, normalized) ??
+    resolveAlias(index, sanitized) ??
+    resolveFuelEconomyShorthand(sanitized);
   if (!alias) {
     return null;
   }
@@ -868,7 +1123,7 @@ function resolveCompoundTarget(
   collapseSymbol: string,
   remainder: string,
 ): string | null {
-  const trailing = remainder.replace(CONNECTOR_GLOBAL_REGEX, ' ').trim();
+  const trailing = stripConnectorWords(remainder).trim();
   if (!trailing) {
     return getCategoryBaseUnitSymbol(category) ?? collapseSymbol;
   }
@@ -1016,10 +1271,9 @@ function tryParseCompoundQuantity(rawQuery: string): UnitParseSuccess | null {
 
 function tryParseCategoryQuery(normalized: string): CategoryParseSuccess | null {
   const aliasMap = getCategoryAliasMap();
-  const stripped = normalized
-    .replace(/\b(conversions?|conversion|converter|unit|units)\b/gi, ' ')
-    .replace(CONNECTOR_GLOBAL_REGEX, ' ')
-    .trim();
+  const stripped = stripConnectorWords(
+    normalized.replace(/\b(conversions?|conversion|converter|unit|units)\b/gi, ' '),
+  ).trim();
   if (!stripped) {
     return null;
   }

@@ -187,7 +187,15 @@ export const buildFormulaInsight = (input: PairCopyInput): string => {
   }
 
   if (category === 'Data Storage') {
-    return `Data storage units here use base-2 multipliers (powers of 1024) instead of base-10, so 1 KB = 1024 bytes.${formula ? ` Formula: ${formula}.` : ''}`;
+    const isBinary = (symbol: string) => /^[KMGT]iB$/.test(symbol);
+    const kinds = [from.symbol, to.symbol].filter((symbol) => symbol !== 'B').map(isBinary);
+    const note =
+      kinds.length === 2 && kinds[0] !== kinds[1]
+        ? 'One unit is decimal (KB, MB, GB, TB step by 1,000, as drive makers and the SI define them) and the other binary (KiB, MiB, GiB, TiB step by 1,024), which is why the factor is not a round number.'
+        : kinds.some(Boolean)
+          ? 'KiB, MiB, GiB and TiB are binary units: each step is 1,024 of the one below (1 KiB = 1,024 bytes).'
+          : 'KB, MB, GB and TB are decimal units: each step is 1,000 of the one below (1 KB = 1,000 bytes), as drive makers and the SI define them. The binary KiB, MiB and GiB step by 1,024.';
+    return `${note}${formula ? ` Formula: ${formula}.` : ''}`;
   }
 
   if (
