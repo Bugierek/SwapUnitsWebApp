@@ -49,15 +49,22 @@ export type FavoriteItem = {
   name: string;
 };
 
+// One EV from fueleconomy.gov's vehicles.csv; see src/lib/ev-models.ts for the field mapping.
 export type VehiclePreset = {
   id: string;
+  /** fueleconomy.gov vehicle id (vehicles.csv `id`). */
+  epaId: number;
   make: string;
   model: string;
   trim?: string;
   modelYear: number;
-  epaCombinedKwhPer100mi: number; // EPA's own label unit; see src/lib/ev-models.ts
-  epaCombinedMpge?: number;
-  sourceUrl?: string;
+  /** EPA combined kWh/100mi (`combE`), measured at the wall, so charging losses are included. */
+  epaCombinedKwhPer100mi: number;
+  /** EPA combined MPGe (`comb08`). */
+  epaCombinedMpge: number;
+  /** EPA combined range in miles (`range`). */
+  epaRangeMiles: number;
+  sourceUrl: string;
 };
 
 export type NumberFormat = 'normal' | 'scientific';

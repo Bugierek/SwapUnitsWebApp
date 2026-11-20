@@ -12,6 +12,13 @@ import { categoryDisplayOrder } from '@/lib/unit-data';
 
 // Scientific notation: 1e5, 2.5e-3, etc.
 // Negative numbers: Only valid for Temperature (parsed later with category context)
+// Number tokens to strip when extracting unit text from a query. Digits that directly follow "/"
+// belong to a unit (L/100km, kWh/100mi), so the replacer keeps those. A callback is used instead of
+// a regex lookbehind, which older Safari (< 16.4) can't parse.
+const NUMBER_TOKEN_RE = /[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g;
+const keepPer100Digits = (match: string, offset: number, whole: string) =>
+  offset > 0 && whole[offset - 1] === '/' ? match : '';
+
 const LEXER_NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
 const findLeadingNumericValue = (value: string): number => {
   const sanitized = value.replace(/,/g, '').replace(/\s+/g, ' ').trim();
@@ -327,7 +334,7 @@ export function ConversionCombobox({
     if (hasNumbers && !hasConnector) {
       // Extract just the text part (remove numbers, scientific notation, signs)
       // Keep minus sign only if followed immediately by digit (for negative temp check)
-      const textPart = lowerSearch.replace(/[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g, '').replace(/\s+/g, ' ').trim();
+      const textPart = lowerSearch.replace(NUMBER_TOKEN_RE, keepPer100Digits).replace(/\s+/g, ' ').trim();
       
       if (!textPart) {
         // Just a number, show everything
@@ -415,10 +422,10 @@ export function ConversionCombobox({
 
       // Extract from unit (text after number, before connector)
       // Remove numbers, scientific notation, extra spaces
-      const fromUnitText = beforeConnector.replace(/[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g, '').replace(/\s+/g, ' ').trim();
+      const fromUnitText = beforeConnector.replace(NUMBER_TOKEN_RE, keepPer100Digits).replace(/\s+/g, ' ').trim();
       
       // Extract to unit (text after connector)
-      const toUnitText = afterConnector.replace(/[-+]?[\d.,]+(?:[eE][-+]?\d+)?/g, '').replace(/\s+/g, ' ').trim();
+      const toUnitText = afterConnector.replace(NUMBER_TOKEN_RE, keepPer100Digits).replace(/\s+/g, ' ').trim();
 
       return items.filter((item) => {
         const fromSymbolLower = item.fromSymbol.toLowerCase();

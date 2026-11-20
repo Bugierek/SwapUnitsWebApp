@@ -1,6 +1,5 @@
 
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { Inter } from "next/font/google"; // Using Inter font
 import "./globals.css";
 import { cn } from "@/lib/utils"; // Import cn utility
@@ -131,20 +130,19 @@ const backgroundStyle = `
   }
 `;
 
-export default async function RootLayout({
+// No cookies()/headers() here: reading request data in the root layout makes every route render
+// per request, which Firebase's CDN can't cache. The theme is applied before first paint by
+// themeInitScript (localStorage, else the system preference); the server always renders "system".
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const initialPreference = cookieStore.get('swapunits-theme')?.value ?? 'system';
-  const initialClass = initialPreference === 'dark' ? 'dark' : '';
-
   return (
     <html
       lang="en"
-      className={cn("scroll-smooth", initialClass)}
-      data-theme-preference={initialPreference}
+      className="scroll-smooth"
+      data-theme-preference="system"
       suppressHydrationWarning
     >
       <head>

@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+// The widget reads its embed configuration from query params with useSearchParams() during render;
+// statically prerendered, that would bail out to client-only rendering, so keep it per-request.
+export const dynamic = 'force-dynamic';
+
 // page.tsx is a client component, so the route's metadata lives here. (The old head.tsx was
 // ignored by the App Router, so this page used to inherit the homepage's title and canonical.)
 const title = 'Embeddable Unit Converter Widget';

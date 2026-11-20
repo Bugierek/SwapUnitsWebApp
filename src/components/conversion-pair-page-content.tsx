@@ -60,6 +60,8 @@ type ConversionPairPageContentProps = {
   initialFxRates?: FxRatesResponse | null;
   /** Date.now() when the server rendered initialFxRates into the page. */
   initialFxRatesRenderedAt?: number | null;
+  /** Converter's starting amount in the "from" unit (1 when omitted). */
+  initialValue?: number;
 };
 
 // Significant digits rather than fixed decimals, so small values (1 µm = 0.000001 m) don't round to 0.
@@ -91,6 +93,11 @@ const formatHistoryNumber = (num: number): string => {
   });
 };
 
+// Value passed when a preset or favorite opens a pair page. Fuel Economy pages start from a
+// realistic value of their own (see the pair page), so ?value=1 isn't forced there.
+const presetValue = (category: UnitCategory): number | undefined =>
+  category === 'Fuel Economy' ? undefined : 1;
+
 export function ConversionPairPageContent({
   categoryInfo,
   fromSymbol,
@@ -106,6 +113,7 @@ export function ConversionPairPageContent({
   navbarPresets,
   initialFxRates,
   initialFxRatesRenderedAt,
+  initialValue,
 }: ConversionPairPageContentProps) {
   const router = useRouter();
   const { history, addHistoryItem, clearHistory, isLoading: isLoadingHistory } = useConversionHistory();
@@ -178,12 +186,13 @@ export function ConversionPairPageContent({
   }, [addHistoryItem]);
 
   const handleFavoriteSelect = React.useCallback((fav: FavoriteItem) => {
-    navigateToPair(fav.category, fav.fromUnit, fav.toUnit, 1);
+    navigateToPair(fav.category, fav.fromUnit, fav.toUnit, presetValue(fav.category));
   }, [navigateToPair]);
 
   const handlePresetSelect = React.useCallback(
     (preset: Preset | FavoriteItem) => {
-      navigateToPair(preset.category as UnitCategory, preset.fromUnit, preset.toUnit, 1);
+      const category = preset.category as UnitCategory;
+      navigateToPair(category, preset.fromUnit, preset.toUnit, presetValue(category));
     },
     [navigateToPair],
   );
@@ -260,6 +269,7 @@ export function ConversionPairPageContent({
               toUnit={toUnit}
               initialFxRates={initialFxRates}
               initialFxRatesRenderedAt={initialFxRatesRenderedAt}
+              initialValue={initialValue}
               onCopyResult={handleCopyResult}
             />
           </section>

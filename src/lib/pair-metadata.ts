@@ -198,6 +198,17 @@ export const buildFormulaInsight = (input: PairCopyInput): string => {
     return `When converting between bits (b) and bytes (B), remember that 1 byte = 8 bits.${formula ? ` Formula: ${formula}.` : ''}`;
   }
 
+  if (
+    category === 'Fuel Economy' &&
+    formula &&
+    relation?.kind === 'proportional' &&
+    relation.factor === 1 &&
+    [from.symbol, to.symbol].includes('MPGe') &&
+    [from.symbol, to.symbol].includes('MPG (US)')
+  ) {
+    return `MPGe is the EPA's miles per 33.705 kWh, the energy in one US gallon of gasoline, so it equals MPG (US) one to one: ${formula}.`;
+  }
+
   if (category === 'Fuel Economy' && formula) {
     return `Both units measure fuel economy the same way round, so the conversion is a plain multiplication: ${formula}.`;
   }
