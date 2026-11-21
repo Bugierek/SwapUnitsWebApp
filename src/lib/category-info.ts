@@ -470,11 +470,11 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
   },
   Power: {
     title: 'Power Converter & Reference',
-    heroTagline: 'Compare watts, kilowatts, horsepower, and BTU per hour side by side.',
+    heroTagline: 'Compare milliwatts, watts, kilowatts, horsepower, and BTU per hour side by side.',
     description:
       'Power is the rate at which energy is used or delivered. This page lines up the electrical, mechanical, and heating units found on engine, motor, and HVAC spec sheets.',
     intro:
-      'Engines are rated in horsepower or PS, electric motors and chargers in kilowatts, and heating and cooling equipment in BTU per hour. Every unit below converts through the watt, one joule per second.',
+      'Engines are rated in horsepower or PS, electric motors and chargers in kilowatts, heating and cooling equipment in BTU per hour, and lasers and small electronics in milliwatts. Every unit below converts through the watt, one joule per second.',
     quickTips: [
       '1 kW is about 1.341 mechanical horsepower (hp), and 1 hp is 745.7 W.',
       'Metric horsepower (PS, also written CV or pk) is 735.5 W, about 1.4% less than mechanical hp, so 100 PS is about 98.6 hp.',
@@ -484,11 +484,12 @@ const baseCategoryInfo: Record<UnitCategory, Omit<CategoryInfo, 'category' | 'sl
       'Car buyers comparing engine output listed in hp, PS, and kW across markets.',
       'Homeowners comparing heat pumps and air conditioners rated in BTU/h with heaters rated in kW.',
       'Engineers translating generator, solar inverter, and grid figures between W, kW, MW, and GW.',
+      'Electronics hobbyists comparing laser, LED, and radio output given in milliwatts (1 W = 1,000 mW).',
     ],
     seo: {
       title: 'Power Converter (W, kW, hp, PS, BTU/h)',
       description:
-        'Convert power between watts, kilowatts, megawatts, horsepower, metric horsepower (PS), and BTU per hour, with exact factors and quick reference tables.',
+        'Convert power between milliwatts, watts, kilowatts, megawatts, horsepower, metric horsepower (PS), and BTU per hour, with exact factors and quick reference tables.',
       keywords: [
         'power converter',
         'kw to hp',

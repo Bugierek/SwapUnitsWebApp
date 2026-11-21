@@ -6,7 +6,7 @@ import { matchSiPrefixToken } from '@/lib/si-prefixes';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 
-type AliasEntry = {
+export type AliasEntry = {
   symbol: string;
   category: UnitCategory;
 };
@@ -85,24 +85,45 @@ export function stripConnectorWords(text: string): string {
 
 // Notations that only mean their unit typed in exactly this case, because the lowercase form is
 // already another unit: "Mb/s" is megabits per second, while "MB/s" (and the all-lowercase
-// "mb/s", which keeps its old meaning) is megabytes; "Mg" is a megagram (1 tonne), while "mg" is a
-// milligram. b = bit and B = byte (IEC 80000-13). Before this, "Mb/s" and "Kb/s" were read as
-// bytes per second (8x too much) and "Mg" as milligrams.
-const CASE_EXACT_NOTATIONS: Array<[RegExp, string]> = [
-  [/(^|[\s\d.,(])Kb\/s(?=$|[\s,;)])/g, '$1Kbps'],
-  [/(^|[\s\d.,(])Mb\/s(?=$|[\s,;)])/g, '$1Mbps'],
-  [/(^|[\s\d.,(])Gb\/s(?=$|[\s,;)])/g, '$1Gbps'],
-  // ...and the reverse: "MBps", "KBps", "Bps" are bytes per second, but lowercased they are the
-  // bit-rate symbols "mbps", "kbps", "bps", so they used to be read as bits (8x too little).
-  [/(^|[\s\d.,(])MBps(?=$|[\s,;)])/g, '$1MB/s'],
-  [/(^|[\s\d.,(])KBps(?=$|[\s,;)])/g, '$1KB/s'],
-  [/(^|[\s\d.,(])Bps(?=$|[\s,;)])/g, '$1B/s'],
-  [/(^|[\s\d.,(])Mg(?=$|[\s,;)])/g, '$1t'],
-];
+// "mb/s", which keeps its old meaning) is megabytes; "Cal" (food Calorie) is a kilocalorie, while
+// "cal" is the small calorie. b = bit and B = byte (IEC 80000-13). Derived from the notations in
+// unit-data.ts (see getNotationAliases), so a new clash is covered without editing this.
+let cachedCaseExactNotationRules: Array<[RegExp, string]> | null = null;
+
+function getCaseExactNotationRules(): Array<[RegExp, string]> {
+  if (!cachedCaseExactNotationRules) {
+    cachedCaseExactNotationRules = getNotationAliases()
+      .filter((notation) => notation.exactCase)
+      .map((notation) => [
+        new RegExp(`(^|[\\s\\d.,(])${escapeRegex(notation.text)}(?=$|[\\s,;)])`, 'g'),
+        `$1${notation.symbol}`,
+      ]);
+  }
+  return cachedCaseExactNotationRules;
+}
 
 /** Rewrites the case-sensitive notations above to their unit symbol. Used by both finders. */
 export function rewriteCaseExactNotations(text: string): string {
-  return CASE_EXACT_NOTATIONS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text);
+  return getCaseExactNotationRules().reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text);
+}
+
+// Milli symbols typed in exactly this case, whose lowercase form is a mega unit the site lists
+// ("mJ" -> "mj" -> MJ). There's no millijoule or millipascal unit, so rather than read them as
+// megajoules / megapascals (10^9 too large) the finder says so. All-lowercase "mj" / "mpa" keep
+// meaning MJ / MPa. (Milliwatts are a unit; "mW" vs "MW" is resolved by exact case.)
+const UNLISTED_EXACT_SYMBOLS: Array<[string, string]> = [
+  ['mJ', 'mJ means millijoules, which SwapUnits doesn\'t list yet (MJ is megajoules).'],
+  ['mPa', 'mPa means millipascals, which SwapUnits doesn\'t list yet (MPa is megapascals).'],
+];
+
+/** The message for an unlisted milli symbol in `text` ("5 mJ to J"), or null. */
+export function findUnlistedExactSymbol(text: string): string | null {
+  for (const [symbol, message] of UNLISTED_EXACT_SYMBOLS) {
+    if (new RegExp(`(^|[\\s\\d.,(])${escapeRegex(symbol)}(?=$|[\\s,;)])`).test(text)) {
+      return message;
+    }
+  }
+  return null;
 }
 
 // "m2" -> "m²", "ft^3" -> "ft³", but not the "e2" / "e3" of scientific notation ("1e3 g", "2.5e2"),
@@ -338,6 +359,7 @@ const UNIT_SPECIFIC_TARGETS: Record<string, string[]> = {
   MiB: ['MB'],
   GiB: ['GB'],
   TiB: ['TB'],
+  mW: ['W'],
   hp: ['kW'],
   PS: ['kW', 'hp'],
   'BTU/h': ['W'],
@@ -473,6 +495,11 @@ export function isCompoundQuantityQuery(rawQuery: string): boolean {
 export function parseConversionQuery(rawQuery: string): ParseResult {
   if (!rawQuery || !rawQuery.trim()) {
     return { ok: false, error: 'Empty query' };
+  }
+
+  const unlistedSymbol = findUnlistedExactSymbol(rawQuery);
+  if (unlistedSymbol) {
+    return { ok: false, error: unlistedSymbol };
   }
 
   // Compound detection runs on the raw string, before normalizeQuery's cubic/square-unit
@@ -787,6 +814,17 @@ export function resolveUnitText(text: string): AliasEntry | null {
   return resolveAlias(getAliasIndex(), trimmed) ?? resolveFuelEconomyShorthand(trimmed);
 }
 
+/**
+ * Every unit `text` can mean as a whole, the default first: a symbol, name, alias or notation
+ * ("pounds" -> GBP and lb, "N/mm²" -> MPa, "feet" -> ft). The finder list uses it so a unit typed
+ * that way lists its pairs; partial text ("n/m") matches nothing here.
+ */
+export function resolveUnitCandidates(text: string): AliasEntry[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  return resolveAliasCandidatesWithShorthand(getAliasIndex(), trimmed);
+}
+
 /** Every unit `raw` can mean, the default first; an exact-case symbol ("kN") moves to the front. */
 function resolveAliasCandidates(index: AliasIndex, raw: string): AliasEntry[] {
   const direct = index.get(normalizeAlias(raw)) ?? [];
@@ -833,7 +871,7 @@ function normalizeAlias(raw: string): string {
     .toLowerCase();
 }
 
-function buildAliasIndex(): AliasIndex {
+function buildAliasIndex(includeNotations = true): AliasIndex {
   const map: AliasIndex = new Map();
 
   (Object.entries(unitData) as [UnitCategory, UnitData][]).forEach(
@@ -848,7 +886,65 @@ function buildAliasIndex(): AliasIndex {
     },
   );
 
+  // Notations ("N/mm²", "cc", "kph") after every unit's own aliases. Exact-case ones aren't added:
+  // their lowercase form means another unit, so they're rewritten to the symbol beforehand
+  // (rewriteCaseExactNotations) instead.
+  if (includeNotations) {
+    getNotationAliases()
+      .filter((notation) => !notation.exactCase)
+      .forEach((notation) => {
+        notationKeyboardForms(notation.text).forEach((form) => {
+          expandAliasVariants(form.toLowerCase()).forEach((variant) => {
+            addAlias(map, variant, notation.symbol, notation.category);
+          });
+        });
+      });
+  }
+
   return map;
+}
+
+type NotationAlias = { text: string; symbol: string; category: UnitCategory; exactCase: boolean };
+let cachedNotationAliases: NotationAlias[] | null = null;
+
+// The ways a notation is typed on a keyboard: "W·s" as "Ws", "W s", "W*s", "W.s", "W-s".
+// Superscripts ("N/mm2", "N/mm^2") are handled by expandAliasVariants.
+function notationKeyboardForms(text: string): string[] {
+  if (!text.includes('·')) return [text];
+  return ['·', '', ' ', '*', '.', '-'].map((joiner) => text.replace(/·/g, joiner));
+}
+
+/**
+ * Every notation in unit-data.ts with its unit, and whether only its exact case means that unit:
+ * set by hand (UnitNotation.exactCase) or because a lowercase keyboard form already means a
+ * different unit ("Cal" vs cal, "Mb/s" vs MB/s, "Bps" vs bps).
+ */
+function getNotationAliases(): NotationAlias[] {
+  if (cachedNotationAliases) {
+    return cachedNotationAliases;
+  }
+  const baseIndex = buildAliasIndex(false);
+  const notations: NotationAlias[] = [];
+  (Object.entries(unitData) as [UnitCategory, UnitData][]).forEach(([category, data]) => {
+    if (category === 'SI Prefixes') return;
+    ((data.units ?? []) as Unit[]).forEach((unit) => {
+      (unit.alsoWrittenAs ?? []).forEach((notation) => {
+        const clashes = notationKeyboardForms(notation.text).some((form) =>
+          (baseIndex.get(normalizeAlias(form)) ?? []).some(
+            (entry) => entry.symbol !== unit.symbol || entry.category !== category,
+          ),
+        );
+        notations.push({
+          text: notation.text,
+          symbol: unit.symbol,
+          category,
+          exactCase: Boolean(notation.exactCase) || clashes,
+        });
+      });
+    });
+  });
+  cachedNotationAliases = notations;
+  return notations;
 }
 
 function buildAliasesForUnit(unit: Unit): string[] {

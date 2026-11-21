@@ -19,6 +19,7 @@ import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { getEvModels } from '@/lib/ev-models';
 import { ScrollIntoViewOnMount } from '@/components/scroll-into-view-on-mount';
 import { DataStorageExplainer } from '@/components/data-storage-explainer';
+import { categoryHasNotations, describeUnitNotes } from '@/lib/unit-notations';
 import dynamic from 'next/dynamic';
 
 const CurrencyCategoryContent = dynamic(
@@ -319,6 +320,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               Every unit below references the SI base value so you can compare readings quickly.
             </p>
           </div>
+          {categoryHasNotations(info.category) && (
+            <Link
+              href="/unit-notations"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-primary-text transition hover:text-primary-text/80"
+            >
+              All unit notations
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          )}
         </div>
 
         <Table>
@@ -354,7 +364,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {unit.unitType ? unit.unitType.replace(/_/g, ' ') : '—'}
+                    {describeUnitNotes(info.category, unit) ?? '—'}
                   </TableCell>
                 </TableRow>
               );

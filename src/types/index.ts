@@ -1,9 +1,25 @@
 
+/** Another exact way of writing a unit ("N/mm²" for MPa, "cc" for cm³). Not a separate unit. */
+export type UnitNotation = {
+  /** As it's written, e.g. "N/mm²". */
+  text: string;
+  /** Why it's the same unit, one line; shown on the /unit-notations page. */
+  why: string;
+  /**
+   * Only exactly this case means the unit. Set automatically when the lowercase form already
+   * means another listed unit ("Cal" vs "cal", "Mb/s" vs "mb/s"); set it here when the lowercase
+   * form would mean a unit the site doesn't list ("Gb/s": "GB/s" is gigabytes per second).
+   */
+  exactCase?: boolean;
+};
+
 export type Unit = {
   name: string;
   symbol: string;
   factor: number; // Factor to convert from this unit to the base unit of the category
   unitType?: 'frequency' | 'wavelength' | 'direct_efficiency' | 'inverse_consumption';
+  /** Other exact notations for this unit; see UnitNotation. */
+  alsoWrittenAs?: UnitNotation[];
 };
 
 export type UnitCategory =

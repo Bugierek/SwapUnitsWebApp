@@ -28,10 +28,67 @@ const CASES: Array<[string, Record<string, unknown>]> = [
   ["100 mb/s to mbps", { kind: "unit", value: 100, fromUnit: "MB/s", toUnit: "Mbps", category: "Data Transfer Rate" }],
   ["100Mb/s to MB/s", { kind: "unit", value: 100, fromUnit: "Mbps", toUnit: "MB/s", category: "Data Transfer Rate" }],
   ["Mb/s", { kind: "unit", value: 1, fromUnit: "Mbps", toUnit: "MB/s", category: "Data Transfer Rate" }],
-  ["1 t to Mg", { kind: "unit", value: 1, fromUnit: "t", toUnit: "t", category: "Mass" }],
-  ["5 Mg to kg", { kind: "unit", value: 5, fromUnit: "t", toUnit: "kg", category: "Mass" }],
+  // "Mg" (megagram) was read as a tonne in stage 1; reverted in stage B: on a general converter a
+  // capital-M "Mg" is a milligram typed with a capital (phone keyboards, labels printed "MG").
+  ["1 t to Mg", { kind: "unit", value: 1, fromUnit: "t", toUnit: "mg", category: "Mass" }],
+  ["5 Mg to kg", { kind: "unit", value: 5, fromUnit: "mg", toUnit: "kg", category: "Mass" }],
+  ["5 MG to g", { kind: "unit", value: 5, fromUnit: "mg", toUnit: "g", category: "Mass" }],
   ["5 mg to g", { kind: "unit", value: 5, fromUnit: "mg", toUnit: "g", category: "Mass" }],
-  ["Mg", { kind: "unit", value: 1, fromUnit: "t", toUnit: "g", category: "Mass" }],
+  ["Mg", { kind: "unit", value: 1, fromUnit: "mg", toUnit: "g", category: "Mass" }],
+  // Stage B: other notations for the same unit (unit-data.ts UNIT_NOTATIONS).
+  ["5 N/mm2 to psi", { kind: "unit", value: 5, fromUnit: "MPa", toUnit: "psi", category: "Pressure" }],
+  ["5 n/mm^2 to psi", { kind: "unit", value: 5, fromUnit: "MPa", toUnit: "psi", category: "Pressure" }],
+  ["5 N/mm² to MPa", { kind: "unit", value: 5, fromUnit: "MPa", toUnit: "MPa", category: "Pressure" }],
+  ["5 MN/m2 to kPa", { kind: "unit", value: 5, fromUnit: "MPa", toUnit: "kPa", category: "Pressure" }],
+  ["5 N/m2 to kPa", { kind: "unit", value: 5, fromUnit: "Pa", toUnit: "kPa", category: "Pressure" }],
+  ["5 kN/m2 to psi", { kind: "unit", value: 5, fromUnit: "kPa", toUnit: "psi", category: "Pressure" }],
+  ["5 lbf/in2 to kPa", { kind: "unit", value: 5, fromUnit: "psi", toUnit: "kPa", category: "Pressure" }],
+  ["5 lb/in² to kPa", { kind: "unit", value: 5, fromUnit: "psi", toUnit: "kPa", category: "Pressure" }],
+  ["250 cc to ml", { kind: "unit", value: 250, fromUnit: "cm³", toUnit: "mL", category: "Volume" }],
+  ["3 dm3 to l", { kind: "unit", value: 3, fromUnit: "L", toUnit: "L", category: "Volume" }],
+  ["5 ul to mm3", { kind: "unit", value: 5, fromUnit: "mm³", toUnit: "mm³", category: "Volume" }],
+  ["5 µL to mL", { kind: "unit", value: 5, fromUnit: "mm³", toUnit: "mL", category: "Volume" }],
+  ["5 cu in to cm3", { kind: "unit", value: 5, fromUnit: "in³", toUnit: "cm³", category: "Volume" }],
+  ["2 hm2 to ha", { kind: "unit", value: 2, fromUnit: "ha", toUnit: "ha", category: "Area" }],
+  ["5 ac to ha", { kind: "unit", value: 5, fromUnit: "acre", toUnit: "ha", category: "Area" }],
+  ["3600 W·s to Wh", { kind: "unit", value: 3600, fromUnit: "J", toUnit: "Wh", category: "Energy" }],
+  ["3600 Ws to Wh", { kind: "unit", value: 3600, fromUnit: "J", toUnit: "Wh", category: "Energy" }],
+  ["3600 W*s to Wh", { kind: "unit", value: 3600, fromUnit: "J", toUnit: "Wh", category: "Energy" }],
+  ["5 kW·h to MJ", { kind: "unit", value: 5, fromUnit: "kWh", toUnit: "MJ", category: "Energy" }],
+  ["500 Cal to kJ", { kind: "unit", value: 500, fromUnit: "kcal", toUnit: "kJ", category: "Energy" }],
+  ["500 cal to kJ", { kind: "unit", value: 500, fromUnit: "cal", toUnit: "kJ", category: "Energy" }],
+  ["500 CAL to J", { kind: "unit", value: 500, fromUnit: "cal", toUnit: "J", category: "Energy" }],
+  ["60 J/s to W", { kind: "unit", value: 60, fromUnit: "W", toUnit: "W", category: "Power" }],
+  ["5 kJ/s to hp", { kind: "unit", value: 5, fromUnit: "kW", toUnit: "hp", category: "Power" }],
+  ["10 kg·m/s2 to N", { kind: "unit", value: 10, fromUnit: "N", toUnit: "N", category: "Force" }],
+  ["10 kg*m/s^2 to lbf", { kind: "unit", value: 10, fromUnit: "N", toUnit: "lbf", category: "Force" }],
+  ["10 kg m/s2 to N", { kind: "unit", value: 10, fromUnit: "N", toUnit: "N", category: "Force" }],
+  ["5 g·cm/s2 to dyn", { kind: "unit", value: 5, fromUnit: "dyn", toUnit: "dyn", category: "Force" }],
+  ["10 kp to N", { kind: "unit", value: 10, fromUnit: "kgf", toUnit: "N", category: "Force" }],
+  ["5 klbf to kN", { kind: "unit", value: 5, fromUnit: "kip", toUnit: "kN", category: "Force" }],
+  ["5 ft·lbf to N·m", { kind: "unit", value: 5, fromUnit: "lbf·ft", toUnit: "N·m", category: "Torque" }],
+  ["5 in·ozf to N·cm", { kind: "unit", value: 5, fromUnit: "ozf·in", toUnit: "N·cm", category: "Torque" }],
+  ["100 kph to mph", { kind: "unit", value: 100, fromUnit: "km/h", toUnit: "mph", category: "Speed" }],
+  ["100 kmh to mph", { kind: "unit", value: 100, fromUnit: "km/h", toUnit: "mph", category: "Speed" }],
+  ["100 km/hr to mph", { kind: "unit", value: 100, fromUnit: "km/h", toUnit: "mph", category: "Speed" }],
+  ["60 mi/h to km/h", { kind: "unit", value: 60, fromUnit: "mph", toUnit: "km/h", category: "Speed" }],
+  ["62.4 pcf to kg/m3", { kind: "unit", value: 62.4, fromUnit: "lb/ft³", toUnit: "kg/m³", category: "Density" }],
+  ["100 Mbit/s to MB/s", { kind: "unit", value: 100, fromUnit: "Mbps", toUnit: "MB/s", category: "Data Transfer Rate" }],
+  ["100 kbit/s to Kbps", { kind: "unit", value: 100, fromUnit: "Kbps", toUnit: "Kbps", category: "Data Transfer Rate" }],
+  ["1 Gbit/s to MB/s", { kind: "unit", value: 1, fromUnit: "Gbps", toUnit: "MB/s", category: "Data Transfer Rate" }],
+  ["100 bit/s to B/s", { kind: "unit", value: 100, fromUnit: "bps", toUnit: "B/s", category: "Data Transfer Rate" }],
+  ["100 KBps to Kbps", { kind: "unit", value: 100, fromUnit: "KB/s", toUnit: "Kbps", category: "Data Transfer Rate" }],
+  // Milliwatt (stage B): exact case picks between mW and MW; all-lowercase "mw" is milliwatts.
+  ["5 mW to W", { kind: "unit", value: 5, fromUnit: "mW", toUnit: "W", category: "Power" }],
+  ["5 mw to w", { kind: "unit", value: 5, fromUnit: "mW", toUnit: "W", category: "Power" }],
+  ["5 MW to W", { kind: "unit", value: 5, fromUnit: "MW", toUnit: "W", category: "Power" }],
+  ["5 kW to MW", { kind: "unit", value: 5, fromUnit: "kW", toUnit: "MW", category: "Power" }],
+  ["5 kW to mw", { kind: "unit", value: 5, fromUnit: "kW", toUnit: "mW", category: "Power" }],
+  ["5 MW to mW", { kind: "unit", value: 5, fromUnit: "MW", toUnit: "mW", category: "Power" }],
+  ["5 mw", { kind: "unit", value: 5, fromUnit: "mW", toUnit: "W", category: "Power" }],
+  ["5 milliwatts to watts", { kind: "unit", value: 5, fromUnit: "mW", toUnit: "W", category: "Power" }],
+  ["5 mj to j", { kind: "unit", value: 5, fromUnit: "MJ", toUnit: "J", category: "Energy" }],
+  ["5 mpa to psi", { kind: "unit", value: 5, fromUnit: "MPa", toUnit: "psi", category: "Pressure" }],
   ["mg", { kind: "unit", value: 1, fromUnit: "mg", toUnit: "g", category: "Mass" }],
   ["1e3 g to kg", { kind: "unit", value: 1000, fromUnit: "g", toUnit: "kg", category: "Mass" }],
   ["1.5e3 g to kg", { kind: "unit", value: 1500, fromUnit: "g", toUnit: "kg", category: "Mass" }],
@@ -166,8 +223,9 @@ const CASES: Array<[string, Record<string, unknown>]> = [
   ["1 kW to PS", { kind: "unit", value: 1, fromUnit: "kW", toUnit: "PS", category: "Power" }],
   ["1000 w to btu/h", { kind: "unit", value: 1000, fromUnit: "W", toUnit: "BTU/h", category: "Power" }],
   ["12000 btu/h to kw", { kind: "unit", value: 12000, fromUnit: "BTU/h", toUnit: "kW", category: "Power" }],
-  ["1 mw to kw", { kind: "unit", value: 1, fromUnit: "MW", toUnit: "kW", category: "Power" }],
-  ["1 gw to mw", { kind: "unit", value: 1, fromUnit: "GW", toUnit: "MW", category: "Power" }],
+  // All-lowercase "mw" was megawatts until milliwatt was added (stage B); it now means milliwatts.
+  ["1 mw to kw", { kind: "unit", value: 1, fromUnit: "mW", toUnit: "kW", category: "Power" }],
+  ["1 gw to mw", { kind: "unit", value: 1, fromUnit: "GW", toUnit: "mW", category: "Power" }],
   ["10 n to lbf", { kind: "unit", value: 10, fromUnit: "N", toUnit: "lbf", category: "Force" }],
   ["10 N to lbf", { kind: "unit", value: 10, fromUnit: "N", toUnit: "lbf", category: "Force" }],
   ["10 N", { kind: "unit", value: 10, fromUnit: "N", toUnit: "lbf", category: "Force" }],
@@ -301,7 +359,11 @@ describe('shared normalization helpers (used by both the parser and the combobox
   it('rewrites case-sensitive notations only in exactly that case', () => {
     expect(rewriteCaseExactNotations('100 Mb/s to MB/s')).toBe('100 Mbps to MB/s');
     expect(rewriteCaseExactNotations('100Kb/s')).toBe('100Kbps');
-    expect(rewriteCaseExactNotations('5 Mg to kg')).toBe('5 t to kg');
+    expect(rewriteCaseExactNotations('5 Mg to kg')).toBe('5 Mg to kg');
+    expect(rewriteCaseExactNotations('500 Cal to kJ')).toBe('500 kcal to kJ');
+    expect(rewriteCaseExactNotations('500 cal to kJ')).toBe('500 cal to kJ');
+    expect(rewriteCaseExactNotations('1 Gb/s to GB/s')).toBe('1 Gbps to GB/s');
+    expect(rewriteCaseExactNotations('7 Bps, 9 KBps')).toBe('7 B/s, 9 KB/s');
     expect(rewriteCaseExactNotations('100 MBps to Mbps')).toBe('100 MB/s to Mbps');
     expect(rewriteCaseExactNotations('100 mb/s to mg')).toBe('100 mb/s to mg');
     expect(rewriteCaseExactNotations('5 Mgal')).toBe('5 Mgal');
@@ -324,6 +386,15 @@ describe('shared normalization helpers (used by both the parser and the combobox
   });
 });
 
+describe('milli symbols the site does not list', () => {
+  // "mJ" and "mPa" in exactly this case are milli units; read as MJ / MPa they'd be 10^9 too large.
+  it.each(['5 mJ to J', 'mJ', '5 mPa to Pa', '20 mPa'])('%s is refused with an explanation', (query) => {
+    const result = parseConversionQuery(query);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.error).toMatch(/^m(J|Pa) means milli/);
+  });
+});
+
 describe('symbols that clash once lowercased', () => {
   it('resolve by exact case', () => {
     expect(getCaseExactUnitMatch('kN')).toEqual({ symbol: 'kN', category: 'Force' });
@@ -335,6 +406,8 @@ describe('symbols that clash once lowercased', () => {
     // Only clashes with the SI prefix "n", which the finder list doesn't rank by case.
     expect(getCaseExactUnitMatch('N')).toBeNull();
     expect(getCaseExactUnitMatch('kg')).toBeNull();
+    expect(getCaseExactUnitMatch('mW')).toEqual({ symbol: 'mW', category: 'Power' });
+    expect(getCaseExactUnitMatch('MW')).toEqual({ symbol: 'MW', category: 'Power' });
   });
 
   it('give the finder list the same default reading as the parser', () => {

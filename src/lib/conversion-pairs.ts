@@ -57,6 +57,12 @@ const splitPairSlug = (slug: string): [string, string] | null => {
 // case-insensitive or normalized match, so a canonical slug always resolves to the unit it
 // was built from, even if two symbols in a category ever differ only by case (SI Prefixes do,
 // e.g. m/M, but they have no pair pages).
+// A lowercase or mis-cased slug that matches two units differing only in case goes to the unit
+// that had pair pages first, so links that already existed keep their target: "kw-to-mw" has
+// redirected to kW-to-MW since before the milliwatt was added. (The finder reads a typed "mw" as
+// milliwatts; URLs keep the older meaning.)
+const CASE_INSENSITIVE_SLUG_PREFERENCE: Record<string, string> = { mw: 'MW' };
+
 const matchUnitFromSlugPart = (units: Unit[], part: string): Unit | undefined => {
   const denormalized = denormalizeUnitFromSlug(part);
   const slugLower = part.toLowerCase();
@@ -70,8 +76,14 @@ const matchUnitFromSlugPart = (units: Unit[], part: string): Unit | undefined =>
     (unit) => normalizeUnitForSlug(unit.symbol).toLowerCase() === normalizedLower,
   ];
   for (const matches of matchers) {
-    const found = units.find(matches);
-    if (found) return found;
+    const found = units.filter(matches);
+    if (found.length > 1) {
+      const preferred = found.find(
+        (unit) => CASE_INSENSITIVE_SLUG_PREFERENCE[unit.symbol.toLowerCase()] === unit.symbol,
+      );
+      if (preferred) return preferred;
+    }
+    if (found.length > 0) return found[0];
   }
   return undefined;
 };

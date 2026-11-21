@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/` },
     { url: `${baseUrl}/widget` },
     { url: `${baseUrl}/widget-builder` },
+    { url: `${baseUrl}/unit-notations` },
   ];
 
   categoryDisplayOrder.forEach((category) => {
