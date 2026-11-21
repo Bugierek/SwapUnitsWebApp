@@ -23,7 +23,7 @@ Next.js 15 App Router, React 18, Tailwind + shadcn primitives (`src/components/u
 | Widget builder | `app/widget-builder/page.tsx` | config UI for the widget |
 | Browser extensions | `extensions/chrome`, `extensions/firefox` | plain JS; shares nothing with `src/` |
 
-- **Finder** = `unit-converter.tsx` + `combobox.tsx` + `lib/conversion-query-parser.ts`. The combobox is lazy-loaded (`import('./combobox')`), so it won't show up as a static import. The combobox and the parser each have their own µ/sq/^2 normalization, so a matching change needs to go into both. The exception is connector words ("to"/"in"/"into"): both use the parser's exported `findConnectorMatches` / `stripConnectorWords` / `spaceConnectorWords`, which ignore an "in" glued to `·`, `-`, `/`, `²`, `³` (so `lbf·in`, `in-lb`, `in²`, `lb/in³` stay whole).
+- **Finder** = `unit-converter.tsx` + `combobox.tsx` + `lib/conversion-query-parser.ts`. The combobox is lazy-loaded (`import('./combobox')`), so it won't show up as a static import. The combobox and the parser each have their own µ/sq/^2 normalization, so a matching change needs to go into both. The exception is connector words ("to"/"in"/"into"): both use the parser's exported `findConnectorMatches` / `stripConnectorWords` / `spaceConnectorWords`, which ignore an "in" glued to `·`, `-`, `/`, `²`, `³` (so `lbf·in`, `in-lb`, `in²`, `lb/in³` stay whole). Also shared: `toSuperscriptPowers` (m2 → m², but not the `e3` of scientific notation) and `rewriteCaseExactNotations` (`Mb/s`/`Kb/s`/`Gb/s` → bits, `Mg` → tonne; only in that exact case, since lowercase `mb/s`, `kb/s`, `mg` already mean other units).
 - **Widget** shares `unit-data`, `conversion-math`, `UnitIcon`, `FxHistoryChart` and `FxSparkline`. Logic written inside `unit-converter.tsx` or `pair-converter.tsx` does not reach it, so decide each time whether to port it.
 - **Extensions** have their own regex detection, their own fallback factor tables and a different FX provider. Fixing a unit in `src/lib` doesn't fix them.
 
@@ -44,8 +44,12 @@ The finder's alias index is lowercase and follows `unitData`'s key order, so whe
 Before/after-check any finder change by running `parseConversionQuery` over every unit pair (symbols, lowercase, names) plus hand-written cases, against the old code: nothing that parsed should change unless intended.
 
 ### Verifying changes
-- `next.config.ts` sets `ignoreBuildErrors` and `ignoreDuringBuilds`, so a passing `npm run build` proves nothing. Run `npx tsc --noEmit` and `npm run lint`. `tsc` already reports errors in untouched files (`src/ai/`, the parser test, a few components; 9 as of 2026-11-19), so compare against that baseline rather than expecting zero.
-- There's a vitest config and one parser test (`src/lib/__tests__/`), but vitest isn't in `package.json` and there's no `test` script, so the tests don't run as-is.
+- `next.config.ts` sets `ignoreBuildErrors` and `ignoreDuringBuilds`, so a passing `npm run build` proves nothing. Run `npx tsc --noEmit`, `npm run lint` and `npm test`. `tsc` already reports errors in untouched files (`src/ai/` and a few components; 7 as of 2026-11-21) and lint 19, so compare against those baselines rather than expecting zero.
+- `npm test` runs vitest (`vitest.config.mts`, Node environment) over `src/lib/__tests__/`. Tests don't run on deploy. vitest is pinned to 4.1.12: vitest 5 requires `@types/node` 22+, and the project is on `@types/node` 20.
+  - `finder-regression.test.ts`: hand-checked parser results for ~200 queries, plus every ordered pair of unit symbols and of unit names in every category, plus the shared normalization helpers. A failing case means the finder's behavior changed; update the expectation only if that's intended.
+  - `unit-values.test.ts`: factors against exact values derived from the definitions (to 1e-9). Add a case when adding a unit.
+  - `unit-data.test.ts`: every category has copy, sources, a valid default pair; presets and symbols are consistent.
+  - `pair-urls.test.ts`: every URL in `fixtures/pair-urls.txt` (all pair pages as of 2026-11-21, identical to the sitemap) must still exist, and canonical/lowercase slugs must resolve. New units may add URLs; regenerate the fixture to include them.
 
 ### Stale or leftover files
 - `.github/copilot-instructions.md` describes genkit, a `typecheck` script, turbopack, Firebase and React Query. None of those are in `package.json` anymore.

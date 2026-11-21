@@ -576,6 +576,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       });
       return `/standards/nist-si-tenfold?${params.toString()}`;
     }
+    // Pair pages exist only for two different units ("kg to kg" has none), so no link then;
+    // otherwise Next prefetches the URL and it 404s.
+    if (rhfFromUnit === rhfToUnit) {
+      return null;
+    }
     const baseUrl = buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
     if (
       trimmedValue === '' ||
@@ -2307,16 +2312,18 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     actualFormat: NumberFormat,
     reason: 'magnitude' | 'user_choice' | null
   ) => {
+    // numberFormat is only ever the user's own choice. A result too small or large for normal
+    // notation is shown in scientific notation by formatNumber anyway; this just disables the
+    // "Normal" option while that lasts. (It used to also set numberFormat to 'scientific', which
+    // formatNumber then read as the user's choice, so every later result stayed scientific:
+    // 1 sat -> BTC = 1E-8, then 1,000 cm -> ft showed "3.28084E+1".)
     const magnitudeForcedScientific = actualFormat === 'scientific' && reason === 'magnitude';
     setIsNormalFormatDisabled(magnitudeForcedScientific);
 
-    if (magnitudeForcedScientific && numberFormat === 'normal') {
-        setNumberFormat('scientific');
-    } else if (reason === 'user_choice') {
-        if (actualFormat === 'normal' && !magnitudeForcedScientific) setNumberFormat('normal');
-        else if (actualFormat === 'scientific') setNumberFormat('scientific');
+    if (reason === 'user_choice') {
+        setNumberFormat(actualFormat);
     }
-  }, [numberFormat]);
+  }, []);
 
 
   React.useEffect(() => {
@@ -2516,7 +2523,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         const historyValueForcesScientific = (absToValue > 1e9 || (absToValue < 1e-7 && absToValue !== 0));
 
         if (historyValueForcesScientific) {
-            setNumberFormat('scientific');
+            // formatNumber shows this value in scientific notation by itself; setting numberFormat
+            // here would make every later result scientific too.
             setIsNormalFormatDisabled(true);
         } else {
             setNumberFormat('normal');
@@ -2926,7 +2934,8 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Result format</p>
         <RadioGroup
           name="result-format"
-          value={numberFormat}
+          // While a result needs scientific notation, show that option as the one in use.
+          value={isNormalFormatDisabled ? 'scientific' : numberFormat}
           onValueChange={(value: string) => {
             setNumberFormat(value as NumberFormat);
             handleActualFormatChange(value as NumberFormat, 'user_choice');

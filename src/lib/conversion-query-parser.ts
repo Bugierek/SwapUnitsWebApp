@@ -83,6 +83,45 @@ export function stripConnectorWords(text: string): string {
   );
 }
 
+// Notations that only mean their unit typed in exactly this case, because the lowercase form is
+// already another unit: "Mb/s" is megabits per second, while "MB/s" (and the all-lowercase
+// "mb/s", which keeps its old meaning) is megabytes; "Mg" is a megagram (1 tonne), while "mg" is a
+// milligram. b = bit and B = byte (IEC 80000-13). Before this, "Mb/s" and "Kb/s" were read as
+// bytes per second (8x too much) and "Mg" as milligrams.
+const CASE_EXACT_NOTATIONS: Array<[RegExp, string]> = [
+  [/(^|[\s\d.,(])Kb\/s(?=$|[\s,;)])/g, '$1Kbps'],
+  [/(^|[\s\d.,(])Mb\/s(?=$|[\s,;)])/g, '$1Mbps'],
+  [/(^|[\s\d.,(])Gb\/s(?=$|[\s,;)])/g, '$1Gbps'],
+  // ...and the reverse: "MBps", "KBps", "Bps" are bytes per second, but lowercased they are the
+  // bit-rate symbols "mbps", "kbps", "bps", so they used to be read as bits (8x too little).
+  [/(^|[\s\d.,(])MBps(?=$|[\s,;)])/g, '$1MB/s'],
+  [/(^|[\s\d.,(])KBps(?=$|[\s,;)])/g, '$1KB/s'],
+  [/(^|[\s\d.,(])Bps(?=$|[\s,;)])/g, '$1B/s'],
+  [/(^|[\s\d.,(])Mg(?=$|[\s,;)])/g, '$1t'],
+];
+
+/** Rewrites the case-sensitive notations above to their unit symbol. Used by both finders. */
+export function rewriteCaseExactNotations(text: string): string {
+  return CASE_EXACT_NOTATIONS.reduce((result, [pattern, replacement]) => result.replace(pattern, replacement), text);
+}
+
+// "m2" -> "m²", "ft^3" -> "ft³", but not the "e2" / "e3" of scientific notation ("1e3 g", "2.5e2"),
+// which used to become "1e³" and stop the query from parsing. A replace callback instead of a
+// lookbehind, which Safari < 16.4 can't parse.
+const isExponentMarker = (letters: string, offset: number, whole: string): boolean =>
+  letters.toLowerCase() === 'e' && /[\d.]/.test(whole[offset - 1] ?? '');
+
+/** Turns "m2"/"m^2" into "m²" and "m3"/"m^3" into "m³". Used by both finders. */
+export function toSuperscriptPowers(text: string): string {
+  return text
+    .replace(/([a-z]+)\^?2(?=\s|$|[^0-9])/gi, (match: string, letters: string, offset: number, whole: string) =>
+      isExponentMarker(letters, offset, whole) ? match : `${letters}²`,
+    )
+    .replace(/([a-z]+)\^?3(?=\s|$|[^0-9])/gi, (match: string, letters: string, offset: number, whole: string) =>
+      isExponentMarker(letters, offset, whole) ? match : `${letters}³`,
+    );
+}
+
 /**
  * Spaces out connector words glued to numbers or symbols ("5mto ft" -> "5m to ft") without
  * splitting a unit symbol that contains "in" ("lbf·in", "in-lb", "in²", "lb/in³"). Shared by the
@@ -506,7 +545,10 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
         continue;
       }
 
-      if (fromAlias && toAlias && fromAlias.category === toAlias.category) {
+      // With the "si" directive, a prefix pair ("si micro to milli") goes to tryParseSiPrefixes below
+      // like "si kilo to milli" does, instead of returning as an ordinary unit pair.
+      const isSiPrefixPair = hasSiDirective && fromAlias.category === 'SI Prefixes';
+      if (fromAlias && toAlias && fromAlias.category === toAlias.category && !isSiPrefixPair) {
         return {
           ok: true,
           kind: 'unit',
@@ -583,18 +625,22 @@ export function parseConversionQuery(rawQuery: string): ParseResult {
 }
 
 function normalizeQuery(query: string): string {
-  let result = query
-    .replace(/[,]/g, '') // remove thousand separators
-    .replace(/[\u2192\u2794]/g, ' to ') // arrows
-    .replace(/=>|->|=/g, ' to ');
+  let result = rewriteCaseExactNotations(
+    query
+      .replace(/[,]/g, '') // remove thousand separators
+      .replace(/[\u2192\u2794]/g, ' to ') // arrows
+      .replace(/=>|->|=/g, ' to '),
+  );
 
   // Convert ASCII "u" prefix to proper micro symbol "µ" for common micro- units
   // Only convert when "u" is followed by a single letter AND that's the end of the unit token
   // This handles: "100um", "50 us", "um" but NOT "usd", "user", etc.
   // Same letter set as the combobox's normalizeInput (micro units: um, us, ug, ul, ua), so a word
-  // like "uk" in "uk pint" or "fl oz uk" isn't turned into "µk".
-  result = result.replace(/(^|\s)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // standalone "um", "us"
-  result = result.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // "100um", "5 us"
+  // like "uk" in "uk pint" or "fl oz uk" isn't turned into "µk". Not before "dollar(s)": "us dollar"
+  // is the currency (it used to become "µs dollar" and fail). Negative lookahead is fine in old
+  // Safari (only lookbehind isn't).
+  result = result.replace(/(^|\s)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // standalone "um", "us"
+  result = result.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // "100um", "5 us"
 
   // Convert common squared abbreviations: sqm, sqft, sqkm, etc. → m², ft², km²
   // Handles: "sqm", "100sqm", "100 sqm", "sqft", "sq ft", "sq km"
@@ -616,13 +662,8 @@ function normalizeQuery(query: string): string {
   result = result.replace(/(^|[\s\d])cu\s*in\b/gi, '$1in³');
   result = result.replace(/(^|[\s\d])cu\s*yd\b/gi, '$1yd³');
 
-  // Convert squared notation: m2, m^2, ft2, ft^2, etc. → m², ft²
-  // Handles: "m2", "m^2", "100m2", "50 ft2", "cm^2"
-  result = result.replace(/([a-z]+)\^?2(?=\s|$|[^0-9])/gi, '$1²');
-  
-  // Convert cubed notation: m3, m^3, ft3, ft^3, etc. → m³, ft³
-  // Handles: "m3", "m^3", "100m3", "50 ft3", "cm^3"
-  result = result.replace(/([a-z]+)\^?3(?=\s|$|[^0-9])/gi, '$1³');
+  // Squared / cubed notation: "m2", "m^2", "100m2", "50 ft3", "cm^3" (not "1e3", see the helper)
+  result = toSuperscriptPowers(result);
 
   result = spaceConnectorWords(result);
 
@@ -733,6 +774,17 @@ function getCaseExactForms(): Map<string, CaseExactForm> {
 export function getCaseExactUnitMatch(token: string): AliasEntry | null {
   const form = getCaseExactForms().get(token.trim());
   return form && form.clashesWithUnit ? { symbol: form.symbol, category: form.category } : null;
+}
+
+/**
+ * The unit the parser reads `text` as by default ("mpg" -> MPG (US), "fl oz" -> US fluid ounce),
+ * or null. The finder list puts that unit first within its category, so the list and the parser
+ * agree on what a bare unit name means.
+ */
+export function resolveUnitText(text: string): AliasEntry | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  return resolveAlias(getAliasIndex(), trimmed) ?? resolveFuelEconomyShorthand(trimmed);
 }
 
 /** Every unit `raw` can mean, the default first; an exact-case symbol ("kN") moves to the front. */
@@ -1028,8 +1080,11 @@ function tryParseFuelEconomyQuery(
     return null;
   }
 
+  // "mpg uk", "mpg (uk)" and also "uk mpg" / "imperial mpg" (the last two used to give US MPG).
   const mpgUnit =
-    /\bmpg\s*(uk|imperial|\(uk\))/i.test(search) ? 'MPG (UK)' : 'MPG (US)';
+    /\bmpg\s*(uk|imperial|\(uk\))/i.test(search) || /\b(uk|imperial)\s+mpg\b/i.test(search)
+      ? 'MPG (UK)'
+      : 'MPG (US)';
   // Respect the order the user typed: "30 mpg to l/100km" converts MPG -> L/100km (this used to
   // always return L/100km -> MPG, i.e. reversed for MPG-first queries).
   const mpgFirst = search.search(/\bmpg\b/) < search.search(/l\/100\s*km/);

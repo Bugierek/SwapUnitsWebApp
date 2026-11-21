@@ -13,7 +13,10 @@ import {
   findConnectorMatches,
   stripConnectorWords,
   spaceConnectorWords,
+  rewriteCaseExactNotations,
+  toSuperscriptPowers,
   getCaseExactUnitMatch,
+  resolveUnitText,
   type ParsedConversionPayload,
 } from '@/lib/conversion-query-parser';
 import { categoryDisplayOrder } from '@/lib/unit-data';
@@ -94,14 +97,15 @@ const INITIAL_VISIBLE_ITEMS = 50;
 const LOAD_INCREMENT = 50;
 
 function normalizeInput(value: string): string {
-  const withArrowsNormalized = value.replace(/(->|=>|→)/gi, ' to ');
+  // "Mb/s" -> "Mbps", "Mg" -> "t" etc. (case-sensitive notations, shared with the parser)
+  const withArrowsNormalized = rewriteCaseExactNotations(value.replace(/(->|=>|→)/gi, ' to '));
   
   // Convert ASCII "u" prefix to proper micro symbol "µ" for micro- units
   // Only convert known micro units: um, us, ug, ul, ua, etc. (not just "u" alone)
   // This handles: "100um", "50 us" but NOT "505u", "usd"
   // Pattern: u followed by specific letters that are known micro units
-  let withMicroConverted = withArrowsNormalized.replace(/(^|\s)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // um, us, ug, ua, ul
-  withMicroConverted = withMicroConverted.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // 100um, 50us, etc.
+  let withMicroConverted = withArrowsNormalized.replace(/(^|\s)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // um, us, ug, ua, ul
+  withMicroConverted = withMicroConverted.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // 100um, 50us, etc.
   
   // Convert common squared abbreviations: sqm, sqft, sqkm, etc. → m², ft², km²
   // Handles: "sqm", "100sqm", "100 sqm", "sqft", "sq ft", "sq km"
@@ -123,13 +127,9 @@ function normalizeInput(value: string): string {
   withAreaAbbrevs = withAreaAbbrevs.replace(/(^|[\s\d])cu\s*in\b/gi, '$1in³');
   withAreaAbbrevs = withAreaAbbrevs.replace(/(^|[\s\d])cu\s*yd\b/gi, '$1yd³');
   
-  // Convert squared notation: m2, m^2, ft2, ft^2, etc. → m², ft²
-  // Handles: "m2", "m^2", "100m2", "50 ft2", "cm^2"
-  let withSquaredConverted = withAreaAbbrevs.replace(/([a-z]+)\^?2(?=\s|$|[^0-9])/gi, '$1²');
-  
-  // Convert cubed notation: m3, m^3, ft3, ft^3, etc. → m³, ft³
-  // Handles: "m3", "m^3", "100m3", "50 ft3", "cm^3"
-  withSquaredConverted = withSquaredConverted.replace(/([a-z]+)\^?3(?=\s|$|[^0-9])/gi, '$1³');
+  // Squared / cubed notation: "m2", "m^2", "100m2", "50 ft3", "cm^3", but not the "e3" of
+  // scientific notation ("1e3 g") - shared with the parser.
+  const withSquaredConverted = toSuperscriptPowers(withAreaAbbrevs);
   
   const withConnectorsSpaced = spaceConnectorWords(withSquaredConverted);
 
@@ -152,6 +152,13 @@ function normalizeInput(value: string): string {
   const rejoinedSlashUnits = withSpacing.replace(/\/\s*(\d+)\s+([A-Za-z°µµ]+)/g, '/$1$2');
 
   return rejoinedSlashUnits.replace(/\s+/g, ' ').trim();
+}
+
+// A same-unit pair ("1 t to Mg": tonne to megagram) never appears in the suggestion list, so its
+// first item is always some other unit ("t to ton (UK)"). For these, Enter uses the parser.
+function isSameUnitPairQuery(query: string): boolean {
+  const parsed = parseConversionQuery(normalizeInput(query));
+  return parsed.ok && parsed.kind === 'unit' && parsed.fromUnit === parsed.toUnit;
 }
 
 function isPureNumericQuery(query: string): boolean {
@@ -515,6 +522,12 @@ export function ConversionCombobox({
     const isExactUnit = (item: ConversionComboboxItem) =>
       exactUnit !== null && item.category === exactUnit.category && item.fromSymbol === exactUnit.symbol;
 
+    // The unit the parser reads the typed from-unit as goes first within its category, so the
+    // first suggestion (what Enter picks) matches the parser: "30 mpg" -> MPG (US), not MPG (UK).
+    const parserFrom = fromText ? resolveUnitText(fromText) ?? (firstToken !== fromText ? resolveUnitText(firstToken) : null) : null;
+    const isParserFrom = (item: ConversionComboboxItem) =>
+      parserFrom !== null && item.category === parserFrom.category && item.fromSymbol === parserFrom.symbol;
+
     return normalizedItems.sort((a, b) => {
       // 0. Exact-case symbol match (see above)
       if (exactUnit) {
@@ -525,6 +538,12 @@ export function ConversionCombobox({
       // 1. Sort by category rank first
       const rankDiff = rankOf(a.category) - rankOf(b.category);
       if (rankDiff !== 0) return rankDiff;
+
+      // 1b. Within the category, the parser's reading of the from-unit (see above)
+      if (parserFrom) {
+        const aParser = isParserFrom(a);
+        if (aParser !== isParserFrom(b)) return aParser ? -1 : 1;
+      }
 
       // 2. Within same category, prioritize items where FROM unit starts with search
       if (searchText) {
@@ -891,7 +910,8 @@ export function ConversionCombobox({
         // was never a deliberate user choice, just the list's default first item. Checked
         // against rawValue, not query: query has already been through this combobox's own
         // normalizeInput, which can mangle an unspaced compound value (see tryParse).
-        const preferParse = !hasHighlight || isCompoundQuantityQuery(rawValue);
+        const preferParse =
+          !hasHighlight || isCompoundQuantityQuery(rawValue) || (Boolean(query) && isSameUnitPairQuery(rawValue));
         if (preferParse && query && tryParse(rawValue)) {
           event.preventDefault();
           return;
