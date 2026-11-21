@@ -576,6 +576,11 @@ export const UnitConverter = React.memo(forwardRef<UnitConverterHandle, UnitConv
       });
       return `/standards/nist-si-tenfold?${params.toString()}`;
     }
+    // Pair pages exist only for two different units ("kg to kg" has none), so no link then;
+    // otherwise Next prefetches the URL and it 404s.
+    if (rhfFromUnit === rhfToUnit) {
+      return null;
+    }
     const baseUrl = buildConversionPairUrl(rhfCategory as UnitCategory, rhfFromUnit, rhfToUnit);
     if (
       trimmedValue === '' ||

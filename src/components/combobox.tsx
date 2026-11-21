@@ -104,8 +104,8 @@ function normalizeInput(value: string): string {
   // Only convert known micro units: um, us, ug, ul, ua, etc. (not just "u" alone)
   // This handles: "100um", "50 us" but NOT "505u", "usd"
   // Pattern: u followed by specific letters that are known micro units
-  let withMicroConverted = withArrowsNormalized.replace(/(^|\s)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // um, us, ug, ua, ul
-  withMicroConverted = withMicroConverted.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // 100um, 50us, etc.
+  let withMicroConverted = withArrowsNormalized.replace(/(^|\s)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // um, us, ug, ua, ul
+  withMicroConverted = withMicroConverted.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // 100um, 50us, etc.
   
   // Convert common squared abbreviations: sqm, sqft, sqkm, etc. → m², ft², km²
   // Handles: "sqm", "100sqm", "100 sqm", "sqft", "sq ft", "sq km"

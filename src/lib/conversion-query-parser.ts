@@ -92,6 +92,11 @@ const CASE_EXACT_NOTATIONS: Array<[RegExp, string]> = [
   [/(^|[\s\d.,(])Kb\/s(?=$|[\s,;)])/g, '$1Kbps'],
   [/(^|[\s\d.,(])Mb\/s(?=$|[\s,;)])/g, '$1Mbps'],
   [/(^|[\s\d.,(])Gb\/s(?=$|[\s,;)])/g, '$1Gbps'],
+  // ...and the reverse: "MBps", "KBps", "Bps" are bytes per second, but lowercased they are the
+  // bit-rate symbols "mbps", "kbps", "bps", so they used to be read as bits (8x too little).
+  [/(^|[\s\d.,(])MBps(?=$|[\s,;)])/g, '$1MB/s'],
+  [/(^|[\s\d.,(])KBps(?=$|[\s,;)])/g, '$1KB/s'],
+  [/(^|[\s\d.,(])Bps(?=$|[\s,;)])/g, '$1B/s'],
   [/(^|[\s\d.,(])Mg(?=$|[\s,;)])/g, '$1t'],
 ];
 
@@ -631,9 +636,11 @@ function normalizeQuery(query: string): string {
   // Only convert when "u" is followed by a single letter AND that's the end of the unit token
   // This handles: "100um", "50 us", "um" but NOT "usd", "user", etc.
   // Same letter set as the combobox's normalizeInput (micro units: um, us, ug, ul, ua), so a word
-  // like "uk" in "uk pint" or "fl oz uk" isn't turned into "µk".
-  result = result.replace(/(^|\s)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // standalone "um", "us"
-  result = result.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)/gi, '$1µ$2'); // "100um", "5 us"
+  // like "uk" in "uk pint" or "fl oz uk" isn't turned into "µk". Not before "dollar(s)": "us dollar"
+  // is the currency (it used to become "µs dollar" and fail). Negative lookahead is fine in old
+  // Safari (only lookbehind isn't).
+  result = result.replace(/(^|\s)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // standalone "um", "us"
+  result = result.replace(/([0-9.,]+\s*)u([mgsal])(?=\s|$)(?!\s+dollars?\b)/gi, '$1µ$2'); // "100um", "5 us"
 
   // Convert common squared abbreviations: sqm, sqft, sqkm, etc. → m², ft², km²
   // Handles: "sqm", "100sqm", "100 sqm", "sqft", "sq ft", "sq km"
