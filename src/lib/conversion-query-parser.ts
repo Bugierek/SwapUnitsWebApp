@@ -1,5 +1,3 @@
-'use client';
-
 import { unitData } from '@/lib/unit-data';
 import type { UnitCategory, Unit, UnitData } from '@/types';
 import { matchSiPrefixToken } from '@/lib/si-prefixes';
@@ -218,6 +216,9 @@ const EXTRA_UNIT_SYNONYMS: Record<string, string[]> = {
   L: ['liter', 'liters', 'litre', 'litres'],
   mL: ['milliliter', 'milliliters', 'millilitre', 'millilitres'],
   min: ['minute', 'minutes', 'mins'],
+  s: ['sec', 'secs'],
+  h: ['hr', 'hrs'],
+  a: ['yr', 'yrs'],
   '°C': ['celsius', 'centigrade', 'c', 'deg c', 'degc', 'c deg', 'c-degree'],
   '°F': ['fahrenheit', 'f', 'deg f', 'degf', 'f deg', 'f-degree'],
   'm/s': ['meter per second', 'meters per second', 'metre per second', 'metres per second'],
@@ -1017,7 +1018,7 @@ function addAlias(
   map.get(key)!.push({ symbol, category });
 }
 
-function escapeRegex(value: string): string {
+export function escapeRegex(value: string): string {
   return value.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 }
 

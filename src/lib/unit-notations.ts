@@ -15,6 +15,15 @@ export function getUnitNotations(category: UnitCategory, symbol: string): UnitNo
   return findUnit(category, symbol)?.alsoWrittenAs ?? [];
 }
 
+/** Typed text with case, joiners and the way powers are written evened out ("n/mm2" = "N/mm²"). */
+export const squashNotation = (text: string) =>
+  text.toLowerCase().replace(/[·*.\-\s^]/g, '').replace(/²/g, '2').replace(/³/g, '3').replace(/μ/g, 'µ');
+
+/** The unit's notation that `typed` is a way of writing ("n/mm2" -> "N/mm²"), if any. */
+export function findNotationAsTyped(category: UnitCategory, symbol: string, typed: string): UnitNotation | undefined {
+  return getUnitNotations(category, symbol).find((notation) => squashNotation(notation.text) === squashNotation(typed));
+}
+
 /** Other listed units that are exactly this unit (hPa and mbar, mL and cm³). */
 export function getSameUnits(category: UnitCategory, symbol: string): Unit[] {
   if (NOT_RATIO_CATEGORIES.has(category)) return [];

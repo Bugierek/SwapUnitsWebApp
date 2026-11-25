@@ -5,7 +5,8 @@ import { ArrowUpRight } from 'lucide-react';
 
 import type { UnitCategory } from '@/types';
 import { unitData } from '@/lib/unit-data';
-import { getCategorySlug } from '@/lib/category-info';
+import { getCategoryPath, getCategorySlug } from '@/lib/category-info';
+import { COMPOUND_CONVERTER_PATH } from '@/lib/compound-units';
 import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
 import { listNotationSections } from '@/lib/unit-notations';
@@ -40,7 +41,6 @@ export const metadata: Metadata = {
   },
 };
 
-const categoryPageUrl = (category: UnitCategory) => `/measurements/${getCategorySlug(category)}`;
 
 // A pair page for the unit: to the category's usual partner unit (or from it, for that unit itself).
 const unitPairUrl = (category: UnitCategory, symbol: string): string | null => {
@@ -63,12 +63,12 @@ const LOOK_ALIKES: LookAlike[] = [
   {
     title: 'N·m (torque) and J (energy)',
     text: 'Both are a newton times a metre, but torque is a turning force and energy is work done. The SI Brochure writes torque in N·m and never in joules, so SwapUnits keeps them in separate categories.',
-    link: { label: 'Torque units', href: categoryPageUrl('Torque') },
+    link: { label: 'Torque units', href: getCategoryPath('Torque') },
   },
   {
     title: 'kW (power) and kWh (energy)',
     text: 'A kilowatt is a rate. A kilowatt-hour is the energy used at 1 kW for one hour: a 2 kW heater running for 3 hours uses 6 kWh.',
-    link: { label: 'Power units', href: categoryPageUrl('Power') },
+    link: { label: 'Power units', href: getCategoryPath('Power') },
   },
   {
     title: 'mW and MW',
@@ -161,7 +161,7 @@ export default function UnitNotationsPage() {
                   {categoryName}
                 </h2>
                 <Link
-                  href={categoryPageUrl(category)}
+                  href={getCategoryPath(category)}
                   className="inline-flex items-center gap-1 text-sm font-semibold text-primary-text transition hover:text-primary-text/80"
                 >
                   {categoryName} converter
@@ -247,6 +247,13 @@ export default function UnitNotationsPage() {
             <li>
               Typed all in lowercase, an ambiguous symbol keeps one meaning: mb/s is megabytes, mw is milliwatts, mg is
               milligrams.
+            </li>
+            <li>
+              For a unit built from others that isn&apos;t listed (kN/cm², BTU/(h·ft²), L/min), use the{' '}
+              <Link href={COMPOUND_CONVERTER_PATH} className="font-semibold text-primary-text transition hover:text-primary-text/80">
+                compound unit converter
+              </Link>
+              .
             </li>
           </ul>
         </section>

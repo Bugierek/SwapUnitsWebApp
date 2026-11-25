@@ -19,6 +19,12 @@ const CASES: Array<[string, Record<string, unknown>]> = [
   ["5 us dollar to euro", { kind: "unit", value: 5, fromUnit: "USD", toUnit: "EUR", category: "Currency" }],
   ["5 us dollars to eur", { kind: "unit", value: 5, fromUnit: "USD", toUnit: "EUR", category: "Currency" }],
   ["250 us to ms", { kind: "unit", value: 250, fromUnit: "µs", toUnit: "ms", category: "Time" }],
+  // sec / hr / yr abbreviations (compound converter stage): unambiguous, none means another unit.
+  ["5 hr to min", { kind: "unit", value: 5, fromUnit: "h", toUnit: "min", category: "Time" }],
+  ["5 hrs to min", { kind: "unit", value: 5, fromUnit: "h", toUnit: "min", category: "Time" }],
+  ["30 secs to min", { kind: "unit", value: 30, fromUnit: "s", toUnit: "min", category: "Time" }],
+  ["2 yr to days", { kind: "unit", value: 2, fromUnit: "a", toUnit: "d", category: "Time" }],
+  ["1 h 32 min 15 sec", { kind: "unit", value: 1.5375, fromUnit: "h", toUnit: "s", category: "Time" }],
   ["100 MBps to Mbps", { kind: "unit", value: 100, fromUnit: "MB/s", toUnit: "Mbps", category: "Data Transfer Rate" }],
   ["100 Mb/s to MB/s", { kind: "unit", value: 100, fromUnit: "Mbps", toUnit: "MB/s", category: "Data Transfer Rate" }],
   ["100 MB/s to Mb/s", { kind: "unit", value: 100, fromUnit: "MB/s", toUnit: "Mbps", category: "Data Transfer Rate" }],

@@ -1012,3 +1012,9 @@ export function getCategoryInfoBySlug(slug: string): CategoryInfo | undefined {
 export function getCategorySlug(category: UnitCategory): string {
   return categorySlugMap.get(category) ?? defaultSlug(category);
 }
+
+/** A category's page: /measurements/<slug>, or the slug itself when it's a full path (SI prefixes). */
+export function getCategoryPath(category: UnitCategory): string {
+  const slug = getCategorySlug(category);
+  return slug.includes('/') ? `/${slug}` : `/measurements/${slug}`;
+}

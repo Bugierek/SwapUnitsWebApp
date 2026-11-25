@@ -20,6 +20,7 @@ import { categoryDisplayOrder, getUnitsForCategory, unitData } from '@/lib/unit-
 import { ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { CATEGORY_KEYWORDS } from '@/lib/category-keywords';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
+import { findNotationAsTyped, squashNotation } from '@/lib/unit-notations';
 
 // Scientific notation: 1e5, 2.5e-3, etc.
 // Negative numbers: Only valid for Temperature (parsed later with category context)
@@ -663,15 +664,9 @@ export function getFinderReadings(normalizedSearch: string): FinderReadings {
   return { from: reading(fromText), to: reading(toText) };
 }
 
-// Compares typed text with a notation ignoring case, joiners and how powers are written, so the
-// hint can show the notation as it's properly written ("n/mm2" -> "N/mm²").
-const squashNotation = (text: string) =>
-  text.toLowerCase().replace(/[·*.\-\s^]/g, '').replace(/²/g, '2').replace(/³/g, '3').replace(/μ/g, 'µ');
-
+// The notation as it's properly written when the typed text is one ("n/mm2" -> "N/mm²").
 function displayTyped(category: UnitCategory, symbol: string, typed: string): string {
-  const unit = unitData[category]?.units.find((candidate) => candidate.symbol === symbol);
-  const notation = unit?.alsoWrittenAs?.find((entry) => squashNotation(entry.text) === squashNotation(typed));
-  return notation ? notation.text : typed;
+  return findNotationAsTyped(category, symbol, typed)?.text ?? typed;
 }
 
 /**
@@ -710,3 +705,4 @@ export function getSameUnitMessage(normalizedSearch: string): string | null {
     ? 'Both sides are the same unit. Press Enter to convert.'
     : `${a} and ${b} are the same unit (1 ${a} = 1 ${b}). Press Enter to convert.`;
 }
+

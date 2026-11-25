@@ -1,5 +1,3 @@
-'use client';
-
 import type { UnitCategory } from '@/types';
 
 export const CATEGORY_KEYWORDS: Partial<Record<UnitCategory, string[]>> = {

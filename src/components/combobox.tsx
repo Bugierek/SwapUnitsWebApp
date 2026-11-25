@@ -2,7 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Check, ArrowLeftRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowUpRight, Check, ArrowLeftRight, Calculator } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UnitCategory } from '@/types';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ import {
   sortFinderItems,
   type ConversionComboboxItem,
 } from '@/lib/finder-suggestions';
+import { getCompoundHandoff } from '@/lib/compound-handoff';
 
 const LEXER_NUMBER_RE = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/;
 const findLeadingNumericValue = (value: string): number => {
@@ -72,6 +74,7 @@ export function ConversionCombobox({
   onNumericValue,
   prefixIcon,
 }: ConversionComboboxProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [committedInput, setCommittedInput] = React.useState('');
@@ -242,6 +245,19 @@ export function ConversionCombobox({
     setOpen(false);
     setHighlightedIndex(-1);
   }, []);
+
+  // When nothing is listed and the parser can't read the query, the compound unit converter may
+  // ("3 kN/cm2 to psi", "5 mJ to J"): one row that opens it, and Enter does the same.
+  const compoundHandoff = React.useMemo(
+    () => (displayItems.length === 0 ? getCompoundHandoff(trimmedSearch) : null),
+    [displayItems.length, trimmedSearch],
+  );
+
+  const openCompoundHandoff = React.useCallback(() => {
+    if (!compoundHandoff) return;
+    closeDropdown();
+    router.push(compoundHandoff.href);
+  }, [closeDropdown, compoundHandoff, router]);
 
   const handleSelect = React.useCallback(
     (selectedValue: string) => {
@@ -486,6 +502,11 @@ export function ConversionCombobox({
       }
 
       if (event.key === 'Enter') {
+        if (compoundHandoff) {
+          event.preventDefault();
+          openCompoundHandoff();
+          return;
+        }
         const hasHighlight =
           highlightedIndex >= 0 && highlightedIndex < displayItems.length;
         // A compound quantity ("5 ft 7 in") must win over an auto-highlighted suggestion
@@ -533,10 +554,12 @@ export function ConversionCombobox({
     [
       closeDropdown,
       committedInput,
+      compoundHandoff,
       displayItems,
       handleSelect,
       highlightedIndex,
       open,
+      openCompoundHandoff,
       tryParse,
       handleNumericCommit,
     ],
@@ -548,9 +571,11 @@ export function ConversionCombobox({
   // counts as an expanded listbox while it actually renders options, so aria-controls never
   // points at a missing element ("No conversion found." is announced as a status instead).
   const optionId = (index: number) => `${listId}-option-${index}`;
-  const isListboxShown = open && displayItems.length > 0;
-  const activeDescendant =
-    isListboxShown && highlightedIndex >= 0 && highlightedIndex < displayItems.length
+  const isHandoffShown = open && compoundHandoff !== null;
+  const isListboxShown = open && (displayItems.length > 0 || isHandoffShown);
+  const activeDescendant = isHandoffShown
+    ? optionId(0)
+    : isListboxShown && highlightedIndex >= 0 && highlightedIndex < displayItems.length
       ? optionId(highlightedIndex)
       : undefined;
 
@@ -606,7 +631,24 @@ export function ConversionCombobox({
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/60 bg-[hsl(var(--control-background))] shadow-xl">
-          {displayItems.length === 0 ? (
+          {compoundHandoff ? (
+            <ul id={listId} role="listbox" aria-label="Conversion results">
+              <li
+                role="presentation"
+                className="flex w-full cursor-pointer items-center gap-3 bg-primary/10 px-4 py-3 text-sm text-foreground transition"
+                onClick={openCompoundHandoff}
+              >
+                <div id={optionId(0)} role="option" aria-selected="true" className="flex min-w-0 items-center gap-3">
+                  <Calculator className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="font-medium text-foreground">{compoundHandoff.title}</span>
+                    <span className="text-xs text-muted-foreground">{compoundHandoff.detail}</span>
+                  </div>
+                </div>
+                <ArrowUpRight className="ml-auto h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden="true" />
+              </li>
+            </ul>
+          ) : displayItems.length === 0 ? (
             <p role="status" className="px-4 py-6 text-sm text-muted-foreground">
               {getSameUnitMessage(normalizedSearch) ?? 'No conversion found.'}
             </p>
