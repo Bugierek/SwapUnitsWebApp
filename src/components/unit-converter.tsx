@@ -42,6 +42,7 @@ import { useImperativeHandle, forwardRef } from 'react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import type { ConversionComboboxProps, ConversionComboboxItem } from './combobox';
+import { buildFinderItems } from '@/lib/finder-suggestions';
 import {
   Dialog,
   DialogContent,
@@ -59,7 +60,7 @@ import {
   getConversionRelation,
 } from '@/lib/conversion-formula';
 import { buildConversionPairUrl } from '@/lib/conversion-pairs';
-import { getAliasesForUnit, parseConversionQuery } from '@/lib/conversion-query-parser';
+import { parseConversionQuery } from '@/lib/conversion-query-parser';
 import type { ParsedConversionPayload } from '@/lib/conversion-query-parser';
 import { ALL_SI_PREFIXES } from '@/lib/si-prefixes';
 import { getConversionSources } from '@/lib/conversion-sources';
@@ -1367,110 +1368,7 @@ const categoryOptions = React.useMemo<MeasurementCategoryOption[]>(() => {
     return () => window.removeEventListener('resize', handleResize);
   }, [evaluateLabelWidths]);
 
-  const unitConversionPairs = React.useMemo<ConversionComboboxItem[]>(() => {
-    const orderedCategories: UnitCategory[] = [
-      ...categoryDisplayOrder,
-      ...Object.keys(unitData).filter(
-        (category) => !categoryDisplayOrder.includes(category as UnitCategory),
-      ),
-    ]
-      .filter((category, index, arr) => arr.indexOf(category) === index)
-      .filter((category): category is UnitCategory => !!unitData[category as UnitCategory]);
-
-    return orderedCategories.flatMap<ConversionComboboxItem>((category) => {
-      const data = unitData[category as UnitCategory];
-      if (!data) return [];
-
-      if (category === 'SI Prefixes') {
-        return ALL_SI_PREFIXES.flatMap((fromPrefix) =>
-          ALL_SI_PREFIXES.filter((other) => other.symbol !== fromPrefix.symbol).map((toPrefix) => {
-            const keywords = new Set<string>([
-              'si prefix',
-              'prefix conversion',
-              fromPrefix.prefix,
-              toPrefix.prefix,
-              fromPrefix.symbol,
-              toPrefix.symbol,
-              `${fromPrefix.prefix} to ${toPrefix.prefix}`,
-              `${fromPrefix.symbol} to ${toPrefix.symbol}`,
-            ]);
-            fromPrefix.aliases.forEach((alias) => keywords.add(alias));
-            toPrefix.aliases.forEach((alias) => keywords.add(alias));
-
-            const keywordList = Array.from(keywords);
-            return {
-              value: `${category}:${fromPrefix.symbol}:${toPrefix.symbol}`,
-              category,
-              categoryLabel: 'SI Unit Prefixes',
-              fromSymbol: fromPrefix.symbol,
-              toSymbol: toPrefix.symbol,
-              fromName: fromPrefix.prefix,
-              toName: toPrefix.prefix,
-              label: `${fromPrefix.prefix} to ${toPrefix.prefix}`,
-              keywords: keywordList,
-              keywordsLower: keywordList.map((keyword) => keyword.toLowerCase()),
-              pairUrl: `/standards/nist-si-tenfold?from=${fromPrefix.symbol}&to=${toPrefix.symbol}`,
-              kind: 'si-prefix' as const,
-              siPrefixMeta: { fromSymbol: fromPrefix.symbol, toSymbol: toPrefix.symbol },
-            };
-          }),
-        );
-      }
-
-      const units = getUnitsForCategory(category);
-      return units.flatMap<ConversionComboboxItem>((fromUnit) =>
-        units
-          .filter((toUnit) => toUnit.symbol !== fromUnit.symbol)
-          .map((toUnit) => {
-            const label = `${fromUnit.symbol} to ${toUnit.symbol}`;
-            const pairUrl = buildConversionPairUrl(category, fromUnit.symbol, toUnit.symbol);
-            const keywordSet = new Set<string>([
-              category,
-              data.name,
-              fromUnit.name,
-              fromUnit.symbol,
-              toUnit.name,
-              toUnit.symbol,
-              label,
-              `${fromUnit.name} to ${toUnit.name}`,
-              `${fromUnit.symbol} to ${toUnit.symbol}`,
-              `${fromUnit.name} -> ${toUnit.name}`,
-              `${fromUnit.symbol} -> ${toUnit.symbol}`,
-              `${fromUnit.name} → ${toUnit.name}`,
-              `${fromUnit.symbol} → ${toUnit.symbol}`,
-              `${fromUnit.name} ${toUnit.symbol}`,
-              `${fromUnit.symbol} ${toUnit.name}`,
-              `${fromUnit.symbol}${toUnit.symbol}`,
-              `${fromUnit.name} ${toUnit.name}`,
-            ]);
-
-            (CATEGORY_KEYWORDS[category] ?? []).forEach((keyword) =>
-              keywordSet.add(keyword.toLowerCase()),
-            );
-
-            getAliasesForUnit(fromUnit).forEach((alias) => keywordSet.add(alias));
-            getAliasesForUnit(toUnit).forEach((alias) => keywordSet.add(alias));
-
-            const keywords = Array.from(keywordSet);
-            return {
-              value: `${category}:${fromUnit.symbol}:${toUnit.symbol}`,
-              category,
-              categoryLabel: data.name,
-              fromSymbol: fromUnit.symbol,
-              toSymbol: toUnit.symbol,
-              fromName: fromUnit.name,
-              toName: toUnit.name,
-              label,
-              keywords,
-              keywordsLower: keywords.map((keyword) => keyword.toLowerCase()),
-              pairUrl,
-              kind: 'unit' as const,
-              siPrefixMeta: undefined,
-            };
-          }),
-      );
-    });
-  }, []);
+  const unitConversionPairs = React.useMemo<ConversionComboboxItem[]>(() => buildFinderItems(), []);
 
   const conversionPairs = unitConversionPairs;
 

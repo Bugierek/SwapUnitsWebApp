@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { categoryDisplayOrder } from "@/lib/unit-data";
 import { getCategorySlug } from "@/lib/category-info";
 import { listAllConversionPairs } from "@/lib/conversion-pairs";
+import { COMPOUND_CONVERTER_PATH } from "@/lib/compound-units";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://swapunits.com";
 
@@ -14,6 +15,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${baseUrl}/` },
     { url: `${baseUrl}/widget` },
     { url: `${baseUrl}/widget-builder` },
+    { url: `${baseUrl}/unit-notations` },
+    { url: `${baseUrl}${COMPOUND_CONVERTER_PATH}` },
   ];
 
   categoryDisplayOrder.forEach((category) => {

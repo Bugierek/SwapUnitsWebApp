@@ -19,7 +19,10 @@ import { getCategoryDefaultPair } from '@/lib/category-defaults';
 import { getEvModels } from '@/lib/ev-models';
 import { ScrollIntoViewOnMount } from '@/components/scroll-into-view-on-mount';
 import { DataStorageExplainer } from '@/components/data-storage-explainer';
+import { categoryHasNotations, describeUnitNotes } from '@/lib/unit-notations';
+import { COMPOUND_CONVERTER_PATH, isDerivedCategory } from '@/lib/compound-units';
 import dynamic from 'next/dynamic';
+
 
 const CurrencyCategoryContent = dynamic(
   () => import('@/components/currency-category-content').then(mod => ({ default: mod.CurrencyCategoryContent }))
@@ -319,6 +322,24 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               Every unit below references the SI base value so you can compare readings quickly.
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {[
+              categoryHasNotations(info.category) && { href: '/unit-notations', label: 'All unit notations' },
+              // Units built from others (pressure is force per area): kN/cm² and the like.
+              isDerivedCategory(info.category) && { href: COMPOUND_CONVERTER_PATH, label: 'Compound units' },
+            ]
+              .filter((link): link is { href: string; label: string } => Boolean(link))
+              .map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-primary-text transition hover:text-primary-text/80"
+                >
+                  {link.label}
+                  <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              ))}
+          </div>
         </div>
 
         <Table>
@@ -354,7 +375,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {unit.unitType ? unit.unitType.replace(/_/g, ' ') : '—'}
+                    {describeUnitNotes(info.category, unit) ?? '—'}
                   </TableCell>
                 </TableRow>
               );

@@ -64,6 +64,20 @@ export function Footer() {
                 Build widget
               </a>
               <a
+                href="/unit-notations"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3.5 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+              >
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                Unit notations
+              </a>
+              <a
+                href="/compound-unit-converter"
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/60 bg-[hsl(var(--control-background))]/80 px-3.5 py-1.5 text-sm font-semibold text-foreground transition hover:border-primary/60 hover:bg-primary/10 hover:text-primary"
+              >
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                Compound units
+              </a>
+              <a
                 href="https://github.com/Bugierek/SwapUnitsWebApp"
                 target="_blank"
                 rel="noreferrer"

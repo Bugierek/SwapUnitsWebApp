@@ -1,4 +1,4 @@
-import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem } from '@/types';
+import type { UnitCategory, UnitData, Preset, Unit, FavoriteItem, UnitNotation } from '@/types';
 
 // Base units:
 // Length: Meter (m)
@@ -336,6 +336,9 @@ export const unitData: Record<UnitCategory, UnitData> = {
   Power: {
     name: 'Power',
     units: [
+      // Milliwatt sorts first (by factor), so the alias index reads an all-lowercase "mw" as
+      // milliwatts ("5mw laser"); "MW" typed in capitals is still the megawatt.
+      { name: 'Milliwatt', symbol: 'mW', factor: 1e-3 },
       { name: 'Watt', symbol: 'W', factor: 1 },
       { name: 'Kilowatt', symbol: 'kW', factor: 1e3 },
       { name: 'Megawatt', symbol: 'MW', factor: 1e6 },
@@ -385,6 +388,112 @@ export const unitData: Record<UnitCategory, UnitData> = {
     ].sort((a, b) => a.factor - b.factor),
   },
 };
+
+// Other exact ways of writing a unit: the same unit, not a separate one, so no pair pages of their
+// own. The finder accepts each (plus keyboard forms: "N/mm2", "W*s"); the category table, the pair
+// pages and /unit-notations show them. Exact equivalences only: nothing approximate, and nothing
+// that also means something else ("kt" is knot and kilotonne, "fps" is also frames per second).
+// Torque in N·m is deliberately not listed as joules; see the Torque FAQ.
+const UNIT_NOTATIONS: Partial<Record<UnitCategory, Record<string, UnitNotation[]>>> = {
+  Pressure: {
+    Pa: [{ text: 'N/m²', why: 'The pascal is defined as one newton per square metre.' }],
+    kPa: [{ text: 'kN/m²', why: '1 kN/m² = 1,000 N/m² = 1,000 Pa.' }],
+    MPa: [
+      { text: 'N/mm²', why: '1 mm² = 10⁻⁶ m², so 1 N/mm² = 10⁶ N/m² = 1 MPa. Common in steel, concrete and material specifications.' },
+      { text: 'MN/m²', why: '1 MN/m² = 10⁶ N/m² = 1 MPa.' },
+    ],
+    psi: [
+      { text: 'lbf/in²', why: 'psi stands for pound-force per square inch.' },
+      { text: 'lb/in²', why: 'Common shorthand for lbf/in²: the pound here is the pound-force.' },
+    ],
+  },
+  Area: {
+    ha: [{ text: 'hm²', why: 'A hectare is a square hectometre: 100 m × 100 m = 10,000 m².' }],
+    'in²': [{ text: 'sq in', why: 'US abbreviation for square inch.' }],
+    'ft²': [{ text: 'sq ft', why: 'US abbreviation for square foot.' }],
+    'yd²': [{ text: 'sq yd', why: 'US abbreviation for square yard.' }],
+    'mi²': [{ text: 'sq mi', why: 'US abbreviation for square mile.' }],
+    acre: [{ text: 'ac', why: 'Standard abbreviation of acre.' }],
+  },
+  Volume: {
+    'cm³': [{ text: 'cc', why: 'Cubic centimetre, used for engine displacement and medical doses.' }],
+    L: [{ text: 'dm³', why: 'The litre is defined as one cubic decimetre (10 cm × 10 cm × 10 cm).' }],
+    'mm³': [{ text: 'µL', why: '1 µL = 10⁻⁶ L = 10⁻⁶ dm³ = 1 mm³.' }],
+    'in³': [{ text: 'cu in', why: 'US abbreviation for cubic inch.' }],
+    'ft³': [{ text: 'cu ft', why: 'US abbreviation for cubic foot.' }],
+    'yd³': [{ text: 'cu yd', why: 'US abbreviation for cubic yard.' }],
+  },
+  Energy: {
+    J: [{ text: 'W·s', why: 'A watt is one joule per second, so one watt for one second is one joule.' }],
+    Wh: [{ text: 'W·h', why: 'Watt times hour; the dot is usually left out.' }],
+    kWh: [{ text: 'kW·h', why: 'Kilowatt times hour; the dot is usually left out.' }],
+    kcal: [{ text: 'Cal', why: 'The Calorie with a capital C on food labels is one kilocalorie (4,184 J); the small calorie (cal) is 1,000 times smaller.' }],
+  },
+  Speed: {
+    'km/h': [
+      { text: 'kph', why: 'Common abbreviation of kilometres per hour, though not an SI symbol.' },
+      { text: 'km/hr', why: 'The same unit with "hr" for hour.' },
+      { text: 'kmh', why: 'Written without the slash on some signs and dashboards.' },
+    ],
+    mph: [{ text: 'mi/h', why: 'Miles per hour written as a quotient.' }],
+  },
+  Power: {
+    W: [{ text: 'J/s', why: 'The watt is defined as one joule per second.' }],
+    kW: [{ text: 'kJ/s', why: '1 kJ/s = 1,000 J/s = 1 kW.' }],
+  },
+  Force: {
+    N: [{ text: 'kg·m/s²', why: 'One newton accelerates one kilogram by one metre per second squared (F = m·a).' }],
+    dyn: [{ text: 'g·cm/s²', why: 'The CGS unit of force: one gram accelerated by one centimetre per second squared, 10⁻⁵ N.' }],
+    kgf: [{ text: 'kp', why: 'Kilopond, the older name for the kilogram-force (9.80665 N).' }],
+    kip: [{ text: 'klbf', why: 'A kip is a kilo-pound-force: 1,000 lbf.' }],
+  },
+  Torque: {
+    'lbf·ft': [{ text: 'ft·lbf', why: 'The same product in the other order; US specs often write ft·lb.' }],
+    'lbf·in': [{ text: 'in·lbf', why: 'The same product in the other order; often written in·lb.' }],
+    'ozf·in': [{ text: 'in·ozf', why: 'The same product in the other order.' }],
+  },
+  Density: {
+    'g/cm³': [{ text: 'g/cc', why: '1 cc is 1 cm³.' }],
+    'lb/ft³': [{ text: 'pcf', why: 'Pounds per cubic foot, common in US construction.' }],
+  },
+  'Data Storage': {
+    KB: [{ text: 'kB', why: 'kB (lowercase k) is the SI form and KB the common one; both are 1,000 bytes here. 1,024 bytes is a KiB.' }],
+  },
+  'Data Transfer Rate': {
+    bps: [{ text: 'bit/s', why: 'Bits per second, with the unit written out.' }],
+    Kbps: [
+      { text: 'kbit/s', why: 'Kilobits per second, with the unit written out.' },
+      { text: 'Kb/s', why: 'A lowercase b is the bit: Kb/s is kilobits per second (KB/s is kilobytes, 8 times more).' },
+    ],
+    Mbps: [
+      { text: 'Mbit/s', why: 'Megabits per second, with the unit written out.' },
+      { text: 'Mb/s', why: 'A lowercase b is the bit: Mb/s is megabits per second (MB/s is megabytes, 8 times more).' },
+    ],
+    Gbps: [
+      { text: 'Gbit/s', why: 'Gigabits per second, with the unit written out.' },
+      // Exact case by hand: "GB/s" (gigabytes per second) isn't a listed unit, so it would
+      // otherwise be read as this.
+      { text: 'Gb/s', why: 'A lowercase b is the bit: Gb/s is gigabits per second (GB/s is gigabytes, 8 times more).', exactCase: true },
+    ],
+    'B/s': [{ text: 'Bps', why: 'Bytes per second with a capital B (bps with a lowercase b is bits per second).' }],
+    'KB/s': [
+      { text: 'kB/s', why: 'kB (lowercase k) is the SI form of the kilobyte.' },
+      { text: 'KBps', why: 'Kilobytes per second with a capital B (Kbps is kilobits per second).' },
+    ],
+    'MB/s': [{ text: 'MBps', why: 'Megabytes per second with a capital B (Mbps is megabits per second).' }],
+  },
+};
+
+(Object.entries(UNIT_NOTATIONS) as [UnitCategory, Record<string, UnitNotation[]>][]).forEach(([category, bySymbol]) => {
+  Object.entries(bySymbol).forEach(([symbol, notations]) => {
+    const unit = unitData[category].units.find((candidate) => candidate.symbol === symbol);
+    if (!unit) {
+      throw new Error(`UNIT_NOTATIONS: no unit ${symbol} in ${category}`);
+    }
+    unit.alsoWrittenAs = notations;
+  });
+});
+
 
 export const allPresets: Preset[] = [
   { category: 'Length', fromUnit: 'm', toUnit: 'ft', name: 'Meter to Feet' },

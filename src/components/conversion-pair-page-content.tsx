@@ -31,6 +31,7 @@ import { isEvInvolvingFuelEconomyPair, isEvFuelEconomyUnit, unitData } from '@/l
 import { VehiclePresetChips } from '@/components/vehicle-preset-chips';
 import { EvRangeCostEstimator } from '@/components/ev-range-cost-estimator';
 import { DataStorageExplainer } from '@/components/data-storage-explainer';
+import { describePairNotations } from '@/lib/unit-notations';
 
 type ExampleRow = {
   input: number;
@@ -128,6 +129,8 @@ export function ConversionPairPageContent({
   // "torque units", "currencies": for headings such as "More torque conversions". categoryInfo.title
   // is the category page's title ("Torque Converter & Reference") and reads wrong inside a sentence.
   const categoryName = (unitData[categoryInfo.category]?.name ?? categoryInfo.category).toLowerCase();
+  // "MPa is also written N/mm² or MN/m².", "mL and cm³ are the same unit under two names: ..."
+  const pairNotations = describePairNotations(categoryInfo.category, fromSymbol, toSymbol);
   const categoryUnitsNoun = categoryInfo.category === 'Currency' ? 'currencies' : `${categoryName} units`;
   const evUnitSymbol = isEvFuelEconomyUnit(fromSymbol) ? fromSymbol : toSymbol;
 
@@ -278,6 +281,16 @@ export function ConversionPairPageContent({
               onCopyResult={handleCopyResult}
             />
           </section>
+
+          {/* Below the converter rather than in the header, which phones don't show. */}
+          {pairNotations.length > 0 && (
+            <p className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Notation:</span> {pairNotations.join(' ')}{' '}
+              <Link href="/unit-notations" className="font-semibold text-primary-text transition hover:text-primary-text/80">
+                All unit notations
+              </Link>
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link

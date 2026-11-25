@@ -9,7 +9,7 @@ import type { UnitCategory } from '@/types';
 // SP 811 Appendix B. Expected values are the exact results, so they must match to 1e-9 relative.
 // [category, value, from, to, expected]
 const CASES: [string, number, string, string, number][] = [
-  ['Power', 1, 'hp', 'W', 745.69987158227022], ['Power', 1, 'PS', 'W', 735.49875], ['Power', 1, 'kW', 'hp', 1.3410220895950278],
+  ['Power', 1, 'mW', 'W', 0.001], ['Power', 250, 'mW', 'hp', 0.000335255522398757], ['Power', 1, 'hp', 'W', 745.69987158227022], ['Power', 1, 'PS', 'W', 735.49875], ['Power', 1, 'kW', 'hp', 1.3410220895950278],
   ['Power', 100, 'PS', 'hp', 98.63200706], ['Power', 12000, 'BTU/h', 'kW', 3.516852842], ['Power', 1, 'BTU/h', 'W', 0.29307107017222],
   ['Force', 1, 'lbf', 'N', 4.4482216152605], ['Force', 1, 'kN', 'lbf', 224.80894309971], ['Force', 1, 'kgf', 'N', 9.80665], ['Force', 1, 'kip', 'kN', 4.4482216152605], ['Force', 1, 'N', 'dyn', 1e5],
   ['Force', 22, 'kN', 'kgf', 2243.3756685514421], ['Torque', 1, 'lbf·ft', 'N·m', 1.3558179483314004], ['Torque', 1, 'N·m', 'lbf·ft', 0.7375621492772654],
